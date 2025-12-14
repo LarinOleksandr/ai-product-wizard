@@ -1,0 +1,26 @@
+{
+  "name": "ai-product-wizard",
+  "private": true,
+  "version": "0.1.0",
+  "description": "AI Product Wizard monorepo (frontend, backend, AI, infra).",
+  "scripts": {
+    "dev": "echo \"Use scripts/dev-all.sh or package-level dev scripts\"",
+    "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
+    "format": "prettier . --write",
+    "typecheck": "tsc -p tsconfig.base.json"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@typescript-eslint/eslint-plugin": "^8.49.0",
+    "@typescript-eslint/parser": "^8.49.0",
+    "eslint": "^9.39.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-import": "^2.32.0",
+    "prettier": "^3.7.4",
+    "typescript-eslint": "^8.49.0"
+  },
+  "prettier": "./config/lint/.prettierrc.json"
+}

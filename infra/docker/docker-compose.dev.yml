@@ -1,0 +1,17 @@
+services:
+  embeddings:
+    image: ai-embeddings-dev                 # use the manually built image
+    container_name: ai-embeddings-dev
+    ports:
+      - "8001:8001"
+    restart: unless-stopped
+
+  orchestrator:
+    build:
+      context: ../../ai/orchestrator
+    container_name: ai-orchestrator-dev
+    ports:
+      - "8002:8002"
+    depends_on:
+      - embeddings
+    restart: unless-stopped

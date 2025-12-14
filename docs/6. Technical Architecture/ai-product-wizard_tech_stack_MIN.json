@@ -1,65 +1,253 @@
 {
   "frontend": [
-    { "id": "1.1", "name": "React 18", "purpose": "Render dynamic UI and manage component state for step-by-step wizard." },
-    { "id": "1.2", "name": "TypeScript", "purpose": "Provide static typing to ensure safe data flow between UI and agents." },
-    { "id": "1.3", "name": "Vite", "purpose": "Compile and bundle frontend code with fast dev tooling and optimized builds." },
-    { "id": "1.4", "name": "Tailwind CSS", "purpose": "Provide utility-first styling for consistent, rapid UI development." },
-    { "id": "1.5", "name": "shadcn/ui", "purpose": "Supply ready UI components for forms, dialogs, and wizard elements." },
-    { "id": "1.6", "name": "React Router", "purpose": "Map wizard steps to URLs and manage navigation state." },
-    { "id": "1.7", "name": "TanStack Query", "purpose": "Handle async data fetching, caching, and state synchronization." },
-    { "id": "1.8", "name": "TipTap", "purpose": "Provide in-app rich-text editing for agent-generated documents." },
-    { "id": "1.9", "name": "React Flow", "purpose": "Visualize multi-agent workflow graph and execution state." },
-    { "id": "1.10", "name": "Zod", "purpose": "Validate user inputs and agent outputs with typed schemas." }
+    {
+      "id": "1.1",
+      "name": "React 18",
+      "purpose": "Render dynamic UI and manage component state for step-by-step wizard."
+    },
+    {
+      "id": "1.2",
+      "name": "TypeScript",
+      "purpose": "Provide static typing to ensure safe data flow between UI and agents."
+    },
+    {
+      "id": "1.3",
+      "name": "Vite",
+      "purpose": "Compile and bundle frontend code with fast dev tooling and optimized builds."
+    },
+    {
+      "id": "1.4",
+      "name": "Tailwind CSS",
+      "purpose": "Provide utility-first styling for consistent, rapid UI development."
+    },
+    {
+      "id": "1.5",
+      "name": "shadcn/ui",
+      "purpose": "Supply ready UI components for forms, dialogs, and wizard elements."
+    },
+    {
+      "id": "1.6",
+      "name": "React Router",
+      "purpose": "Map wizard steps to URLs and manage navigation state."
+    },
+    {
+      "id": "1.7",
+      "name": "TanStack Query",
+      "purpose": "Handle async data fetching, caching, and state synchronization."
+    },
+    {
+      "id": "1.8",
+      "name": "TipTap",
+      "purpose": "Provide in-app rich-text editing for agent-generated documents."
+    },
+    {
+      "id": "1.9",
+      "name": "React Flow",
+      "purpose": "Visualize multi-agent workflow graph and execution state."
+    },
+    {
+      "id": "1.10",
+      "name": "Zod",
+      "purpose": "Validate user inputs and agent outputs with typed schemas."
+    }
   ],
   "backend_and_data": [
-    { "id": "2.1", "name": "Supabase Postgres", "purpose": "Store projects, workflow states, document versions, and agent outputs." },
-    { "id": "2.2", "name": "Supabase Auth", "purpose": "Manage user authentication and secure project separation." },
-    { "id": "2.3", "name": "Supabase Storage", "purpose": "Persist binary deliverables such as PDFs, DOCX, and JSON files." },
-    { "id": "2.4", "name": "Supabase Realtime", "purpose": "Push live updates when agents finish or documents change." },
-    { "id": "2.5", "name": "pgvector", "purpose": "Enable semantic search and retrieval of embeddings for agent context." },
-    { "id": "2.6", "name": "Supabase Edge Functions", "purpose": "Execute backend logic for agent orchestration and file exports." },
-    { "id": "2.7", "name": "Row-Level Security", "purpose": "Enforce per-user access control on database rows." },
-    { "id": "2.8", "name": "supabase-js", "purpose": "Provide unified client APIs for DB, auth, storage, and functions." }
+    {
+      "id": "2.1",
+      "name": "Supabase Postgres",
+      "purpose": "Store projects, workflow states, document versions, and agent outputs."
+    },
+    {
+      "id": "2.2",
+      "name": "Supabase Auth",
+      "purpose": "Manage user authentication and secure project separation."
+    },
+    {
+      "id": "2.3",
+      "name": "Supabase Storage",
+      "purpose": "Persist binary deliverables such as PDFs, DOCX, and JSON files."
+    },
+    {
+      "id": "2.4",
+      "name": "Supabase Realtime",
+      "purpose": "Push live updates when agents finish or documents change."
+    },
+    {
+      "id": "2.5",
+      "name": "pgvector",
+      "purpose": "Enable semantic search and retrieval of embeddings for agent context."
+    },
+    {
+      "id": "2.6",
+      "name": "Supabase Edge Functions",
+      "purpose": "Execute backend logic for agent orchestration and file exports."
+    },
+    {
+      "id": "2.7",
+      "name": "Row-Level Security",
+      "purpose": "Enforce per-user access control on database rows."
+    },
+    {
+      "id": "2.8",
+      "name": "supabase-js",
+      "purpose": "Provide unified client APIs for DB, auth, storage, and functions."
+    }
   ],
   "ai_and_orchestration": [
-    { "id": "3.1", "name": "LangGraph JS", "purpose": "Define and run multi-agent workflows as a directed graph." },
-    { "id": "3.2", "name": "LangChain.js", "purpose": "Manage prompts, LLM calls, retrieval, and agent tooling integration." },
-    { "id": "3.3", "name": "Ollama", "purpose": "Run local open-source LLMs for cost-free model inference." },
-    { "id": "3.4", "name": "Embedding Service (FastAPI)", "purpose": "Compute text embeddings for pgvector-based semantic search." },
-    { "id": "3.5", "name": "Parsing & Export Tools", "purpose": "Convert agent outputs into PDF, DOCX, Markdown, or structured formats." },
-    { "id": "3.6", "name": "JSON Generation & Validation Layer", "purpose": "Enforce structured JSON outputs via schemas and LLM JSON modes." }
+    {
+      "id": "3.1",
+      "name": "LangGraph JS",
+      "purpose": "Define and run multi-agent workflows as a directed graph."
+    },
+    {
+      "id": "3.2",
+      "name": "LangChain.js",
+      "purpose": "Manage prompts, LLM calls, retrieval, and agent tooling integration."
+    },
+    {
+      "id": "3.3",
+      "name": "Ollama",
+      "purpose": "Run local open-source LLMs for cost-free model inference."
+    },
+    {
+      "id": "3.4",
+      "name": "Embedding Service (FastAPI)",
+      "purpose": "Compute text embeddings for pgvector-based semantic search."
+    },
+    {
+      "id": "3.5",
+      "name": "Parsing & Export Tools",
+      "purpose": "Convert agent outputs into PDF, DOCX, Markdown, or structured formats."
+    },
+    {
+      "id": "3.6",
+      "name": "JSON Generation & Validation Layer",
+      "purpose": "Enforce structured JSON outputs via schemas and LLM JSON modes."
+    }
   ],
   "file_deliverables": [
-    { "id": "4.1", "name": "Supabase Storage", "purpose": "Store versioned deliverable files produced by agents." },
-    { "id": "4.2", "name": "Postgres Version Metadata", "purpose": "Track document versions, approvals, and change history." },
-    { "id": "4.3", "name": "Document Diffing", "purpose": "Compare text or JSON versions to detect changes between iterations." },
-    { "id": "4.4", "name": "JSON Schema / Zod Validators", "purpose": "Validate structural correctness of generated JSON deliverables." },
-    { "id": "4.5", "name": "Export Libraries", "purpose": "Generate output formats such as DOCX, PDF, and Markdown." },
-    { "id": "4.6", "name": "jszip", "purpose": "Bundle all project deliverables into downloadable ZIP archives." },
-    { "id": "4.7", "name": "Automatic File Naming", "purpose": "Standardize storage paths and naming for agent outputs." }
+    {
+      "id": "4.1",
+      "name": "Supabase Storage",
+      "purpose": "Store versioned deliverable files produced by agents."
+    },
+    {
+      "id": "4.2",
+      "name": "Postgres Version Metadata",
+      "purpose": "Track document versions, approvals, and change history."
+    },
+    {
+      "id": "4.3",
+      "name": "Document Diffing",
+      "purpose": "Compare text or JSON versions to detect changes between iterations."
+    },
+    {
+      "id": "4.4",
+      "name": "JSON Schema / Zod Validators",
+      "purpose": "Validate structural correctness of generated JSON deliverables."
+    },
+    {
+      "id": "4.5",
+      "name": "Export Libraries",
+      "purpose": "Generate output formats such as DOCX, PDF, and Markdown."
+    },
+    {
+      "id": "4.6",
+      "name": "jszip",
+      "purpose": "Bundle all project deliverables into downloadable ZIP archives."
+    },
+    {
+      "id": "4.7",
+      "name": "Automatic File Naming",
+      "purpose": "Standardize storage paths and naming for agent outputs."
+    }
   ],
   "infrastructure_and_devops": [
-    { "id": "5.1", "name": "GitHub Monorepo", "purpose": "Centralize all code for unified versioning and CI/CD." },
+    {
+      "id": "5.1",
+      "name": "GitHub Monorepo",
+      "purpose": "Centralize all code for unified versioning and CI/CD."
+    },
     { "id": "5.2", "name": "Netlify", "purpose": "Host and auto-deploy frontend builds." },
-    { "id": "5.3", "name": "Supabase Hosting", "purpose": "Host database, storage, auth, and serverless backend." },
-    { "id": "5.4", "name": "Linux VM with Docker", "purpose": "Host AI runtime services including LLM and embedding APIs." },
-    { "id": "5.5", "name": "Docker", "purpose": "Containerize AI services for reproducible and isolated deployment." },
-    { "id": "5.6", "name": "GitHub Actions", "purpose": "Run tests and deploy backend and AI services automatically." },
+    {
+      "id": "5.3",
+      "name": "Supabase Hosting",
+      "purpose": "Host database, storage, auth, and serverless backend."
+    },
+    {
+      "id": "5.4",
+      "name": "Linux VM with Docker",
+      "purpose": "Host AI runtime services including LLM and embedding APIs."
+    },
+    {
+      "id": "5.5",
+      "name": "Docker",
+      "purpose": "Containerize AI services for reproducible and isolated deployment."
+    },
+    {
+      "id": "5.6",
+      "name": "GitHub Actions",
+      "purpose": "Run tests and deploy backend and AI services automatically."
+    },
     { "id": "5.7", "name": "Sentry", "purpose": "Monitor runtime errors in frontend and backend." },
-    { "id": "5.8", "name": "PostHog", "purpose": "Collect analytics for wizard usage and user behavior patterns." },
-    { "id": "5.9", "name": "Central Log Aggregation", "purpose": "Aggregate logs from agents, containers, and backend for debugging." },
-    { "id": "5.10", "name": "Testing Stack", "purpose": "Provide automated tests across UI, workflows, and AI microservices." },
-    { "id": "5.11", "name": "Code Quality Tools", "purpose": "Enforce linting, formatting, and strict type safety." }
+    {
+      "id": "5.8",
+      "name": "PostHog",
+      "purpose": "Collect analytics for wizard usage and user behavior patterns."
+    },
+    {
+      "id": "5.9",
+      "name": "Central Log Aggregation",
+      "purpose": "Aggregate logs from agents, containers, and backend for debugging."
+    },
+    {
+      "id": "5.10",
+      "name": "Testing Stack",
+      "purpose": "Provide automated tests across UI, workflows, and AI microservices."
+    },
+    {
+      "id": "5.11",
+      "name": "Code Quality Tools",
+      "purpose": "Enforce linting, formatting, and strict type safety."
+    }
   ],
   "analytics_monitoring_quality": [
-    { "id": "6.1", "name": "PostHog", "purpose": "Analyze user flow metrics and step completion rates." },
+    {
+      "id": "6.1",
+      "name": "PostHog",
+      "purpose": "Analyze user flow metrics and step completion rates."
+    },
     { "id": "6.2", "name": "Sentry", "purpose": "Capture agent and backend execution errors." },
-    { "id": "6.3", "name": "Supabase Logs", "purpose": "Provide backend logs for workflow and agent operations." },
-    { "id": "6.4", "name": "OpenSearch / Logflare", "purpose": "Store and query full-system logs across services." },
-    { "id": "6.5", "name": "Vitest", "purpose": "Run unit tests for UI components and shared logic." },
-    { "id": "6.6", "name": "Playwright", "purpose": "Execute end-to-end tests validating wizard flows." },
+    {
+      "id": "6.3",
+      "name": "Supabase Logs",
+      "purpose": "Provide backend logs for workflow and agent operations."
+    },
+    {
+      "id": "6.4",
+      "name": "OpenSearch / Logflare",
+      "purpose": "Store and query full-system logs across services."
+    },
+    {
+      "id": "6.5",
+      "name": "Vitest",
+      "purpose": "Run unit tests for UI components and shared logic."
+    },
+    {
+      "id": "6.6",
+      "name": "Playwright",
+      "purpose": "Execute end-to-end tests validating wizard flows."
+    },
     { "id": "6.7", "name": "Pytest", "purpose": "Test Python embedding and AI microservices." },
-    { "id": "6.8", "name": "ESLint + Prettier", "purpose": "Maintain code hygiene and formatting consistency." },
-    { "id": "6.9", "name": "TypeScript Strict Mode", "purpose": "Prevent invalid data structures across agent pipelines." }
+    {
+      "id": "6.8",
+      "name": "ESLint + Prettier",
+      "purpose": "Maintain code hygiene and formatting consistency."
+    },
+    {
+      "id": "6.9",
+      "name": "TypeScript Strict Mode",
+      "purpose": "Prevent invalid data structures across agent pipelines."
+    }
   ]
 }
