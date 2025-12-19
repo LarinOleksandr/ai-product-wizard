@@ -1,0 +1,54 @@
+{
+  "version": 5,
+  "stage": "discovery",
+  "timestamp": "2025-12-18T21:10:05.464Z",
+  "productIdea": "AI Product Wizard that drafts discovery docs",
+  "discoveryDocument": {
+    "productSummary": "Discovery summary for: AI Product Wizard that drafts discovery docs. This draft was generated without the LLM and should be reviewed.",
+    "targetUsers": [
+      "Primary customers who feel the described pain",
+      "Early adopters inside the target company",
+      "Stakeholders who fund the project"
+    ],
+    "pains": [
+      "Lack of clarity about the user problem",
+      "No shared success definition yet",
+      "Missing structured discovery document"
+    ],
+    "solutionOutline": [
+      "Capture the product idea and align on the user",
+      "List pains and connect them to the idea",
+      "Describe success signals that can be measured"
+    ],
+    "successMetrics": [
+      "Discovery document delivered and approved",
+      "Stakeholders understand the user pain",
+      "Next delivery stage is unblocked"
+    ],
+    "openQuestions": [
+      "What data backs up the product pain?",
+      "Who will review and approve the discovery document?",
+      "What timeline is acceptable for the first version?"
+    ]
+  },
+  "decisions": [
+    "Discovery document drafted at 2025-12-18T21:10:04.470Z"
+  ],
+  "openQuestions": [
+    "What data backs up the product pain?",
+    "Who will review and approve the discovery document?",
+    "What timeline is acceptable for the first version?"
+  ],
+  "userMessages": [
+    "Focus on SaaS founders",
+    "Keep scope small"
+  ],
+  "approved": true,
+  "approvedAt": "2025-12-19T07:24:16.726Z",
+  "approvalHistory": [
+    {
+      "timestamp": "2025-12-19T07:24:16.726Z",
+      "approver": "dev-user"
+    }
+  ]
+}

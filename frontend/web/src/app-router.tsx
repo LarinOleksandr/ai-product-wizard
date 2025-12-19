@@ -2,15 +2,12 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MainLayout } from "./layouts/main-layout";
 import { ProjectsPage } from "./pages/projects";
+import { WizardPage } from "./pages/wizard";
 
 const queryClient = new QueryClient();
 
 function HomePage() {
   return <div className="p-4">Home</div>;
-}
-
-function WizardPage() {
-  return <div className="p-4">Wizard placeholder</div>;
 }
 
 export function AppRouter() {

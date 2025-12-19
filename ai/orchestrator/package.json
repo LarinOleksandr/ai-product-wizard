@@ -8,7 +8,9 @@
   },
   "dependencies": {
     "@langchain/langgraph": "latest",
+    "@langchain/ollama": "^1.1.0",
     "langchain": "latest",
-    "node-fetch": "3.x"
+    "node-fetch": "3.x",
+    "zod": "^4.2.1"
   }
 }
