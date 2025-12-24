@@ -1,15 +1,63 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState, type ReactNode } from "react";
+import discoveryDocumentIcon from "../assets/discovery-document.png";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger
+} from "../components/ui/accordion";
 
 const API_BASE =
   import.meta.env.VITE_ORCHESTRATOR_URL || "http://localhost:8002";
 
+type UserGroup = {
+  name: string;
+  characteristics: string[];
+};
+
+type TargetSegment = {
+  segment_name: string;
+  business_relevance: string;
+  user_groups: UserGroup[];
+};
+
+type PainPoint = {
+  name: string;
+  description: string;
+  affected_user_groups: string[];
+  severity: "low" | "medium" | "high";
+  frequency: "low" | "medium" | "high";
+  business_importance: "low" | "medium" | "high";
+};
+
+type PainPointTheme = {
+  theme_name: string;
+  pain_points: PainPoint[];
+};
+
 type DiscoveryDocument = {
-  productSummary?: string;
-  targetUsers?: string[];
-  pains?: string[];
-  solutionOutline?: string[];
-  successMetrics?: string[];
-  openQuestions?: string[];
+  problemUnderstanding?: {
+    problemStatement?: string;
+    targetUsersSegments?: {
+      target_segments?: TargetSegment[];
+    };
+    userPainPoints?: {
+      pain_point_themes?: PainPointTheme[];
+    };
+    contextConstraints?: string[];
+  };
+  marketAndCompetitorAnalysis?: {
+    marketLandscape?: string[];
+    competitorInventory?: string[];
+    competitorCapabilities?: string[];
+    gapsOpportunities?: string[];
+  };
+  opportunityDefinition?: {
+    opportunityStatement?: string;
+    valueDrivers?: string[];
+    marketFitHypothesis?: string[];
+    feasibilityAssessment?: string[];
+  };
 };
 
 type DiscoveryRecord = {
@@ -21,15 +69,17 @@ type DiscoveryRecord = {
   approved?: boolean;
   changeReason?: string;
   approvedAt?: string | null;
+  fieldStatus?: Record<string, { approved: boolean; approvedAt?: string | null }>;
+  currentFieldKey?: string | null;
 };
 
-type ApiStatus = "idle" | "running" | "needs_input" | "awaiting_approval" | "approved" | "error";
+type ApiStatus = "idle" | "running" | "needs_input" | "in_progress" | "approved" | "error";
 
 const statusCopy: Record<ApiStatus, string> = {
   idle: "Idle",
   running: "Running",
   needs_input: "Waiting for missing answers",
-  awaiting_approval: "Waiting for approval",
+  in_progress: "In progress",
   approved: "Approved",
   error: "Error"
 };
@@ -38,25 +88,166 @@ const statusColors: Record<ApiStatus, string> = {
   idle: "bg-gray-100 text-gray-800",
   running: "bg-blue-100 text-blue-800",
   needs_input: "bg-yellow-100 text-yellow-800",
-  awaiting_approval: "bg-orange-100 text-orange-800",
+  in_progress: "bg-orange-100 text-orange-800",
   approved: "bg-green-100 text-green-800",
   error: "bg-red-100 text-red-800"
 };
 
 const emptyDocument: DiscoveryDocument = {
-  targetUsers: [],
-  pains: [],
-  solutionOutline: [],
-  successMetrics: [],
-  openQuestions: []
+  problemUnderstanding: {
+    targetUsersSegments: {
+      target_segments: []
+    },
+    userPainPoints: {
+      pain_point_themes: []
+    },
+    contextConstraints: []
+  },
+  marketAndCompetitorAnalysis: {
+    marketLandscape: [],
+    competitorInventory: [],
+    competitorCapabilities: [],
+    gapsOpportunities: []
+  },
+  opportunityDefinition: {
+    valueDrivers: [],
+    marketFitHypothesis: [],
+    feasibilityAssessment: []
+  }
 };
+
+type FieldDefinition = {
+  key: string;
+  label: string;
+  type: "string" | "array" | "object";
+  group: string;
+  outputKey?: string;
+};
+
+const fieldDefinitions: FieldDefinition[] = [
+  {
+    key: "problemUnderstanding.problemStatement",
+    label: "Problem Statement",
+    type: "string",
+    group: "Problem Understanding"
+  },
+  {
+    key: "problemUnderstanding.targetUsersSegments",
+    label: "Target Users & Segments",
+    type: "object",
+    group: "Problem Understanding",
+    outputKey: "target_segments"
+  },
+  {
+    key: "problemUnderstanding.userPainPoints",
+    label: "User Pain Points",
+    type: "object",
+    group: "Problem Understanding",
+    outputKey: "pain_point_themes"
+  },
+  {
+    key: "problemUnderstanding.contextConstraints",
+    label: "Context & Constraints",
+    type: "array",
+    group: "Problem Understanding"
+  },
+  {
+    key: "marketAndCompetitorAnalysis.marketLandscape",
+    label: "Market Landscape",
+    type: "array",
+    group: "Market and Competitor Analysis"
+  },
+  {
+    key: "marketAndCompetitorAnalysis.competitorInventory",
+    label: "Competitor Inventory",
+    type: "array",
+    group: "Market and Competitor Analysis"
+  },
+  {
+    key: "marketAndCompetitorAnalysis.competitorCapabilities",
+    label: "Competitor Capabilities",
+    type: "array",
+    group: "Market and Competitor Analysis"
+  },
+  {
+    key: "marketAndCompetitorAnalysis.gapsOpportunities",
+    label: "Gaps & Opportunities",
+    type: "array",
+    group: "Market and Competitor Analysis"
+  },
+  {
+    key: "opportunityDefinition.opportunityStatement",
+    label: "Opportunity Statement",
+    type: "string",
+    group: "Opportunity Definition"
+  },
+  {
+    key: "opportunityDefinition.valueDrivers",
+    label: "Value Drivers",
+    type: "array",
+    group: "Opportunity Definition"
+  },
+  {
+    key: "opportunityDefinition.marketFitHypothesis",
+    label: "Market Fit Hypothesis",
+    type: "array",
+    group: "Opportunity Definition"
+  },
+  {
+    key: "opportunityDefinition.feasibilityAssessment",
+    label: "Feasibility Assessment",
+    type: "array",
+    group: "Opportunity Definition"
+  }
+];
+
+const groupedFields = fieldDefinitions.reduce<Record<string, FieldDefinition[]>>(
+  (acc, field) => {
+    acc[field.group] = acc[field.group] || [];
+    acc[field.group].push(field);
+    return acc;
+  },
+  {}
+);
+
+function getNestedValue(document: DiscoveryDocument, key: string) {
+  const parts = key.split(".");
+  let current: any = document;
+  for (const part of parts) {
+    if (!current || typeof current !== "object") {
+      return undefined;
+    }
+    current = current[part];
+  }
+  return current;
+}
+
+function toFieldString(value: unknown, type: "string" | "array") {
+  if (type === "array") {
+    return Array.isArray(value) ? value.join("\n") : "";
+  }
+  return typeof value === "string" ? value : "";
+}
+
+function fromFieldString(value: string, type: "string" | "array") {
+  if (type === "array") {
+    return value
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
+  }
+  return value.trim();
+}
+
+function getFieldDisplayKey(field: FieldDefinition) {
+  return field.outputKey || field.key.split(".").pop() || field.key;
+}
 
 export function WizardPage() {
   const [form, setForm] = useState({
     productIdea: "",
     targetUser: "",
-    notes: "",
-    changeReason: ""
+    notes: ""
   });
   const [status, setStatus] = useState<ApiStatus>("idle");
   const [message, setMessage] = useState("Provide inputs and run the agent.");
@@ -64,8 +255,14 @@ export function WizardPage() {
   const [latestVersion, setLatestVersion] = useState<number | null>(null);
   const [questions, setQuestions] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [isApproving, setIsApproving] = useState(false);
+  const [draftFields, setDraftFields] = useState<
+    Record<string, string | TargetSegment[] | PainPointTheme[]>
+  >({});
+  const [approvingFieldKey, setApprovingFieldKey] = useState<string | null>(null);
+  const [regeneratingFieldKey, setRegeneratingFieldKey] = useState<string | null>(null);
+  const [confirmRegenerateFieldKey, setConfirmRegenerateFieldKey] = useState<string | null>(null);
   const [loadingLatest, setLoadingLatest] = useState(false);
+  const [progressText, setProgressText] = useState("");
 
   const notesArray = useMemo(
     () =>
@@ -75,22 +272,130 @@ export function WizardPage() {
         .filter(Boolean),
     [form.notes]
   );
+  const currentField = latestRecord?.currentFieldKey
+    ? fieldDefinitions.find((field) => field.key === latestRecord.currentFieldKey)
+    : undefined;
+  const currentFieldName = currentField?.key.split(".").pop();
+  const currentOutputValue = (() => {
+    if (!currentField) {
+      return null;
+    }
+    if (currentField.type === "object") {
+      const items = draftFields[currentField.key];
+      return Array.isArray(items) ? items : null;
+    }
+    const rawValue = draftFields[currentField.key];
+    const textValue = typeof rawValue === "string" ? rawValue : "";
+    return fromFieldString(textValue, currentField.type);
+  })();
+  const currentOutputKey = currentField ? getFieldDisplayKey(currentField) : "";
+  const currentOutputJson =
+    currentOutputKey && currentOutputValue !== null
+      ? JSON.stringify({ [currentOutputKey]: currentOutputValue }, null, 2)
+      : "";
+  const inputSummary = useMemo(() => {
+    const base = {
+      productIdea: form.productIdea.trim(),
+      targetUser: form.targetUser.trim(),
+      userNotes: notesArray
+    };
+    if (!latestRecord) {
+      return JSON.stringify(base, null, 2);
+    }
+    const previousOutputs: Record<string, unknown> = {};
+    fieldDefinitions.forEach((field) => {
+      const statusInfo = latestRecord.fieldStatus?.[field.key];
+      if (statusInfo?.approved) {
+        const fieldName = getFieldDisplayKey(field);
+        if (field.type === "object") {
+          const items = draftFields[field.key];
+          previousOutputs[fieldName] = Array.isArray(items) ? items : [];
+        } else {
+          const rawValue = draftFields[field.key];
+          const textValue = typeof rawValue === "string" ? rawValue : "";
+          previousOutputs[fieldName] = fromFieldString(textValue, field.type);
+        }
+      }
+    });
+    return JSON.stringify({ ...base, ...previousOutputs }, null, 2);
+  }, [draftFields, fieldDefinitions, form.productIdea, form.targetUser, latestRecord, notesArray]);
 
   useEffect(() => {
-    refreshLatest();
+    void refreshLatest(true);
   }, []);
 
-  async function refreshLatest() {
+  function loadSavedInputs() {
+    const savedIdea = localStorage.getItem("discoveryWizard.productIdea") || "";
+    const savedTarget = localStorage.getItem("discoveryWizard.targetUser") || "";
+    setForm((prev) => ({
+      ...prev,
+      productIdea: savedIdea,
+      targetUser: savedTarget,
+      notes: prev.notes
+    }));
+    setLatestRecord(null);
+    setLatestVersion(null);
+    setStatus("idle");
+    setMessage("Enter the required fields and generate the first draft.");
+    setDraftFields({});
+  }
+
+  useEffect(() => {
+    if (!latestRecord?.discoveryDocument) {
+      setProgressText("");
+      return;
+    }
+    const nextDrafts: Record<string, string | TargetSegment[] | PainPointTheme[]> = {};
+    let approvedCount = 0;
+    fieldDefinitions.forEach((field) => {
+      const statusInfo = latestRecord.fieldStatus?.[field.key];
+      const isApproved = statusInfo?.approved ?? false;
+      const isCurrent = latestRecord.currentFieldKey === field.key;
+      const shouldShow = isApproved || isCurrent;
+      const value = shouldShow
+        ? getNestedValue(latestRecord.discoveryDocument || emptyDocument, field.key)
+        : "";
+      if (field.type === "object") {
+        const outputKey = field.outputKey || "";
+        const collection =
+          outputKey && typeof value === "object" && value !== null
+            ? (value as Record<string, unknown>)[outputKey]
+            : undefined;
+        nextDrafts[field.key] = Array.isArray(collection) ? collection : [];
+      } else {
+        nextDrafts[field.key] = toFieldString(value, field.type);
+      }
+      if (isApproved) {
+        approvedCount += 1;
+      }
+    });
+    setDraftFields(nextDrafts);
+    const total = fieldDefinitions.length;
+    const currentIndex = latestRecord.currentFieldKey
+      ? fieldDefinitions.findIndex((field) => field.key === latestRecord.currentFieldKey)
+      : total;
+    const stepNumber = currentIndex >= 0 ? Math.min(currentIndex + 1, total) : total;
+    setProgressText(`Step ${stepNumber} of ${total} approved (${approvedCount}/${total}).`);
+  }, [latestRecord]);
+
+  const withSupabaseMessage = (text: string, saved?: boolean) =>
+    saved ? `${text} Saved to Supabase.` : text;
+
+  async function refreshLatest(useFallback = false) {
     setLoadingLatest(true);
     setError(null);
     try {
       const response = await fetch(`${API_BASE}/discovery/latest`);
       if (response.status === 404) {
-        setLatestRecord(null);
-        setLatestVersion(null);
-        setMessage("No discovery document has been generated yet.");
-        setStatus("idle");
-        setLoadingLatest(false);
+        if (useFallback) {
+          loadSavedInputs();
+        } else {
+          setLatestRecord(null);
+          setLatestVersion(null);
+          setMessage("No discovery document has been generated yet.");
+          setStatus("idle");
+          setDraftFields({});
+        }
         return;
       }
       if (!response.ok) {
@@ -100,15 +405,31 @@ export function WizardPage() {
       if (payload.record) {
         setLatestRecord(payload.record);
         setLatestVersion(payload.record.version);
-        setStatus(payload.status || "awaiting_approval");
+        setForm({
+          productIdea: payload.record.productIdea || "",
+          targetUser: payload.record.targetUser || "",
+          notes: Array.isArray(payload.record.userMessages)
+            ? payload.record.userMessages.join("\n")
+            : ""
+        });
+        if (payload.record.productIdea) {
+          localStorage.setItem("discoveryWizard.productIdea", payload.record.productIdea);
+        }
+        if (payload.record.targetUser) {
+          localStorage.setItem("discoveryWizard.targetUser", payload.record.targetUser);
+        }
+        setStatus(payload.status || "in_progress");
         setMessage(
           payload.status === "approved"
             ? "Latest discovery document is approved."
-            : "Latest discovery document is waiting for approval."
+            : "Latest discovery document is in progress."
         );
       }
     } catch (err) {
       setError("Unable to load the latest discovery document.");
+      if (useFallback) {
+        loadSavedInputs();
+      }
     } finally {
       setLoadingLatest(false);
     }
@@ -121,12 +442,12 @@ export function WizardPage() {
     setQuestions([]);
     setError(null);
 
-    const payload = {
-      productIdea: form.productIdea.trim(),
-      targetUser: form.targetUser.trim(),
-      userMessages: notesArray,
-      changeReason: form.changeReason.trim()
-    };
+      const payload = {
+        productIdea: form.productIdea.trim(),
+        targetUser: form.targetUser.trim(),
+        userMessages: notesArray,
+        forceNew: true
+      };
 
     try {
       const response = await fetch(`${API_BASE}/discovery`, {
@@ -143,33 +464,28 @@ export function WizardPage() {
         throw new Error(data?.message || "Agent call failed.");
       }
 
-      setStatus((data.status as ApiStatus) || "awaiting_approval");
+      setStatus((data.status as ApiStatus) || "in_progress");
       if (data.status === "needs_input") {
         setQuestions(data.questions || []);
         setMessage("Please answer the missing inputs.");
         return;
       }
 
-      if (data.status === "awaiting_approval") {
-        setLatestRecord({
-          version: data.version,
-          timestamp: data.timestamp,
-          productIdea: data.productIdea,
-          targetUser: data.targetUser,
-          discoveryDocument: data.discoveryDocument,
-          approved: data.approved,
-          changeReason: data.changeReason
-        });
-        setLatestVersion(data.version ?? null);
+      if (data.status === "in_progress" && data.record) {
+        setLatestRecord(data.record);
+        setLatestVersion(data.record.version ?? null);
         setMessage(
-          data.resultType === "created"
-            ? "New discovery document is ready for review."
-            : "Approve the existing document to continue."
+          withSupabaseMessage(
+            data.resultType === "created"
+              ? "New discovery document started. Approve each field in order."
+              : "Continue approving fields in order.",
+            data.savedToSupabase
+          )
         );
       }
 
       if (data.status === "approved") {
-        setMessage("This document is now approved.");
+        setMessage(withSupabaseMessage("This document is now approved.", data.savedToSupabase));
       }
     } catch (err) {
       setStatus("error");
@@ -177,56 +493,171 @@ export function WizardPage() {
     }
   }
 
-  async function approveLatest() {
+  async function approveField(fieldKey: string, fieldType: "string" | "array" | "object") {
     if (!latestVersion) {
       setError("No draft available to approve.");
       return;
     }
 
-    setIsApproving(true);
+    setApprovingFieldKey(fieldKey);
     setError(null);
 
     try {
-      const response = await fetch(`${API_BASE}/discovery/approve`, {
+      const rawValue = draftFields[fieldKey];
+      let value: unknown;
+      if (fieldType === "object") {
+        const field = fieldDefinitions.find((item) => item.key === fieldKey);
+        const outputKey = field?.outputKey;
+        if (Array.isArray(rawValue) && outputKey) {
+          value = { [outputKey]: rawValue };
+        } else {
+          value = rawValue;
+        }
+      } else {
+        const textValue = typeof rawValue === "string" ? rawValue : "";
+        value = fromFieldString(textValue, fieldType);
+      }
+      const response = await fetch(`${API_BASE}/discovery/field/approve`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ version: latestVersion })
+        body: JSON.stringify({ version: latestVersion, fieldKey, value })
       });
       const data = await response.json();
       if (!response.ok) {
         throw new Error(data?.message || "Approval failed.");
       }
-      if (data.status === "approved") {
-        setStatus("approved");
-        setMessage(`Discovery document v${data.version} approved.`);
-        setLatestRecord((prev) =>
-          prev
-            ? {
-                ...prev,
-                approved: true,
-                approvedAt: data.timestamp,
-                discoveryDocument: data.discoveryDocument
-              }
-            : prev
+      if (data.record) {
+        setLatestRecord(data.record);
+        setStatus(data.status || "in_progress");
+        setMessage(
+          withSupabaseMessage(
+            data.status === "approved"
+              ? "All fields approved. Discovery document is complete."
+              : "Field approved. Next field is ready.",
+            data.savedToSupabase
+          )
         );
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Approval failed.");
     } finally {
-      setIsApproving(false);
+      setApprovingFieldKey(null);
     }
   }
 
-  const doc = latestRecord?.discoveryDocument || emptyDocument;
+  async function regenerateField(fieldKey: string) {
+    if (!latestVersion) {
+      setError("No draft available to regenerate.");
+      return;
+    }
+    const hasLaterGenerated = hasGeneratedLaterFields(fieldKey);
+    if (hasLaterGenerated) {
+      setConfirmRegenerateFieldKey(fieldKey);
+      return;
+    }
+    await executeRegenerate(fieldKey);
+  }
+
+  function hasGeneratedLaterFields(fieldKey: string) {
+    if (!latestRecord?.fieldOrder?.length) {
+      return false;
+    }
+    const index = latestRecord.fieldOrder.indexOf(fieldKey);
+    if (index < 0) {
+      return false;
+    }
+    return latestRecord.fieldOrder.slice(index + 1).some((key) => {
+      const statusInfo = latestRecord?.fieldStatus?.[key];
+      if (statusInfo?.approved) {
+        return true;
+      }
+      const rawValue = draftFields[key];
+      if (Array.isArray(rawValue)) {
+        return rawValue.length > 0;
+      }
+      return typeof rawValue === "string" && rawValue.trim().length > 0;
+    });
+  }
+
+  async function executeRegenerate(fieldKey: string) {
+    if (!latestVersion) {
+      setError("No draft available to regenerate.");
+      return;
+    }
+
+    setRegeneratingFieldKey(fieldKey);
+    setError(null);
+
+    try {
+      const response = await fetch(`${API_BASE}/discovery/field/regenerate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ version: latestVersion, fieldKey })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.message || "Regenerate failed.");
+      }
+      if (data.record) {
+        setLatestRecord(data.record);
+        setStatus("in_progress");
+        setMessage(
+          withSupabaseMessage(
+            "Field regenerated. Review and approve.",
+            data.savedToSupabase
+          )
+        );
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Regenerate failed.");
+    } finally {
+      setRegeneratingFieldKey(null);
+    }
+  }
+
   const statusClass = statusColors[status] || statusColors.idle;
 
   return (
     <div className="space-y-6">
+      {confirmRegenerateFieldKey && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
+          <div className="w-full max-w-md rounded-lg border bg-white p-5 shadow-lg">
+            <p className="text-sm font-semibold text-gray-900">Regenerate field?</p>
+            <p className="mt-2 text-sm text-gray-600">
+              Regenerating this field will delete all later blocks. Continue?
+            </p>
+            <div className="mt-4 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                className="rounded border px-3 py-2 text-sm"
+                onClick={() => setConfirmRegenerateFieldKey(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white"
+                onClick={() => {
+                  const fieldKey = confirmRegenerateFieldKey;
+                  setConfirmRegenerateFieldKey(null);
+                  if (fieldKey) {
+                    void executeRegenerate(fieldKey);
+                  }
+                }}
+              >
+                Regenerate
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Discovery Wizard</h1>
+          <h1 className="text-xl font-semibold">Discovery Wizard</h1>
           <p className="text-sm text-gray-600">
             Enter the idea, run the agent, answer missing questions, and approve the document.
           </p>
@@ -241,11 +672,12 @@ export function WizardPage() {
         </button>
       </div>
 
-      <section className="grid gap-6 lg:grid-cols-2">
-        <form
-          className="space-y-4 rounded-lg border bg-white p-5 shadow-sm"
-          onSubmit={handleSubmit}
-        >
+      <section className="grid gap-6 lg:grid-cols-[1.6fr_0.9fr]">
+        <div className="space-y-6">
+          <form
+            className="space-y-4 rounded-lg border bg-white p-5 shadow-sm"
+            onSubmit={handleSubmit}
+          >
           <div>
             <label className="block text-sm font-medium text-gray-700">Product idea</label>
             <textarea
@@ -253,7 +685,11 @@ export function WizardPage() {
               rows={3}
               value={form.productIdea}
               onChange={(event) =>
-                setForm((prev) => ({ ...prev, productIdea: event.target.value }))
+                setForm((prev) => {
+                  const nextValue = event.target.value;
+                  localStorage.setItem("discoveryWizard.productIdea", nextValue);
+                  return { ...prev, productIdea: nextValue };
+                })
               }
               placeholder="Example: Agent that drafts the Discovery Document automatically."
               required
@@ -266,7 +702,11 @@ export function WizardPage() {
               className="mt-1 block w-full rounded border px-3 py-2 text-sm"
               value={form.targetUser}
               onChange={(event) =>
-                setForm((prev) => ({ ...prev, targetUser: event.target.value }))
+                setForm((prev) => {
+                  const nextValue = event.target.value;
+                  localStorage.setItem("discoveryWizard.targetUser", nextValue);
+                  return { ...prev, targetUser: nextValue };
+                })
               }
               placeholder="Example: SaaS founders who need clear specs."
               required
@@ -284,22 +724,10 @@ export function WizardPage() {
     />
   </div>
 
-  <div>
-    <label className="block text-sm font-medium text-gray-700">Change reason</label>
-    <input
-      className="mt-1 block w-full rounded border px-3 py-2 text-sm"
-      value={form.changeReason}
-      onChange={(event) =>
-        setForm((prev) => ({ ...prev, changeReason: event.target.value }))
-      }
-      placeholder="Why do you need a new draft?"
-    />
-  </div>
-
   <div className="flex items-center gap-3">
     <button
       type="submit"
-      className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+      className="min-w-[230px] rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
       disabled={status === "running"}
     >
       {status === "running" ? "Running…" : "Generate Discovery Document"}
@@ -309,7 +737,7 @@ export function WizardPage() {
       type="button"
       className="rounded border px-3 py-2 text-sm disabled:opacity-60"
       onClick={() => {
-        setForm({ productIdea: "", targetUser: "", notes: "", changeReason: "" });
+        setForm({ productIdea: "", targetUser: "", notes: "" });
         setQuestions([]);
       }}
       disabled={status === "running"}
@@ -317,9 +745,127 @@ export function WizardPage() {
       Reset form
     </button>
   </div>
-        </form>
+          </form>
 
-        <div className="space-y-4 rounded-lg border bg-white p-5 shadow-sm">
+          <section className="rounded-lg border bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="flex items-center gap-2 text-xl font-semibold">
+                  <img
+                    src={discoveryDocumentIcon}
+                    alt=""
+                    className="h-10 w-10"
+                  />
+                  Discovery Document
+                </h2>
+                <p className="text-sm text-gray-600">
+                  Review the document before granting approval.
+                </p>
+              </div>
+              <div className="text-right text-sm text-gray-600">
+                <p>Status: {latestRecord?.approved ? "Approved" : "Pending approval"}</p>
+                {latestRecord?.changeReason && <p>Change: {latestRecord.changeReason}</p>}
+              </div>
+            </div>
+
+            <div className="mt-6 space-y-6">
+              {Object.entries(groupedFields).map(([groupName, fields]) => (
+                <SectionGroup key={groupName} title={groupName}>
+                  {fields.map((field) => {
+                    const statusInfo = latestRecord?.fieldStatus?.[field.key];
+                    const isApproved = statusInfo?.approved ?? false;
+                    const isCurrent = latestRecord?.currentFieldKey
+                      ? latestRecord.currentFieldKey === field.key
+                      : false;
+                    const rawValue = draftFields[field.key];
+                    const hasContent = (() => {
+                      if (field.type === "object") {
+                        return Array.isArray(rawValue) && rawValue.length > 0;
+                      }
+                      if (field.type === "array") {
+                        return typeof rawValue === "string" && rawValue.trim().length > 0;
+                      }
+                      return typeof rawValue === "string" && rawValue.trim().length > 0;
+                    })();
+                    const shouldRender =
+                      field.type === "object"
+                        ? isApproved || isCurrent
+                        : isApproved || (isCurrent && hasContent);
+                    if (!shouldRender) {
+                      return null;
+                    }
+                    const isEditable =
+                      !!latestRecord && !latestRecord.approved && isCurrent && !isApproved;
+                    const isBlocked = !isEditable;
+                    return field.type === "object" ? (
+                      field.key === "problemUnderstanding.targetUsersSegments" ? (
+                        <TargetSegmentsEditor
+                          key={field.key}
+                          title={field.label}
+                          segments={
+                            Array.isArray(draftFields[field.key])
+                              ? (draftFields[field.key] as TargetSegment[])
+                              : []
+                          }
+                          onChange={(nextValue) =>
+                            setDraftFields((prev) => ({ ...prev, [field.key]: nextValue }))
+                          }
+                          onApprove={() => approveField(field.key, field.type)}
+                          onRegenerate={() => regenerateField(field.key)}
+                          approved={isApproved}
+                          disabled={isBlocked}
+                          isApproving={approvingFieldKey === field.key}
+                          isRegenerating={regeneratingFieldKey === field.key}
+                        />
+                      ) : (
+                        <PainPointsEditor
+                          key={field.key}
+                          title={field.label}
+                          themes={
+                            Array.isArray(draftFields[field.key])
+                              ? (draftFields[field.key] as PainPointTheme[])
+                              : []
+                          }
+                          onChange={(nextValue) =>
+                            setDraftFields((prev) => ({ ...prev, [field.key]: nextValue }))
+                          }
+                          onApprove={() => approveField(field.key, field.type)}
+                          onRegenerate={() => regenerateField(field.key)}
+                          approved={isApproved}
+                          disabled={isBlocked}
+                          isApproving={approvingFieldKey === field.key}
+                          isRegenerating={regeneratingFieldKey === field.key}
+                        />
+                      )
+                    ) : (
+                      <FieldEditor
+                        key={field.key}
+                        title={field.label}
+                        type={field.type}
+                        value={
+                          typeof draftFields[field.key] === "string"
+                            ? (draftFields[field.key] as string)
+                            : ""
+                        }
+                        onChange={(nextValue) =>
+                          setDraftFields((prev) => ({ ...prev, [field.key]: nextValue }))
+                        }
+                        onApprove={() => approveField(field.key, field.type)}
+                        onRegenerate={() => regenerateField(field.key)}
+                        approved={isApproved}
+                        disabled={isBlocked}
+                        isApproving={approvingFieldKey === field.key}
+                        isRegenerating={regeneratingFieldKey === field.key}
+                      />
+                    );
+                  })}
+                </SectionGroup>
+              ))}
+            </div>
+          </section>
+        </div>
+
+        <aside className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-700">Status</p>
@@ -336,6 +882,7 @@ export function WizardPage() {
           </div>
 
           <p className="text-sm text-gray-700">{message}</p>
+          {progressText && <p className="text-sm text-gray-500">{progressText}</p>}
 
           {questions.length > 0 && (
             <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 text-sm">
@@ -356,76 +903,796 @@ export function WizardPage() {
 
           <div className="space-y-2 text-sm">
             <p className="font-medium">Actions</p>
-            <button
-              type="button"
-              className="w-full rounded border border-green-600 px-3 py-2 text-sm font-medium text-green-700 disabled:opacity-60"
-              onClick={approveLatest}
-              disabled={isApproving || !latestVersion || latestRecord?.approved}
-            >
-              {isApproving ? "Approving…" : "Approve current document"}
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <section className="rounded-lg border bg-white p-5 shadow-sm">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-semibold">Discovery Document</h2>
-            <p className="text-sm text-gray-600">
-              Review the document before granting approval.
+            <p className="text-gray-600">
+              Approve each field in order. The next field appears after approval.
             </p>
           </div>
-          <div className="text-right text-sm text-gray-600">
-            <p>Status: {latestRecord?.approved ? "Approved" : "Pending approval"}</p>
-            {latestRecord?.changeReason && <p>Change: {latestRecord.changeReason}</p>}
-          </div>
-        </div>
 
-        {latestRecord && latestRecord.discoveryDocument ? (
-          <div className="mt-6 grid gap-4 md:grid-cols-2">
-            <DocSection title="Product summary" body={doc.productSummary} />
-            <DocSection title="Target users" body={doc.targetUsers} />
-            <DocSection title="Pains" body={doc.pains} />
-            <DocSection title="Solution outline" body={doc.solutionOutline} />
-            <DocSection title="Success metrics" body={doc.successMetrics} />
-            <DocSection title="Open questions" body={doc.openQuestions} />
+          <div className="space-y-2 text-sm">
+            <p className="font-medium">Incoming info</p>
+            <pre className="whitespace-pre-wrap rounded border bg-gray-50 p-3 text-xs text-gray-700">
+              {inputSummary}
+            </pre>
           </div>
-        ) : (
-          <div className="mt-6 rounded border border-dashed p-6 text-center text-sm text-gray-500">
-            Run the agent to see the Discovery Document here.
+
+          <div className="space-y-2 text-sm">
+            <p className="font-medium">Current output JSON</p>
+            <pre className="whitespace-pre-wrap rounded border bg-gray-50 p-3 text-xs text-gray-700">
+              {currentOutputJson || "No output yet."}
+            </pre>
           </div>
-        )}
+        </aside>
       </section>
     </div>
   );
 }
 
-type DocSectionProps = {
+type SectionGroupProps = {
   title: string;
-  body?: string | string[];
+  children: ReactNode;
 };
 
-function DocSection({ title, body }: DocSectionProps) {
-  if (Array.isArray(body)) {
-    return (
-      <div className="rounded border bg-gray-50 p-4">
+function SectionGroup({ title, children }: SectionGroupProps) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+      <p className="text-sm font-semibold uppercase tracking-wide text-slate-600">
+        {title}
+      </p>
+      <div className="mt-4 space-y-4">{children}</div>
+    </div>
+  );
+}
+
+type FieldEditorProps = {
+  title: string;
+  type: "string" | "array";
+  value: string;
+  onChange: (value: string) => void;
+  onApprove: () => void;
+  onRegenerate: () => void;
+  approved: boolean;
+  disabled: boolean;
+  isApproving: boolean;
+  isRegenerating: boolean;
+};
+
+function FieldEditor({
+  title,
+  type,
+  value,
+  onChange,
+  onApprove,
+  onRegenerate,
+  approved,
+  disabled,
+  isApproving,
+  isRegenerating
+}: FieldEditorProps) {
+  return (
+    <div className="rounded border bg-white p-4">
+      <div className="flex items-center justify-between">
         <p className="text-sm font-semibold text-gray-800">{title}</p>
-        <ul className="mt-2 list-disc space-y-1 pl-4 text-sm text-gray-700">
-          {body.length > 0 ? (
-            body.map((item) => <li key={item}>{item}</li>)
-          ) : (
-            <li>No data yet.</li>
-          )}
-        </ul>
+        {approved && <span className="text-xs font-medium text-green-600">Approved</span>}
       </div>
+      <textarea
+        className="mt-2 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+        rows={type === "array" ? 4 : 3}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        disabled={disabled || approved}
+        placeholder={type === "array" ? "One item per line." : "Write the content here."}
+      />
+      <div className="mt-3 flex items-center gap-2">
+        {!approved && (
+          <button
+            type="button"
+            className="inline-flex min-w-[96px] items-center justify-center rounded border border-green-600 px-3 py-2 text-sm font-medium text-green-700 disabled:opacity-60"
+            onClick={onApprove}
+            disabled={disabled || approved || isApproving}
+          >
+            {isApproving ? "Approving…" : "Approve"}
+          </button>
+        )}
+        <button
+          type="button"
+          className="inline-flex min-w-[108px] items-center justify-center rounded border border-blue-600 px-3 py-2 text-sm font-medium text-blue-700 disabled:opacity-60"
+          onClick={onRegenerate}
+          disabled={isRegenerating}
+        >
+          {isRegenerating ? "Regenerating…" : "Regenerate"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+type TargetSegmentsEditorProps = {
+  title: string;
+  segments: TargetSegment[];
+  onChange: (segments: TargetSegment[]) => void;
+  onApprove: () => void;
+  onRegenerate: () => void;
+  approved: boolean;
+  disabled: boolean;
+  isApproving: boolean;
+  isRegenerating: boolean;
+};
+
+function TargetSegmentsEditor({
+  title,
+  segments,
+  onChange,
+  onApprove,
+  onRegenerate,
+  approved,
+  disabled,
+  isApproving,
+  isRegenerating
+}: TargetSegmentsEditorProps) {
+  const hasSegments = segments.length > 0;
+  const [openSegments, setOpenSegments] = useState<string[]>([]);
+
+  useEffect(() => {
+    setOpenSegments((prev) => {
+      const keys = segments.map((_, index) => `segment-${index}`);
+      const next = prev.filter((key) => keys.includes(key));
+      keys.forEach((key) => {
+        if (!next.includes(key)) {
+          next.push(key);
+        }
+      });
+      return next;
+    });
+  }, [segments.length]);
+
+  const updateSegment = (index: number, nextSegment: TargetSegment) => {
+    const next = segments.slice();
+    next[index] = nextSegment;
+    onChange(next);
+  };
+
+  const removeSegment = (index: number) => {
+    const next = segments.slice();
+    next.splice(index, 1);
+    onChange(next);
+  };
+
+  const addSegment = () => {
+    onChange(
+      segments.concat([
+        {
+          segment_name: "",
+          business_relevance: "",
+          user_groups: [
+            {
+              name: "",
+              characteristics: [""]
+            }
+          ]
+        }
+      ])
     );
-  }
+  };
+
+  const addUserGroup = (segmentIndex: number) => {
+    const segment = segments[segmentIndex];
+    const nextGroups = segment.user_groups.concat([
+      { name: "", characteristics: [""] }
+    ]);
+    updateSegment(segmentIndex, { ...segment, user_groups: nextGroups });
+  };
+
+  const removeUserGroup = (segmentIndex: number, groupIndex: number) => {
+    const segment = segments[segmentIndex];
+    const nextGroups = segment.user_groups.slice();
+    nextGroups.splice(groupIndex, 1);
+    updateSegment(segmentIndex, { ...segment, user_groups: nextGroups });
+  };
 
   return (
-    <div className="rounded border bg-gray-50 p-4">
-      <p className="text-sm font-semibold text-gray-800">{title}</p>
-      <p className="mt-2 text-sm text-gray-700">{body || "No data yet."}</p>
+    <div className="rounded border bg-white p-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-semibold text-gray-800">{title}</p>
+        {approved && <span className="text-xs font-medium text-green-600">Approved</span>}
+      </div>
+
+      {segments.length === 0 && (
+        <p className="mt-3 text-xs text-gray-500">
+          No segments yet. Add one to begin.
+        </p>
+      )}
+
+      <Accordion
+        type="multiple"
+        value={openSegments}
+        onValueChange={setOpenSegments}
+        className="mt-3 space-y-4"
+      >
+        {segments.map((segment, segmentIndex) => {
+          const segmentKey = `segment-${segmentIndex}`;
+          return (
+            <AccordionItem
+              key={segmentKey}
+              value={segmentKey}
+              className="rounded border border-slate-200 p-3"
+            >
+              <div className="grid items-start gap-2 md:grid-cols-[1fr_1fr_auto]">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <AccordionTrigger className="flex-none justify-center gap-0 py-0 text-slate-600 hover:no-underline [&>svg]:h-3 [&>svg]:w-3">
+                      <span className="sr-only">Toggle groups</span>
+                    </AccordionTrigger>
+                    <label className="block text-xs text-gray-600">Segment name</label>
+                  </div>
+                  <input
+                    className="mt-1 w-full rounded border px-2 py-1 text-xs disabled:bg-gray-100"
+                    value={segment.segment_name}
+                    onChange={(event) =>
+                      updateSegment(segmentIndex, {
+                        ...segment,
+                        segment_name: event.target.value
+                      })
+                    }
+                    disabled={disabled || approved}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600">
+                    Business relevance
+                  </label>
+                  <input
+                    className="mt-1 w-full rounded border px-2 py-1 text-xs disabled:bg-gray-100"
+                    value={segment.business_relevance}
+                    onChange={(event) =>
+                      updateSegment(segmentIndex, {
+                        ...segment,
+                        business_relevance: event.target.value
+                      })
+                    }
+                    disabled={disabled || approved}
+                  />
+                </div>
+                <div className="flex items-end">
+                {!approved && (
+                  <button
+                    type="button"
+                    className="text-[12px] font-normal leading-none text-slate-600 disabled:opacity-60"
+                    onClick={() => removeSegment(segmentIndex)}
+                    disabled={disabled}
+                  >
+                    ⨯
+                  </button>
+                )}
+                </div>
+              </div>
+              <AccordionContent className="pt-0">
+                <div className="mt-3">
+                  <div className="mt-2 space-y-3">
+                    {segment.user_groups.map((group, groupIndex) => (
+                      <div key={groupIndex} className="rounded border border-slate-100 p-2">
+                        <div className="grid items-start gap-2 md:grid-cols-[1fr_1fr_auto]">
+                          <div>
+                            <label className="block text-xs text-gray-600">Group name</label>
+                            <input
+                              className="mt-1 w-full rounded border px-2 py-1 text-xs disabled:bg-gray-100"
+                              value={group.name}
+                              onChange={(event) => {
+                                const nextGroups = segment.user_groups.slice();
+                                nextGroups[groupIndex] = {
+                                  ...group,
+                                  name: event.target.value
+                                };
+                                updateSegment(segmentIndex, {
+                                  ...segment,
+                                  user_groups: nextGroups
+                                });
+                              }}
+                              disabled={disabled || approved}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-600">
+                              Characteristics (one per line)
+                            </label>
+                            <textarea
+                              className="mt-1 w-full rounded border px-2 py-1 text-xs disabled:bg-gray-100"
+                              rows={3}
+                              value={group.characteristics.join("\n")}
+                              onChange={(event) => {
+                                const nextGroups = segment.user_groups.slice();
+                                nextGroups[groupIndex] = {
+                                  ...group,
+                                  characteristics: event.target.value.split("\n")
+                                };
+                                updateSegment(segmentIndex, {
+                                  ...segment,
+                                  user_groups: nextGroups
+                                });
+                              }}
+                              disabled={disabled || approved}
+                            />
+                          </div>
+                          <div className="flex items-start">
+                          {!approved && (
+                            <button
+                              type="button"
+                              className="text-[12px] font-normal leading-none text-slate-600 disabled:opacity-60"
+                              onClick={() => removeUserGroup(segmentIndex, groupIndex)}
+                              disabled={disabled}
+                            >
+                              ⨯
+                            </button>
+                          )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {!approved && (
+                    <button
+                      type="button"
+                      className="mt-2 text-xs text-blue-600 disabled:opacity-60"
+                      onClick={() => addUserGroup(segmentIndex)}
+                      disabled={disabled}
+                    >
+                      + Group
+                    </button>
+                  )}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          );
+        })}
+      </Accordion>
+
+      {!approved && (
+        <button
+          type="button"
+          className="mt-3 inline-flex items-center rounded border border-slate-300 px-3 py-1 text-xs text-slate-700 disabled:opacity-60"
+          onClick={addSegment}
+          disabled={disabled || approved}
+        >
+          + Segment
+        </button>
+      )}
+
+      <div className="mt-3 flex items-center gap-2">
+        {!approved && (
+          <button
+            type="button"
+            className="inline-flex min-w-[96px] items-center justify-center rounded border border-green-600 px-3 py-2 text-sm font-medium text-green-700 disabled:opacity-60"
+            onClick={onApprove}
+            disabled={disabled || approved || !hasSegments || isApproving}
+          >
+            {isApproving ? "Approving…" : "Approve"}
+          </button>
+        )}
+        <button
+          type="button"
+          className="inline-flex min-w-[108px] items-center justify-center rounded border border-blue-600 px-3 py-2 text-sm font-medium text-blue-700 disabled:opacity-60"
+          onClick={onRegenerate}
+          disabled={isRegenerating}
+        >
+          {isRegenerating ? "Regenerating…" : "Regenerate"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+type PainPointsEditorProps = {
+  title: string;
+  themes: PainPointTheme[];
+  onChange: (themes: PainPointTheme[]) => void;
+  onApprove: () => void;
+  onRegenerate: () => void;
+  approved: boolean;
+  disabled: boolean;
+  isApproving: boolean;
+  isRegenerating: boolean;
+};
+
+const RATING_OPTIONS: Array<PainPoint["severity"]> = ["low", "medium", "high"];
+
+function PainPointsEditor({
+  title,
+  themes,
+  onChange,
+  onApprove,
+  onRegenerate,
+  approved,
+  disabled,
+  isApproving,
+  isRegenerating
+}: PainPointsEditorProps) {
+  const hasThemes = themes.length > 0;
+  const [openThemes, setOpenThemes] = useState<string[]>([]);
+  const [openPainPoints, setOpenPainPoints] = useState<Record<string, string[]>>(
+    {}
+  );
+
+  useEffect(() => {
+    const themeKeys = themes.map((_, index) => `theme-${index}`);
+    setOpenThemes((prev) => {
+      const next = prev.filter((key) => themeKeys.includes(key));
+      themeKeys.forEach((key) => {
+        if (!next.includes(key)) {
+          next.push(key);
+        }
+      });
+      return next;
+    });
+    setOpenPainPoints((prev) => {
+      const next: Record<string, string[]> = { ...prev };
+      themeKeys.forEach((themeKey, index) => {
+        const points = themes[index]?.pain_points || [];
+        const pointKeys = points.map((__, pointIndex) => `${themeKey}-point-${pointIndex}`);
+        const existing = next[themeKey] || [];
+        const merged = existing.filter((key) => pointKeys.includes(key));
+        pointKeys.forEach((key) => {
+          if (!merged.includes(key)) {
+            merged.push(key);
+          }
+        });
+        next[themeKey] = merged;
+      });
+      Object.keys(next).forEach((key) => {
+        if (!themeKeys.includes(key)) {
+          delete next[key];
+        }
+      });
+      return next;
+    });
+  }, [themes.length, themes]);
+
+  const updateTheme = (index: number, nextTheme: PainPointTheme) => {
+    const next = themes.slice();
+    next[index] = nextTheme;
+    onChange(next);
+  };
+
+  const removeTheme = (index: number) => {
+    const next = themes.slice();
+    next.splice(index, 1);
+    onChange(next);
+  };
+
+  const addTheme = () => {
+    onChange(
+      themes.concat([
+        {
+          theme_name: "",
+          pain_points: [
+            {
+              name: "",
+              description: "",
+              affected_user_groups: [""],
+              severity: "medium",
+              frequency: "medium",
+              business_importance: "medium"
+            }
+          ]
+        }
+      ])
+    );
+  };
+
+  const addPainPoint = (themeIndex: number) => {
+    const theme = themes[themeIndex];
+    const nextPoints = theme.pain_points.concat([
+      {
+        name: "",
+        description: "",
+        affected_user_groups: [""],
+        severity: "medium",
+        frequency: "medium",
+        business_importance: "medium"
+      }
+    ]);
+    updateTheme(themeIndex, { ...theme, pain_points: nextPoints });
+  };
+
+  const removePainPoint = (themeIndex: number, pointIndex: number) => {
+    const theme = themes[themeIndex];
+    const nextPoints = theme.pain_points.slice();
+    nextPoints.splice(pointIndex, 1);
+    updateTheme(themeIndex, { ...theme, pain_points: nextPoints });
+  };
+
+  return (
+    <div className="rounded border bg-white p-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-semibold text-gray-800">{title}</p>
+        {approved && <span className="text-xs font-medium text-green-600">Approved</span>}
+      </div>
+
+      {themes.length === 0 && (
+        <p className="mt-3 text-xs text-gray-500">
+          No themes yet. Add one to begin.
+        </p>
+      )}
+
+      <Accordion
+        type="multiple"
+        value={openThemes}
+        onValueChange={setOpenThemes}
+        className="mt-3 space-y-4"
+      >
+        {themes.map((theme, themeIndex) => {
+          const themeKey = `theme-${themeIndex}`;
+          const openPoints = openPainPoints[themeKey] || [];
+          return (
+            <AccordionItem
+              key={themeKey}
+              value={themeKey}
+              className="rounded border border-slate-200 p-3"
+            >
+              <div className="grid items-start gap-2 md:grid-cols-[1fr_auto]">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <AccordionTrigger className="flex-none justify-center gap-0 py-0 text-slate-600 hover:no-underline [&>svg]:h-3 [&>svg]:w-3">
+                      <span className="sr-only">Toggle theme</span>
+                    </AccordionTrigger>
+                    <label className="block text-xs text-gray-600">Theme name</label>
+                  </div>
+                  <input
+                    className="mt-1 w-full rounded border px-2 py-1 text-xs disabled:bg-gray-100"
+                    value={theme.theme_name}
+                    onChange={(event) =>
+                      updateTheme(themeIndex, { ...theme, theme_name: event.target.value })
+                    }
+                    disabled={disabled || approved}
+                  />
+                </div>
+                <div className="flex items-start">
+                  {!approved && (
+                    <button
+                      type="button"
+                      className="text-[12px] font-normal leading-none text-slate-600 disabled:opacity-60"
+                      onClick={() => removeTheme(themeIndex)}
+                      disabled={disabled}
+                    >
+                      ⨯
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <AccordionContent className="pt-0">
+                <Accordion
+                  type="multiple"
+                  value={openPoints}
+                  onValueChange={(nextValue) =>
+                    setOpenPainPoints((prev) => ({ ...prev, [themeKey]: nextValue }))
+                  }
+                  className="mt-3 space-y-3"
+                >
+                  {theme.pain_points.map((point, pointIndex) => {
+                    const pointKey = `${themeKey}-point-${pointIndex}`;
+                    return (
+                      <AccordionItem
+                        key={pointKey}
+                        value={pointKey}
+                        className="rounded border border-slate-100 p-2"
+                      >
+                        <div className="grid items-start gap-2 md:grid-cols-[1fr_auto]">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <AccordionTrigger className="flex-none justify-center gap-0 py-0 text-slate-600 hover:no-underline [&>svg]:h-3 [&>svg]:w-3">
+                                <span className="sr-only">Toggle pain point</span>
+                              </AccordionTrigger>
+                              <label className="block text-xs text-gray-600">
+                                Pain point name
+                              </label>
+                            </div>
+                            <input
+                              className="mt-1 w-full rounded border px-2 py-1 text-xs disabled:bg-gray-100"
+                              value={point.name}
+                              onChange={(event) => {
+                                const nextPoints = theme.pain_points.slice();
+                                nextPoints[pointIndex] = {
+                                  ...point,
+                                  name: event.target.value
+                                };
+                                updateTheme(themeIndex, {
+                                  ...theme,
+                                  pain_points: nextPoints
+                                });
+                              }}
+                              disabled={disabled || approved}
+                            />
+                          </div>
+                          <div className="flex items-start">
+                            {!approved && (
+                              <button
+                                type="button"
+                                className="text-[12px] font-normal leading-none text-slate-600 disabled:opacity-60"
+                                onClick={() => removePainPoint(themeIndex, pointIndex)}
+                                disabled={disabled}
+                              >
+                                ⨯
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        <AccordionContent className="pt-0">
+                          <div className="mt-2">
+                            <label className="block text-xs text-gray-600">Description</label>
+                            <textarea
+                              className="mt-1 w-full rounded border px-2 py-1 text-xs disabled:bg-gray-100"
+                              rows={3}
+                              value={point.description}
+                              onChange={(event) => {
+                                const nextPoints = theme.pain_points.slice();
+                                nextPoints[pointIndex] = {
+                                  ...point,
+                                  description: event.target.value
+                                };
+                                updateTheme(themeIndex, {
+                                  ...theme,
+                                  pain_points: nextPoints
+                                });
+                              }}
+                              disabled={disabled || approved}
+                            />
+                          </div>
+
+                          <div className="mt-2 grid gap-2 md:grid-cols-3">
+                            <div>
+                              <label className="block text-xs text-gray-600">Severity</label>
+                              <select
+                                className="mt-1 w-full rounded border px-2 py-1 text-xs disabled:bg-gray-100"
+                                value={point.severity}
+                                onChange={(event) => {
+                                  const nextPoints = theme.pain_points.slice();
+                                  nextPoints[pointIndex] = {
+                                    ...point,
+                                    severity: event.target.value as PainPoint["severity"]
+                                  };
+                                  updateTheme(themeIndex, {
+                                    ...theme,
+                                    pain_points: nextPoints
+                                  });
+                                }}
+                                disabled={disabled || approved}
+                              >
+                                {RATING_OPTIONS.map((option) => (
+                                  <option key={option} value={option}>
+                                    {option}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-600">Frequency</label>
+                              <select
+                                className="mt-1 w-full rounded border px-2 py-1 text-xs disabled:bg-gray-100"
+                                value={point.frequency}
+                                onChange={(event) => {
+                                  const nextPoints = theme.pain_points.slice();
+                                  nextPoints[pointIndex] = {
+                                    ...point,
+                                    frequency: event.target.value as PainPoint["frequency"]
+                                  };
+                                  updateTheme(themeIndex, {
+                                    ...theme,
+                                    pain_points: nextPoints
+                                  });
+                                }}
+                                disabled={disabled || approved}
+                              >
+                                {RATING_OPTIONS.map((option) => (
+                                  <option key={option} value={option}>
+                                    {option}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-600">
+                                Business importance
+                              </label>
+                              <select
+                                className="mt-1 w-full rounded border px-2 py-1 text-xs disabled:bg-gray-100"
+                                value={point.business_importance}
+                                onChange={(event) => {
+                                  const nextPoints = theme.pain_points.slice();
+                                  nextPoints[pointIndex] = {
+                                    ...point,
+                                    business_importance: event.target.value as PainPoint["business_importance"]
+                                  };
+                                  updateTheme(themeIndex, {
+                                    ...theme,
+                                    pain_points: nextPoints
+                                  });
+                                }}
+                                disabled={disabled || approved}
+                              >
+                                {RATING_OPTIONS.map((option) => (
+                                  <option key={option} value={option}>
+                                    {option}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+
+                          <div className="mt-2">
+                            <label className="block text-xs text-gray-600">
+                              Affected user groups (one per line)
+                            </label>
+                            <textarea
+                              className="mt-1 w-full rounded border px-2 py-1 text-xs disabled:bg-gray-100"
+                              rows={3}
+                              value={point.affected_user_groups.join("\n")}
+                              onChange={(event) => {
+                                const nextPoints = theme.pain_points.slice();
+                                nextPoints[pointIndex] = {
+                                  ...point,
+                                  affected_user_groups: event.target.value.split("\n")
+                                };
+                                updateTheme(themeIndex, {
+                                  ...theme,
+                                  pain_points: nextPoints
+                                });
+                              }}
+                              disabled={disabled || approved}
+                            />
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    );
+                  })}
+                </Accordion>
+
+                {!approved && (
+                  <button
+                    type="button"
+                    className="mt-2 text-xs text-blue-600 disabled:opacity-60"
+                    onClick={() => addPainPoint(themeIndex)}
+                    disabled={disabled}
+                  >
+                    + Pain point
+                  </button>
+                )}
+              </AccordionContent>
+            </AccordionItem>
+          );
+        })}
+      </Accordion>
+
+      {!approved && (
+        <button
+          type="button"
+          className="mt-3 inline-flex items-center rounded border border-slate-300 px-3 py-1 text-xs text-slate-700 disabled:opacity-60"
+          onClick={addTheme}
+          disabled={disabled}
+        >
+          + Theme
+        </button>
+      )}
+
+      <div className="mt-3 flex items-center gap-2">
+        {!approved && (
+          <button
+            type="button"
+            className="inline-flex min-w-[96px] items-center justify-center rounded border border-green-600 px-3 py-2 text-sm font-medium text-green-700 disabled:opacity-60"
+            onClick={onApprove}
+            disabled={disabled || !hasThemes || isApproving}
+          >
+            {isApproving ? "Approving…" : "Approve"}
+          </button>
+        )}
+        <button
+          type="button"
+          className="inline-flex min-w-[108px] items-center justify-center rounded border border-blue-600 px-3 py-2 text-sm font-medium text-blue-700 disabled:opacity-60"
+          onClick={onRegenerate}
+          disabled={isRegenerating}
+        >
+          {isRegenerating ? "Regenerating…" : "Regenerate"}
+        </button>
+      </div>
     </div>
   );
 }
