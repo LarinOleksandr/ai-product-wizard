@@ -40,15 +40,14 @@ const SUPABASE_TABLE =
 const SUPABASE_ENABLED = Boolean(
   SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
 );
-const OUTPUT_DIR = path.join(__dirname, "output");
-const HISTORY_FILE = path.join(OUTPUT_DIR, "history.json");
 const PROMPTS_DIR = path.join(
   __dirname,
   "..",
   "..",
   "knowledge-base",
   "prompts",
-  "product-manager"
+  "product-manager",
+  "discovery-document"
 );
 
 const FIELD_DEFINITIONS = [
@@ -164,21 +163,6 @@ const sendJson = (res, statusCode, payload) => {
   res.writeHead(statusCode, { "Content-Type": "application/json" });
   res.end(JSON.stringify(payload));
 };
-
-const recordFilePath = (version) =>
-  path.join(OUTPUT_DIR, `discovery-doc-v${version}.json`);
-
-async function readJsonFile(filePath) {
-  try {
-    const raw = await fs.readFile(filePath, "utf8");
-    return JSON.parse(raw);
-  } catch (error) {
-    if (error.code === "ENOENT") {
-      return null;
-    }
-    throw error;
-  }
-}
 
 async function supabaseRequest(path, { method = "GET", body, preferReturn } = {}) {
   if (!SUPABASE_ENABLED) {
@@ -298,64 +282,17 @@ async function supabaseUpdateRecord(version, record) {
 }
 
 async function getLatestRecord() {
-  if (SUPABASE_ENABLED) {
-    const supabaseRecord = await supabaseFetchLatestRecord();
-    if (supabaseRecord) {
-      return supabaseRecord;
-    }
+  if (!SUPABASE_ENABLED) {
+    throw new Error("Supabase is required for persistence. Configure SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.");
   }
-  try {
-    const entries = await fs.readdir(OUTPUT_DIR);
-    const versions = entries
-      .map((file) => {
-        const match = file.match(/discovery-doc-v(\d+)\.json$/);
-        return match ? Number(match[1]) : undefined;
-      })
-      .filter((value) => Number.isFinite(value));
-    if (!versions.length) {
-      return null;
-    }
-    const latestVersion = Math.max(...versions);
-    const latestRecord = await readJsonFile(recordFilePath(latestVersion));
-    return latestRecord
-      ? {
-          ...latestRecord,
-          version: latestVersion,
-          filePath: recordFilePath(latestVersion)
-        }
-      : null;
-  } catch (error) {
-    if (error.code === "ENOENT") {
-      return null;
-    }
-    throw error;
-  }
+  return supabaseFetchLatestRecord();
 }
 
 async function loadDiscoveryRecord(version) {
-  if (SUPABASE_ENABLED) {
-    const supabaseRecord = await supabaseFetchRecordByVersion(version);
-    if (supabaseRecord) {
-      return supabaseRecord;
-    }
+  if (!SUPABASE_ENABLED) {
+    throw new Error("Supabase is required for persistence. Configure SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.");
   }
-  return readJsonFile(recordFilePath(version));
-}
-
-async function appendHistoryEntry(entry) {
-  await fs.mkdir(OUTPUT_DIR, { recursive: true });
-  let history = [];
-  try {
-    const raw = await fs.readFile(HISTORY_FILE, "utf8");
-    history = JSON.parse(raw);
-  } catch (error) {
-    if (error.code !== "ENOENT") {
-      throw error;
-    }
-  }
-  history.push(entry);
-  await fs.writeFile(HISTORY_FILE, JSON.stringify(history, null, 2), "utf8");
-  return history;
+  return supabaseFetchRecordByVersion(version);
 }
 
 function validateUserInput(input) {
@@ -496,9 +433,41 @@ async function generateFieldValue({
   userNotes,
   currentDocument
 }) {
+  const result = await generateFieldValueWithOutput({
+    field,
+    productIdea,
+    targetUser,
+    userNotes,
+    currentDocument
+  });
+  return result.value;
+}
+
+async function generateFieldValueWithOutput({
+  field,
+  productIdea,
+  targetUser,
+  userNotes,
+  currentDocument
+}) {
   const promptAssets = await getDiscoveryPromptAssets();
   const sectionPrompt = promptAssets.sectionPromptMap[field.section] || "";
   const sectionSchema = promptAssets.sectionSchemaMap[field.section] || "";
+  const sectionExamples = promptAssets.sectionExampleMap?.[field.section] || "";
+  const prompt = buildFieldPrompt({
+    systemPrompt: promptAssets.systemPrompt,
+    productIdea,
+    targetUser,
+    userNotes,
+    outputRules: promptAssets.outputRules,
+    sectionPrompt,
+    sectionSchema,
+    sectionExamples,
+    finalSchema: promptAssets.finalSchema,
+    currentDocument,
+    fieldKey: field.key,
+    fieldOutputKey: field.outputKey
+  });
 
   const messages = [
     {
@@ -507,52 +476,45 @@ async function generateFieldValue({
     },
     {
       role: "user",
-      content: buildFieldPrompt({
-        productIdea,
-        targetUser,
-        userNotes,
-        outputRules: promptAssets.outputRules,
-        sectionPrompt,
-        sectionSchema,
-        finalSchema: promptAssets.finalSchema,
-        currentDocument,
-        fieldKey: field.key,
-        fieldOutputKey: field.outputKey
-      })
+      content: prompt
     }
   ];
 
   const model = getChatModel();
   if (!model) {
     if (process.env.MOCK_DISCOVERY === "true") {
-      return buildFallbackFieldValue(field);
+      const value = buildFallbackFieldValue(field);
+      return { value, prompt, rawText: JSON.stringify(value, null, 2) };
     }
     throw new Error("Ollama is not available. Start Ollama and retry.");
   }
 
+  let lastRawText = "";
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
       const response = await model.invoke(messages);
+      const rawText = extractTextFromResponse(response);
+      lastRawText = rawText;
       const fieldName = field.key.split(".").pop();
       try {
         const parsed = tryParseDiscoveryResponse(response);
         if (field.outputKey && typeof parsed?.[field.outputKey] !== "undefined") {
           if (field.wrapOutputKey) {
-            return { [field.outputKey]: parsed[field.outputKey] };
+            return { value: { [field.outputKey]: parsed[field.outputKey] }, prompt, rawText };
           }
-          return parsed[field.outputKey];
+          return { value: parsed[field.outputKey], prompt, rawText };
         }
         if (fieldName && typeof parsed?.[fieldName] !== "undefined") {
-          return parsed[fieldName];
+          return { value: parsed[fieldName], prompt, rawText };
         }
         const nested = getNestedValue(parsed, field.key);
         if (typeof nested !== "undefined") {
-          return nested;
+          return { value: nested, prompt, rawText };
         }
       } catch (parseError) {
-        const rawText = extractTextFromResponse(response);
         if (rawText) {
-          return normalizeRawFieldValue(rawText, field.type);
+          const normalized = normalizeRawFieldValue(rawText, field.type);
+          return { value: normalized, prompt, rawText };
         }
       }
     } catch (error) {
@@ -560,7 +522,11 @@ async function generateFieldValue({
     }
   }
 
-  throw new Error(`LLM output invalid for field ${field.key}.`);
+  const failure = new Error(`LLM output invalid for field ${field.key}.`);
+  failure.lastPrompt = prompt;
+  failure.lastOutput = lastRawText || null;
+  failure.lastOutputFieldKey = field.key;
+  throw failure;
 }
 
 function normalizeRawFieldValue(text, fieldType) {
@@ -601,6 +567,7 @@ async function getDiscoveryPromptAssets() {
   const sectionSchemas = [];
   const sectionPromptMap = {};
   const sectionSchemaMap = {};
+  const sectionExampleMap = {};
   for (const definition of FIELD_DEFINITIONS) {
     const section = definition.section;
     const promptPath = path.join("sections", `${section}.prompt.md`);
@@ -615,6 +582,15 @@ async function getDiscoveryPromptAssets() {
       sectionSchemas.push(`Section: ${section}\n${schemaContent}`);
       sectionSchemaMap[section] = schemaContent;
     }
+    const examplesPath = path.join("sections", `${section}.examples.json`);
+    let examplesContent = await readPromptFileOptional(examplesPath);
+    if (!examplesContent) {
+      const fallbackExamplesPath = path.join("sections", `${section}.example.json`);
+      examplesContent = await readPromptFileOptional(fallbackExamplesPath);
+    }
+    if (examplesContent) {
+      sectionExampleMap[section] = examplesContent;
+    }
   }
 
   promptCache = {
@@ -626,7 +602,8 @@ async function getDiscoveryPromptAssets() {
     sectionPrompts,
     sectionSchemas,
     sectionPromptMap,
-    sectionSchemaMap
+    sectionSchemaMap,
+    sectionExampleMap
   };
   return promptCache;
 }
@@ -638,6 +615,18 @@ async function readPromptFile(relativePath) {
   } catch (error) {
     if (error.code === "ENOENT") {
       console.warn(`Prompt file missing: ${relativePath}`);
+      return "";
+    }
+    throw error;
+  }
+}
+
+async function readPromptFileOptional(relativePath) {
+  try {
+    const filePath = path.join(PROMPTS_DIR, relativePath);
+    return await fs.readFile(filePath, "utf8");
+  } catch (error) {
+    if (error.code === "ENOENT") {
       return "";
     }
     throw error;
@@ -673,7 +662,11 @@ const DiscoveryState = Annotation.Root({
     default: () => []
   }),
   discoveryDocument: Annotation(),
-  approvalStatus: Annotation()
+  approvalStatus: Annotation(),
+  lastPrompt: Annotation(),
+  lastPromptFieldKey: Annotation(),
+  lastOutput: Annotation(),
+  lastOutputFieldKey: Annotation()
 });
 
 const discoveryDocumentSchema = z
@@ -783,18 +776,22 @@ async function orchestratorNode(state) {
 }
 
 async function discoveryAgentNode(state) {
-  const discoveryDocument = await produceDiscoveryDocument({
+  const result = await produceDiscoveryDocument({
     productIdea: state.productIdea,
     targetUser: state.targetUser,
     userMessages: state.userMessages
   });
 
   return {
-    discoveryDocument,
+    discoveryDocument: result.discoveryDocument,
     targetUser: state.targetUser,
     decisions: [
       `Discovery document drafted at ${new Date().toISOString()}`
-    ]
+    ],
+    lastPrompt: result.lastPrompt,
+    lastPromptFieldKey: result.lastPromptFieldKey,
+    lastOutput: result.lastOutput,
+    lastOutputFieldKey: result.lastOutputFieldKey
   };
 }
 
@@ -805,7 +802,7 @@ async function produceDiscoveryDocument({ productIdea, targetUser, userMessages 
     throw new Error("No discovery fields configured.");
   }
 
-  const firstValue = await generateFieldValue({
+  const { value: firstValue, prompt, rawText } = await generateFieldValueWithOutput({
     field: firstField,
     productIdea,
     targetUser,
@@ -813,7 +810,13 @@ async function produceDiscoveryDocument({ productIdea, targetUser, userMessages 
     currentDocument: emptyDocument
   });
   setNestedValue(emptyDocument, firstField.key, firstValue);
-  return emptyDocument;
+  return {
+    discoveryDocument: emptyDocument,
+    lastPrompt: prompt,
+    lastPromptFieldKey: firstField.key,
+    lastOutput: rawText,
+    lastOutputFieldKey: firstField.key
+  };
 }
 
 function getChatModel() {
@@ -844,12 +847,14 @@ function getChatModel() {
 }
 
 function buildFieldPrompt({
+  systemPrompt,
   productIdea,
   targetUser,
   userNotes,
   outputRules,
   sectionPrompt,
   sectionSchema,
+  sectionExamples,
   finalSchema,
   currentDocument,
   fieldKey,
@@ -861,32 +866,20 @@ function buildFieldPrompt({
   const notesBlock = safeNotes.length
     ? `User notes:\n- ${safeNotes.join("\n- ")}`
     : "User notes: none provided";
-  const documentBlock = currentDocument
-    ? `Current document (JSON):\n${JSON.stringify(currentDocument, null, 2)}`
-    : "Current document: none.";
   const schemaBlock = sectionSchema
-    ? `Section schema:\n${sectionSchema}`
+    ? `## Section schema\n\n${sectionSchema}`
     : "Section schema: missing.";
-  const finalSchemaBlock = finalSchema
-    ? `Final JSON schema:\n${finalSchema}`
-    : "Final JSON schema: missing.";
-
-  const exampleJson = outputKey
-    ? `Example JSON:\n{"${outputKey}":"..."}`
+  const examplesBlock = sectionExamples
+    ? `## Section examples\n\n${sectionExamples}`
     : "";
 
   const prompt = [
-    `Product idea: ${productIdea}`,
-    `Target user: ${targetUser || "Not provided"}`,
-    notesBlock,
-    outputRules ? `Output rules:\n${outputRules}` : "",
-    `Return JSON with only this key: ${outputKey}.`,
-    exampleJson,
+    systemPrompt || "You are the Discovery Agent.",
     "Section prompt:",
     sectionPrompt || "Section prompt missing.",
+    outputRules ? `Output rules:\n${outputRules}` : "",
     schemaBlock,
-    finalSchemaBlock,
-    documentBlock
+    examplesBlock
   ]
     .filter(Boolean)
     .join("\n\n");
@@ -896,7 +889,12 @@ function buildFieldPrompt({
     targetUser,
     userNotes: safeNotes.length ? `- ${safeNotes.join("\n- ")}` : "none",
     problemStatement:
-      getNestedValue(currentDocument, "problemUnderstanding.problemStatement") || ""
+      getNestedValue(currentDocument, "problemUnderstanding.problemStatement") || "",
+    targetUsersAndSegments: JSON.stringify(
+      getNestedValue(currentDocument, "problemUnderstanding.targetUsersSegments") || {},
+      null,
+      2
+    )
   });
 }
 
@@ -906,8 +904,8 @@ function tryParseDiscoveryResponse(response) {
   }
   const textChunks = Array.isArray(response.content)
     ? response.content
-        .filter((chunk) => chunk?.type === "text" && chunk.text)
-        .map((chunk) => chunk.text)
+      .filter((chunk) => chunk?.type === "text" && chunk.text)
+      .map((chunk) => chunk.text)
     : [response.content];
   const text = textChunks.join("\n");
   const cleaned = text.replace(/```json|```/g, "").trim();
@@ -921,8 +919,8 @@ function extractTextFromResponse(response) {
   }
   const textChunks = Array.isArray(response.content)
     ? response.content
-        .filter((chunk) => chunk?.type === "text" && chunk.text)
-        .map((chunk) => chunk.text)
+      .filter((chunk) => chunk?.type === "text" && chunk.text)
+      .map((chunk) => chunk.text)
     : [response.content];
   return textChunks.join("\n").trim();
 }
@@ -1083,7 +1081,11 @@ export async function runDiscoveryWorkflow(input) {
     fieldStatus,
     fieldOrder: FIELD_DEFINITIONS.map((field) => field.key),
     currentFieldKey: firstField ? firstField.key : null,
-    fieldApprovalHistory: []
+    fieldApprovalHistory: [],
+    lastPrompt: finalState.lastPrompt || null,
+    lastPromptFieldKey: finalState.lastPromptFieldKey || null,
+    lastOutput: finalState.lastOutput || null,
+    lastOutputFieldKey: finalState.lastOutputFieldKey || null
   };
 
   const persisted = await persistDiscoveryResult(record);
@@ -1101,12 +1103,12 @@ export async function approveDiscoveryDocument(version, approver) {
 }
 
 async function persistDiscoveryResult(record) {
-  await fs.mkdir(OUTPUT_DIR, { recursive: true });
+  if (!SUPABASE_ENABLED) {
+    throw new Error("Supabase is required for persistence. Configure SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.");
+  }
   const version = await computeNextVersion();
   const timestamp = record.timestamp || new Date().toISOString();
-  const filePath = recordFilePath(version);
   const changeReason = record.changeReason || "Initial discovery draft";
-  let savedToSupabase = false;
 
   const persistedRecord = {
     ...record,
@@ -1123,55 +1125,23 @@ async function persistDiscoveryResult(record) {
     ]
   };
 
-  await fs.writeFile(filePath, JSON.stringify(persistedRecord, null, 2), "utf8");
-  await fs.writeFile(
-    path.join(OUTPUT_DIR, `discovery-doc-v${version}.md`),
-    buildMarkdownDocument(persistedRecord),
-    "utf8"
-  );
-  await appendHistoryEntry({
-    version,
-    timestamp,
-    reason: changeReason,
-    stage: "discovery_generation"
-  });
-  if (SUPABASE_ENABLED) {
-    try {
-      await supabaseInsertRecord(version, persistedRecord);
-      savedToSupabase = true;
-    } catch (error) {
-      console.warn("Supabase insert failed", error);
-    }
-  }
-  return { version, filePath, record: persistedRecord, savedToSupabase };
+  await supabaseInsertRecord(version, persistedRecord);
+  return { version, record: persistedRecord, savedToSupabase: true };
 }
 
 async function computeNextVersion() {
-  if (SUPABASE_ENABLED) {
-    const latest = await supabaseFetchLatestRecord();
-    const latestVersion = latest?.version ? Number(latest.version) : 0;
-    return latestVersion + 1;
+  if (!SUPABASE_ENABLED) {
+    throw new Error("Supabase is required for persistence. Configure SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.");
   }
-  try {
-    const entries = await fs.readdir(OUTPUT_DIR);
-    const versions = entries
-      .map((file) => {
-        const match = file.match(/discovery-doc-v(\d+)\.json$/);
-        return match ? Number(match[1]) : 0;
-      })
-      .filter((num) => Number.isFinite(num));
-    const maxVersion = versions.length ? Math.max(...versions) : 0;
-    return maxVersion + 1;
-  } catch (error) {
-    if (error.code === "ENOENT") {
-      return 1;
-    }
-    throw error;
-  }
+  const latest = await supabaseFetchLatestRecord();
+  const latestVersion = latest?.version ? Number(latest.version) : 0;
+  return latestVersion + 1;
 }
 
 async function updateDiscoveryRecord(record, stage, reason) {
-  const filePath = recordFilePath(record.version);
+  if (!SUPABASE_ENABLED) {
+    throw new Error("Supabase is required for persistence. Configure SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.");
+  }
   const timestamp = new Date().toISOString();
   const changeEntry = {
     version: record.version,
@@ -1179,7 +1149,6 @@ async function updateDiscoveryRecord(record, stage, reason) {
     reason: reason || "Update",
     stage: stage || "discovery_update"
   };
-  let savedToSupabase = false;
 
   const updatedRecord = {
     ...record,
@@ -1189,23 +1158,8 @@ async function updateDiscoveryRecord(record, stage, reason) {
       : [changeEntry]
   };
 
-  await fs.writeFile(filePath, JSON.stringify(updatedRecord, null, 2), "utf8");
-  await fs.writeFile(
-    path.join(OUTPUT_DIR, `discovery-doc-v${record.version}.md`),
-    buildMarkdownDocument(updatedRecord),
-    "utf8"
-  );
-  await appendHistoryEntry(changeEntry);
-  if (SUPABASE_ENABLED) {
-    try {
-      await supabaseUpdateRecord(record.version, updatedRecord);
-      savedToSupabase = true;
-    } catch (error) {
-      console.warn("Supabase update failed", error);
-    }
-  }
-
-  return { record: updatedRecord, savedToSupabase };
+  await supabaseUpdateRecord(record.version, updatedRecord);
+  return { record: updatedRecord, savedToSupabase: true };
 }
 
 async function approveDiscoveryVersion(version, approver) {
@@ -1213,14 +1167,13 @@ async function approveDiscoveryVersion(version, approver) {
     throw new Error("A numeric version is required for approval.");
   }
   const numericVersion = Number(version);
-  const filePath = recordFilePath(numericVersion);
   const record = await loadDiscoveryRecord(numericVersion);
   if (!record) {
     throw new Error(`Discovery document v${numericVersion} was not found.`);
   }
 
   if (record.approved) {
-    return { record, filePath, alreadyApproved: true, savedToSupabase: false };
+    return { record, alreadyApproved: true, savedToSupabase: false };
   }
 
   const timestamp = new Date().toISOString();
@@ -1239,17 +1192,102 @@ async function approveDiscoveryVersion(version, approver) {
     approvalHistory
   };
 
-  await fs.writeFile(filePath, JSON.stringify(updatedRecord, null, 2), "utf8");
-  let savedToSupabase = false;
-  if (SUPABASE_ENABLED) {
-    try {
-      await supabaseUpdateRecord(numericVersion, updatedRecord);
-      savedToSupabase = true;
-    } catch (error) {
-      console.warn("Supabase update failed", error);
-    }
+  await supabaseUpdateRecord(numericVersion, updatedRecord);
+  return { record: updatedRecord, alreadyApproved: false, savedToSupabase: true };
+}
+
+async function clearDiscoveryField({ version, fieldKey, approver }) {
+  if (!Number.isFinite(Number(version))) {
+    throw new Error("A numeric version is required to clear a field.");
   }
-  return { record: updatedRecord, filePath, alreadyApproved: false, savedToSupabase };
+  if (!fieldKey) {
+    throw new Error("fieldKey is required.");
+  }
+
+  const numericVersion = Number(version);
+  const record = await loadDiscoveryRecord(numericVersion);
+  if (!record) {
+    throw new Error(`Discovery document v${numericVersion} was not found.`);
+  }
+
+  const fieldStatus = record.fieldStatus || buildFieldStatus();
+  const fieldIndex = FIELD_DEFINITIONS.findIndex((field) => field.key === fieldKey);
+  if (fieldIndex === -1) {
+    throw new Error("Unknown field key.");
+  }
+
+  for (let index = fieldIndex; index < FIELD_DEFINITIONS.length; index += 1) {
+    const field = FIELD_DEFINITIONS[index];
+    fieldStatus[field.key] = { approved: false, approvedAt: null };
+    setNestedValue(record.discoveryDocument, field.key, emptyValueForField(field));
+  }
+
+  record.fieldStatus = fieldStatus;
+  record.currentFieldKey = fieldKey;
+  record.approved = false;
+  record.approvedAt = null;
+  record.lastPrompt = null;
+  record.lastPromptFieldKey = null;
+  record.lastOutput = null;
+  record.lastOutputFieldKey = null;
+
+  const fieldApprovalHistory = Array.isArray(record.fieldApprovalHistory)
+    ? record.fieldApprovalHistory
+    : [];
+  fieldApprovalHistory.push({
+    fieldKey,
+    timestamp: new Date().toISOString(),
+    approver: approver || "system",
+    action: "clear"
+  });
+  record.fieldApprovalHistory = fieldApprovalHistory;
+
+  const { record: updatedRecord, savedToSupabase } = await updateDiscoveryRecord(
+    record,
+    "field_clear",
+    `Cleared ${fieldKey}`
+  );
+
+  return { record: updatedRecord, savedToSupabase };
+}
+
+async function clearDiscoveryDocument(version, approver) {
+  if (!Number.isFinite(Number(version))) {
+    throw new Error("A numeric version is required to clear a document.");
+  }
+  const numericVersion = Number(version);
+  const record = await loadDiscoveryRecord(numericVersion);
+  if (!record) {
+    throw new Error(`Discovery document v${numericVersion} was not found.`);
+  }
+
+  const emptyDocument = buildEmptyDocument();
+  const fieldStatus = buildFieldStatus();
+  const firstField = FIELD_DEFINITIONS[0];
+
+  const updatedRecord = {
+    ...record,
+    discoveryDocument: emptyDocument,
+    fieldStatus,
+    currentFieldKey: firstField ? firstField.key : null,
+    approved: false,
+    approvedAt: null,
+    fieldApprovalHistory: [],
+    approvalHistory: [],
+    changeReason: "Cleared document",
+    lastPrompt: null,
+    lastPromptFieldKey: null,
+    lastOutput: null,
+    lastOutputFieldKey: null
+  };
+
+  const { record: persisted } = await updateDiscoveryRecord(
+    updatedRecord,
+    "document_clear",
+    "Cleared document"
+  );
+
+  return persisted;
 }
 
 async function approveDiscoveryField({
@@ -1300,7 +1338,7 @@ async function approveDiscoveryField({
 
   const nextField = getNextFieldDefinition(fieldStatus);
   if (nextField) {
-    const nextValue = await generateFieldValue({
+    const { value: nextValue, prompt, rawText } = await generateFieldValueWithOutput({
       field: nextField,
       productIdea: record.productIdea,
       targetUser: record.targetUser,
@@ -1308,6 +1346,10 @@ async function approveDiscoveryField({
       currentDocument: record.discoveryDocument
     });
     setNestedValue(record.discoveryDocument, nextField.key, nextValue);
+    record.lastPrompt = prompt;
+    record.lastPromptFieldKey = nextField.key;
+    record.lastOutput = rawText;
+    record.lastOutputFieldKey = nextField.key;
     record.currentFieldKey = nextField.key;
     record.approved = false;
   } else {
@@ -1355,7 +1397,7 @@ async function regenerateDiscoveryField({ version, fieldKey, approver }) {
   record.currentFieldKey = fieldKey;
 
   const field = FIELD_DEFINITIONS[fieldIndex];
-  const nextValue = await generateFieldValue({
+  const { value: nextValue, prompt, rawText } = await generateFieldValueWithOutput({
     field,
     productIdea: record.productIdea,
     targetUser: record.targetUser,
@@ -1363,6 +1405,10 @@ async function regenerateDiscoveryField({ version, fieldKey, approver }) {
     currentDocument: record.discoveryDocument
   });
   setNestedValue(record.discoveryDocument, field.key, nextValue);
+  record.lastPrompt = prompt;
+  record.lastPromptFieldKey = field.key;
+  record.lastOutput = rawText;
+  record.lastOutputFieldKey = field.key;
 
   const fieldApprovalHistory = Array.isArray(record.fieldApprovalHistory)
     ? record.fieldApprovalHistory
@@ -1382,117 +1428,6 @@ async function regenerateDiscoveryField({ version, fieldKey, approver }) {
   );
 
   return { record: updatedRecord, savedToSupabase };
-}
-
-function buildMarkdownDocument(record) {
-  const doc = record.discoveryDocument || buildEmptyDocument();
-  const listToMarkdown = (items = []) =>
-    items && items.length ? items.map((item) => `- ${item}`).join("\n") : "- None";
-  const formatTargetSegments = (value) => {
-    if (!value || !Array.isArray(value.target_segments)) {
-      return "- None";
-    }
-    return value.target_segments
-      .map((segment) => {
-        const groupLines = (segment.user_groups || [])
-          .map(
-            (group) =>
-              `  - ${group.name}: ${Array.isArray(group.characteristics) ? group.characteristics.join("; ") : ""}`
-          )
-          .join("\n");
-        return [
-          `- ${segment.segment_name}`,
-          `  - Business relevance: ${segment.business_relevance}`,
-          groupLines || "  - User groups: None"
-        ]
-          .filter(Boolean)
-          .join("\n");
-      })
-      .join("\n");
-  };
-  const formatPainPoints = (value) => {
-    if (!value || !Array.isArray(value.pain_point_themes)) {
-      return "- None";
-    }
-    return value.pain_point_themes
-      .map((theme) => {
-        const painLines = (theme.pain_points || [])
-          .map(
-            (pain) =>
-              `  - ${pain.name}: ${pain.description} (severity: ${pain.severity}, frequency: ${pain.frequency}, business: ${pain.business_importance})`
-          )
-          .join("\n");
-        return [
-          `- ${theme.theme_name}`,
-          painLines || "  - Pain points: None"
-        ]
-          .filter(Boolean)
-          .join("\n");
-      })
-      .join("\n");
-  };
-
-  return [
-    `# Discovery Document v${record.version}`,
-    "",
-    `**Generated:** ${record.timestamp}`,
-    `**Product Idea:** ${record.productIdea || "Not provided"}`,
-    `**Target User:** ${record.targetUser || "Not provided"}`,
-    `**Status:** ${record.approved ? "Approved" : "In progress"}`,
-    `**Latest Change:** ${record.changeReason || "Not documented"}`,
-    "",
-    "## Problem Understanding",
-    "### Problem Statement",
-    doc.problemUnderstanding?.problemStatement || "Missing.",
-    "",
-    "### Target Users & Segments",
-    formatTargetSegments(doc.problemUnderstanding?.targetUsersSegments),
-    "",
-    "### User Pain Points",
-    formatPainPoints(doc.problemUnderstanding?.userPainPoints),
-    "",
-    "### Context & Constraints",
-    listToMarkdown(doc.problemUnderstanding?.contextConstraints),
-    "",
-    "## Market and Competitor Analysis",
-    "### Market Landscape",
-    listToMarkdown(doc.marketAndCompetitorAnalysis?.marketLandscape),
-    "",
-    "### Competitor Inventory",
-    listToMarkdown(doc.marketAndCompetitorAnalysis?.competitorInventory),
-    "",
-    "### Competitor Capabilities",
-    listToMarkdown(doc.marketAndCompetitorAnalysis?.competitorCapabilities),
-    "",
-    "### Gaps & Opportunities",
-    listToMarkdown(doc.marketAndCompetitorAnalysis?.gapsOpportunities),
-    "",
-    "## Opportunity Definition",
-    "### Opportunity Statement",
-    doc.opportunityDefinition?.opportunityStatement || "Missing.",
-    "",
-    "### Value Drivers",
-    listToMarkdown(doc.opportunityDefinition?.valueDrivers),
-    "",
-    "### Market Fit Hypothesis",
-    listToMarkdown(doc.opportunityDefinition?.marketFitHypothesis),
-    "",
-    "### Feasibility Assessment",
-    listToMarkdown(doc.opportunityDefinition?.feasibilityAssessment),
-    "",
-    "## Decisions",
-    listToMarkdown(record.decisions),
-    "",
-    "## Change Log",
-    listToMarkdown(
-      (record.changeLog || []).map(
-        (entry) =>
-          `${entry.timestamp || "n/a"} — ${entry.stage || "discovery"} — ${
-            entry.reason || "No reason provided"
-          }`
-      )
-    )
-  ].join("\n");
 }
 
 function parseRequestBody(req) {
@@ -1559,6 +1494,21 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if (req.method === "POST" && req.url === "/discovery/field/clear") {
+      const body = await parseRequestBody(req);
+      const result = await clearDiscoveryField({
+        version: body.version,
+        fieldKey: body.fieldKey,
+        approver: body.approver
+      });
+      sendJson(res, 200, {
+        status: "in_progress",
+        record: result.record,
+        savedToSupabase: result.savedToSupabase
+      });
+      return;
+    }
+
     if (req.method === "POST" && req.url === "/discovery/approve") {
       const body = await parseRequestBody(req);
       const approval = await approveDiscoveryVersion(body.version, body.approver);
@@ -1569,6 +1519,16 @@ const server = http.createServer(async (req, res) => {
         timestamp: approval.record.approvedAt,
         discoveryDocument: approval.record.discoveryDocument,
         savedToSupabase: approval.savedToSupabase
+      });
+      return;
+    }
+
+    if (req.method === "POST" && req.url === "/discovery/clear") {
+      const body = await parseRequestBody(req);
+      const updatedRecord = await clearDiscoveryDocument(body.version, body.approver);
+      sendJson(res, 200, {
+        status: "in_progress",
+        record: updatedRecord
       });
       return;
     }
@@ -1589,10 +1549,20 @@ const server = http.createServer(async (req, res) => {
       return;
     }
   } catch (error) {
-    sendJson(res, 400, {
+    const payload = {
       status: "error",
       message: error.message
-    });
+    };
+    if (error.lastPrompt) {
+      payload.lastPrompt = error.lastPrompt;
+    }
+    if (typeof error.lastOutput === "string") {
+      payload.lastOutput = error.lastOutput;
+    }
+    if (error.lastOutputFieldKey) {
+      payload.lastOutputFieldKey = error.lastOutputFieldKey;
+    }
+    sendJson(res, 400, payload);
     return;
   }
 

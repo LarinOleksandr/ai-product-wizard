@@ -1,4 +1,7 @@
-import { FormEvent, useEffect, useMemo, useState, type ReactNode } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import { Trash2 } from "lucide-react";
+
+import { Button } from "../components/ui/button";
 import discoveryDocumentIcon from "../assets/discovery-document.png";
 import {
   Accordion,
@@ -71,6 +74,10 @@ type DiscoveryRecord = {
   approvedAt?: string | null;
   fieldStatus?: Record<string, { approved: boolean; approvedAt?: string | null }>;
   currentFieldKey?: string | null;
+  lastPrompt?: string | null;
+  lastPromptFieldKey?: string | null;
+  lastOutput?: string | null;
+  lastOutputFieldKey?: string | null;
 };
 
 type ApiStatus = "idle" | "running" | "needs_input" | "in_progress" | "approved" | "error";
@@ -209,6 +216,16 @@ const groupedFields = fieldDefinitions.reduce<Record<string, FieldDefinition[]>>
   },
   {}
 );
+const fieldGroupMap = fieldDefinitions.reduce<Record<string, string>>((acc, field) => {
+  acc[field.key] = field.group;
+  return acc;
+}, {});
+const initialOpenFieldsByGroup = Object.entries(groupedFields).reduce<
+  Record<string, string[]>
+>((acc, [groupName]) => {
+  acc[groupName] = [];
+  return acc;
+}, {});
 
 function getNestedValue(document: DiscoveryDocument, key: string) {
   const parts = key.split(".");
@@ -255,14 +272,26 @@ export function WizardPage() {
   const [latestVersion, setLatestVersion] = useState<number | null>(null);
   const [questions, setQuestions] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [debugPrompt, setDebugPrompt] = useState<string | null>(null);
+  const [debugOutput, setDebugOutput] = useState<string | null>(null);
   const [draftFields, setDraftFields] = useState<
     Record<string, string | TargetSegment[] | PainPointTheme[]>
   >({});
   const [approvingFieldKey, setApprovingFieldKey] = useState<string | null>(null);
   const [regeneratingFieldKey, setRegeneratingFieldKey] = useState<string | null>(null);
   const [confirmRegenerateFieldKey, setConfirmRegenerateFieldKey] = useState<string | null>(null);
+  const [isClearing, setIsClearing] = useState(false);
+  const [clearingFieldKey, setClearingFieldKey] = useState<string | null>(null);
+  const [confirmClearFieldKey, setConfirmClearFieldKey] = useState<string | null>(null);
+  const [confirmClearDocument, setConfirmClearDocument] = useState(false);
   const [loadingLatest, setLoadingLatest] = useState(false);
   const [progressText, setProgressText] = useState("");
+  const [openGroups, setOpenGroups] = useState<string[]>(
+    Object.keys(groupedFields)
+  );
+  const [openFieldsByGroup, setOpenFieldsByGroup] = useState<
+    Record<string, string[]>
+  >(initialOpenFieldsByGroup);
 
   const notesArray = useMemo(
     () =>
@@ -338,6 +367,8 @@ export function WizardPage() {
     setStatus("idle");
     setMessage("Enter the required fields and generate the first draft.");
     setDraftFields({});
+    setDebugPrompt(null);
+    setDebugOutput(null);
   }
 
   useEffect(() => {
@@ -380,6 +411,68 @@ export function WizardPage() {
 
   const withSupabaseMessage = (text: string, saved?: boolean) =>
     saved ? `${text} Saved to Supabase.` : text;
+  const isEmptyDocumentView =
+    !latestRecord || latestRecord.changeReason === "Cleared document";
+
+  useEffect(() => {
+    if (isEmptyDocumentView) {
+      setOpenGroups(Object.keys(groupedFields));
+      setOpenFieldsByGroup(initialOpenFieldsByGroup);
+    }
+  }, [isEmptyDocumentView]);
+
+  useEffect(() => {
+    const currentFieldKey = latestRecord?.currentFieldKey;
+    if (!currentFieldKey) {
+      return;
+    }
+    const groupName = fieldGroupMap[currentFieldKey];
+    if (!groupName) {
+      return;
+    }
+    setOpenGroups((prev) =>
+      prev.includes(groupName) ? prev : prev.concat(groupName)
+    );
+    setOpenFieldsByGroup((prev) => {
+      const currentOpen = prev[groupName] || [];
+      if (currentOpen.includes(currentFieldKey)) {
+        return prev;
+      }
+      return {
+        ...prev,
+        [groupName]: currentOpen.concat(currentFieldKey)
+      };
+    });
+  }, [latestRecord?.currentFieldKey]);
+
+  async function postWithRetry<T>(
+    url: string,
+    body: Record<string, unknown>,
+    onRetry: () => void
+  ): Promise<T> {
+    let lastError: unknown = null;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(body)
+      });
+      const data = await response.json();
+      if (response.ok) {
+        return data as T;
+      }
+      lastError = data;
+      const message = data?.message || "Request failed.";
+      if (message.includes("LLM output invalid") && attempt === 0) {
+        onRetry();
+        continue;
+      }
+      throw Object.assign(new Error(message), { data });
+    }
+    throw Object.assign(new Error("Request failed."), { data: lastError });
+  }
 
   async function refreshLatest(useFallback = false) {
     setLoadingLatest(true);
@@ -395,6 +488,8 @@ export function WizardPage() {
           setMessage("No discovery document has been generated yet.");
           setStatus("idle");
           setDraftFields({});
+          setDebugPrompt(null);
+          setDebugOutput(null);
         }
         return;
       }
@@ -405,6 +500,8 @@ export function WizardPage() {
       if (payload.record) {
         setLatestRecord(payload.record);
         setLatestVersion(payload.record.version);
+        setDebugPrompt(payload.record.lastPrompt ?? null);
+        setDebugOutput(payload.record.lastOutput ?? null);
         setForm({
           productIdea: payload.record.productIdea || "",
           targetUser: payload.record.targetUser || "",
@@ -450,19 +547,13 @@ export function WizardPage() {
       };
 
     try {
-      const response = await fetch(`${API_BASE}/discovery`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(payload)
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data?.message || "Agent call failed.");
-      }
+      const data = await postWithRetry(
+        `${API_BASE}/discovery`,
+        payload,
+        () => {
+          setMessage("Error LLM response. Requesting again...");
+        }
+      );
 
       setStatus((data.status as ApiStatus) || "in_progress");
       if (data.status === "needs_input") {
@@ -474,6 +565,8 @@ export function WizardPage() {
       if (data.status === "in_progress" && data.record) {
         setLatestRecord(data.record);
         setLatestVersion(data.record.version ?? null);
+        setDebugPrompt(data.record.lastPrompt ?? null);
+        setDebugOutput(data.record.lastOutput ?? null);
         setMessage(
           withSupabaseMessage(
             data.resultType === "created"
@@ -489,6 +582,12 @@ export function WizardPage() {
       }
     } catch (err) {
       setStatus("error");
+      if (err?.data?.lastPrompt) {
+        setDebugPrompt(err.data.lastPrompt);
+      }
+      if (typeof err?.data?.lastOutput === "string") {
+        setDebugOutput(err.data.lastOutput);
+      }
       setError(err instanceof Error ? err.message : "Agent call failed.");
     }
   }
@@ -517,20 +616,18 @@ export function WizardPage() {
         const textValue = typeof rawValue === "string" ? rawValue : "";
         value = fromFieldString(textValue, fieldType);
       }
-      const response = await fetch(`${API_BASE}/discovery/field/approve`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ version: latestVersion, fieldKey, value })
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data?.message || "Approval failed.");
-      }
+      const data = await postWithRetry(
+        `${API_BASE}/discovery/field/approve`,
+        { version: latestVersion, fieldKey, value },
+        () => {
+          setMessage("Error LLM response. Requesting again...");
+        }
+      );
       if (data.record) {
         setLatestRecord(data.record);
         setStatus(data.status || "in_progress");
+        setDebugPrompt(data.record.lastPrompt ?? null);
+        setDebugOutput(data.record.lastOutput ?? null);
         setMessage(
           withSupabaseMessage(
             data.status === "approved"
@@ -541,10 +638,25 @@ export function WizardPage() {
         );
       }
     } catch (err) {
+      setStatus("error");
+      if (err?.data?.lastPrompt) {
+        setDebugPrompt(err.data.lastPrompt);
+      }
+      if (typeof err?.data?.lastOutput === "string") {
+        setDebugOutput(err.data.lastOutput);
+      }
       setError(err instanceof Error ? err.message : "Approval failed.");
     } finally {
       setApprovingFieldKey(null);
     }
+  }
+
+  async function clearDocument() {
+    if (!latestVersion) {
+      setError("No document to clear.");
+      return;
+    }
+    setConfirmClearDocument(true);
   }
 
   async function regenerateField(fieldKey: string) {
@@ -558,6 +670,72 @@ export function WizardPage() {
       return;
     }
     await executeRegenerate(fieldKey);
+  }
+
+  async function clearField(fieldKey: string) {
+    if (!latestVersion) {
+      setError("No draft available to clear.");
+      return;
+    }
+    setConfirmClearFieldKey(fieldKey);
+  }
+
+  async function confirmClearField(fieldKey: string) {
+    setClearingFieldKey(fieldKey);
+    setError(null);
+    try {
+      const response = await fetch(`${API_BASE}/discovery/field/clear`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ version: latestVersion, fieldKey })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.message || "Clear failed.");
+      }
+      if (data.record) {
+        setLatestRecord(data.record);
+        setStatus("in_progress");
+        setDebugPrompt(data.record.lastPrompt ?? null);
+        setDebugOutput(data.record.lastOutput ?? null);
+        setMessage("Block cleared.");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Clear failed.");
+    } finally {
+      setClearingFieldKey(null);
+    }
+  }
+
+  async function confirmClearDocumentAction() {
+    setIsClearing(true);
+    setError(null);
+    try {
+      const response = await fetch(`${API_BASE}/discovery/clear`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ version: latestVersion })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.message || "Clear failed.");
+      }
+      if (data.record) {
+        setLatestRecord(data.record);
+        setStatus("in_progress");
+        setDebugPrompt(data.record.lastPrompt ?? null);
+        setDebugOutput(data.record.lastOutput ?? null);
+        setMessage("Document cleared.");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Clear failed.");
+    } finally {
+      setIsClearing(false);
+    }
   }
 
   function hasGeneratedLaterFields(fieldKey: string) {
@@ -591,20 +769,18 @@ export function WizardPage() {
     setError(null);
 
     try {
-      const response = await fetch(`${API_BASE}/discovery/field/regenerate`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ version: latestVersion, fieldKey })
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data?.message || "Regenerate failed.");
-      }
+      const data = await postWithRetry(
+        `${API_BASE}/discovery/field/regenerate`,
+        { version: latestVersion, fieldKey },
+        () => {
+          setMessage("Error LLM response. Requesting again...");
+        }
+      );
       if (data.record) {
         setLatestRecord(data.record);
         setStatus("in_progress");
+        setDebugPrompt(data.record.lastPrompt ?? null);
+        setDebugOutput(data.record.lastOutput ?? null);
         setMessage(
           withSupabaseMessage(
             "Field regenerated. Review and approve.",
@@ -613,6 +789,13 @@ export function WizardPage() {
         );
       }
     } catch (err) {
+      setStatus("error");
+      if (err?.data?.lastPrompt) {
+        setDebugPrompt(err.data.lastPrompt);
+      }
+      if (typeof err?.data?.lastOutput === "string") {
+        setDebugOutput(err.data.lastOutput);
+      }
       setError(err instanceof Error ? err.message : "Regenerate failed.");
     } finally {
       setRegeneratingFieldKey(null);
@@ -655,11 +838,79 @@ export function WizardPage() {
           </div>
         </div>
       )}
+      {confirmClearFieldKey && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
+          <div className="w-full max-w-md rounded-lg border bg-white p-5 shadow-lg">
+            <p className="text-sm font-semibold text-gray-900">Clear block?</p>
+            <p className="mt-2 text-sm text-gray-600">
+              This will clear this block and all later blocks. Continue?
+            </p>
+            <div className="mt-4 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                className="rounded border px-3 py-2 text-sm"
+                onClick={() => setConfirmClearFieldKey(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white"
+                onClick={() => {
+                  const fieldKey = confirmClearFieldKey;
+                  setConfirmClearFieldKey(null);
+                  if (fieldKey) {
+                    void confirmClearField(fieldKey);
+                  }
+                }}
+              >
+                Clear block
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {confirmClearDocument && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
+          <div className="w-full max-w-md rounded-lg border bg-white p-5 shadow-lg">
+            <p className="text-sm font-semibold text-gray-900">Clear document?</p>
+            <p className="mt-2 text-sm text-gray-600">
+              All document data will be lost. Are you sure?
+            </p>
+            <div className="mt-4 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                className="rounded border px-3 py-2 text-sm"
+                onClick={() => setConfirmClearDocument(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white"
+                onClick={() => {
+                  setConfirmClearDocument(false);
+                  void confirmClearDocumentAction();
+                }}
+              >
+                Clear document
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold">Discovery Wizard</h1>
+          <h1 className="flex items-center gap-2 text-xl font-semibold">
+            <img
+              src={discoveryDocumentIcon}
+              alt=""
+              className="h-7 w-7"
+            />
+            Discovery Document Wizard
+          </h1>
           <p className="text-sm text-gray-600">
-            Enter the idea, run the agent, answer missing questions, and approve the document.
+            Enter your idea, then generate the document section by section (recommended) or as a single complete run.
           </p>
         </div>
         <button
@@ -717,7 +968,7 @@ export function WizardPage() {
     <label className="block text-sm font-medium text-gray-700">User notes</label>
     <textarea
       className="mt-1 block w-full rounded border px-3 py-2 text-sm"
-      rows={4}
+      rows={1}
       value={form.notes}
       onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))}
       placeholder="One note per line."
@@ -728,140 +979,262 @@ export function WizardPage() {
     <button
       type="submit"
       className="min-w-[230px] rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
-      disabled={status === "running"}
+      disabled={
+        status === "running" ||
+        (Boolean(latestRecord) && latestRecord?.changeReason !== "Cleared document")
+      }
     >
-      {status === "running" ? "Running…" : "Generate Discovery Document"}
+      {status === "running" ? "Running…" : "Start first section"}
     </button>
 
     <button
       type="button"
       className="rounded border px-3 py-2 text-sm disabled:opacity-60"
-      onClick={() => {
-        setForm({ productIdea: "", targetUser: "", notes: "" });
-        setQuestions([]);
-      }}
-      disabled={status === "running"}
+      disabled
     >
-      Reset form
+      Generate Entire Document
     </button>
+
   </div>
           </form>
 
           <section className="rounded-lg border bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="flex items-center gap-2 text-xl font-semibold">
-                  <img
-                    src={discoveryDocumentIcon}
-                    alt=""
-                    className="h-10 w-10"
-                  />
-                  Discovery Document
-                </h2>
-                <p className="text-sm text-gray-600">
-                  Review the document before granting approval.
-                </p>
+                <h2 className="text-xl font-semibold">Discovery Document</h2>
               </div>
-              <div className="text-right text-sm text-gray-600">
-                <p>Status: {latestRecord?.approved ? "Approved" : "Pending approval"}</p>
-                {latestRecord?.changeReason && <p>Change: {latestRecord.changeReason}</p>}
+              <div className="flex flex-col items-end gap-2 text-right text-sm text-gray-600">
+                {!isEmptyDocumentView && (
+                  <button
+                    type="button"
+                    className="rounded border px-3 py-2 text-sm disabled:opacity-60"
+                    onClick={clearDocument}
+                    disabled={!latestVersion || isClearing}
+                  >
+                    {isClearing ? "Clearing…" : "Clear Document"}
+                  </button>
+                )}
               </div>
             </div>
 
-            <div className="mt-6 space-y-6">
-              {Object.entries(groupedFields).map(([groupName, fields]) => (
-                <SectionGroup key={groupName} title={groupName}>
-                  {fields.map((field) => {
-                    const statusInfo = latestRecord?.fieldStatus?.[field.key];
-                    const isApproved = statusInfo?.approved ?? false;
-                    const isCurrent = latestRecord?.currentFieldKey
-                      ? latestRecord.currentFieldKey === field.key
-                      : false;
-                    const rawValue = draftFields[field.key];
-                    const hasContent = (() => {
-                      if (field.type === "object") {
-                        return Array.isArray(rawValue) && rawValue.length > 0;
-                      }
-                      if (field.type === "array") {
-                        return typeof rawValue === "string" && rawValue.trim().length > 0;
-                      }
-                      return typeof rawValue === "string" && rawValue.trim().length > 0;
-                    })();
-                    const shouldRender =
-                      field.type === "object"
-                        ? isApproved || isCurrent
-                        : isApproved || (isCurrent && hasContent);
-                    if (!shouldRender) {
-                      return null;
+            {isEmptyDocumentView ? (
+              <div className="mt-6 space-y-4">
+                {Object.entries(groupedFields).map(([groupName, fields]) => (
+                  <Accordion
+                    key={groupName}
+                    type="multiple"
+                    value={openGroups.includes(groupName) ? [groupName] : []}
+                    onValueChange={(nextValue) =>
+                      setOpenGroups((prev) => {
+                        const isOpen = nextValue.includes(groupName);
+                        if (isOpen && !prev.includes(groupName)) {
+                          return prev.concat(groupName);
+                        }
+                        if (!isOpen && prev.includes(groupName)) {
+                          return prev.filter((name) => name !== groupName);
+                        }
+                        return prev;
+                      })
                     }
-                    const isEditable =
-                      !!latestRecord && !latestRecord.approved && isCurrent && !isApproved;
-                    const isBlocked = !isEditable;
-                    return field.type === "object" ? (
-                      field.key === "problemUnderstanding.targetUsersSegments" ? (
-                        <TargetSegmentsEditor
-                          key={field.key}
-                          title={field.label}
-                          segments={
-                            Array.isArray(draftFields[field.key])
-                              ? (draftFields[field.key] as TargetSegment[])
-                              : []
+                    className="rounded-lg border border-slate-200 bg-slate-50"
+                  >
+                    <AccordionItem value={groupName} className="border-0">
+                      <AccordionTrigger
+                        className="px-4 py-3 text-sm font-semibold uppercase tracking-wide text-gray-400 hover:no-underline [&>svg]:invisible"
+                        disabled
+                      >
+                        {groupName}
+                      </AccordionTrigger>
+                      <AccordionContent className="px-4 pb-4">
+                        <Accordion
+                          type="multiple"
+                          value={openFieldsByGroup[groupName] || []}
+                          onValueChange={(nextValue) =>
+                            setOpenFieldsByGroup((prev) => ({
+                              ...prev,
+                              [groupName]: nextValue
+                            }))
                           }
-                          onChange={(nextValue) =>
-                            setDraftFields((prev) => ({ ...prev, [field.key]: nextValue }))
-                          }
-                          onApprove={() => approveField(field.key, field.type)}
-                          onRegenerate={() => regenerateField(field.key)}
-                          approved={isApproved}
-                          disabled={isBlocked}
-                          isApproving={approvingFieldKey === field.key}
-                          isRegenerating={regeneratingFieldKey === field.key}
-                        />
-                      ) : (
-                        <PainPointsEditor
-                          key={field.key}
-                          title={field.label}
-                          themes={
-                            Array.isArray(draftFields[field.key])
-                              ? (draftFields[field.key] as PainPointTheme[])
-                              : []
-                          }
-                          onChange={(nextValue) =>
-                            setDraftFields((prev) => ({ ...prev, [field.key]: nextValue }))
-                          }
-                          onApprove={() => approveField(field.key, field.type)}
-                          onRegenerate={() => regenerateField(field.key)}
-                          approved={isApproved}
-                          disabled={isBlocked}
-                          isApproving={approvingFieldKey === field.key}
-                          isRegenerating={regeneratingFieldKey === field.key}
-                        />
-                      )
-                    ) : (
-                      <FieldEditor
-                        key={field.key}
-                        title={field.label}
-                        type={field.type}
-                        value={
-                          typeof draftFields[field.key] === "string"
-                            ? (draftFields[field.key] as string)
-                            : ""
+                          className="space-y-3"
+                        >
+                          {fields.map((field) => (
+                            <AccordionItem key={field.key} value={field.key} className="border-0">
+                              <AccordionTrigger
+                                className="py-2 text-sm font-semibold text-gray-400 hover:no-underline [&>svg]:invisible"
+                                disabled
+                              >
+                                {field.label}
+                              </AccordionTrigger>
+                            </AccordionItem>
+                          ))}
+                        </Accordion>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-6 space-y-4">
+                {Object.entries(groupedFields).map(([groupName, fields]) => (
+                  <Accordion
+                    key={groupName}
+                    type="multiple"
+                    value={openGroups.includes(groupName) ? [groupName] : []}
+                    onValueChange={(nextValue) =>
+                      setOpenGroups((prev) => {
+                        const isOpen = nextValue.includes(groupName);
+                        if (isOpen && !prev.includes(groupName)) {
+                          return prev.concat(groupName);
                         }
-                        onChange={(nextValue) =>
-                          setDraftFields((prev) => ({ ...prev, [field.key]: nextValue }))
+                        if (!isOpen && prev.includes(groupName)) {
+                          return prev.filter((name) => name !== groupName);
                         }
-                        onApprove={() => approveField(field.key, field.type)}
-                        onRegenerate={() => regenerateField(field.key)}
-                        approved={isApproved}
-                        disabled={isBlocked}
-                        isApproving={approvingFieldKey === field.key}
-                        isRegenerating={regeneratingFieldKey === field.key}
-                      />
-                    );
-                  })}
-                </SectionGroup>
-              ))}
-            </div>
+                        return prev;
+                      })
+                    }
+                    className="rounded-lg border border-slate-200 bg-slate-50"
+                  >
+                    <AccordionItem value={groupName} className="border-0">
+                      <AccordionTrigger className="px-4 py-3 text-sm font-semibold uppercase tracking-wide text-slate-600 hover:no-underline">
+                        {groupName}
+                      </AccordionTrigger>
+                      <AccordionContent className="px-4 pb-4">
+                        <Accordion
+                          type="multiple"
+                          value={openFieldsByGroup[groupName] || []}
+                          onValueChange={(nextValue) =>
+                            setOpenFieldsByGroup((prev) => ({
+                              ...prev,
+                              [groupName]: nextValue
+                            }))
+                          }
+                          className="space-y-3"
+                        >
+                          {fields.map((field) => {
+                            const statusInfo = latestRecord?.fieldStatus?.[field.key];
+                            const isApproved = statusInfo?.approved ?? false;
+                            const isCurrent = latestRecord?.currentFieldKey
+                              ? latestRecord.currentFieldKey === field.key
+                              : false;
+                            const shouldRender = isApproved || isCurrent;
+                            const isEditable =
+                              !!latestRecord && !latestRecord.approved && isCurrent && !isApproved;
+                            const isBlocked = !isEditable;
+                            const headerClass = shouldRender
+                              ? "text-gray-800"
+                              : "text-gray-400";
+                            if (!shouldRender) {
+                              return (
+                                <AccordionItem key={field.key} value={field.key} className="border-0">
+                                  <AccordionTrigger
+                                    className={`py-2 text-sm font-semibold hover:no-underline [&>svg]:invisible ${headerClass}`}
+                                    disabled
+                                  >
+                                    {field.label}
+                                  </AccordionTrigger>
+                                </AccordionItem>
+                              );
+                            }
+                            return (
+                              <AccordionItem key={field.key} value={field.key} className="border-0">
+                                <AccordionTrigger
+                                  className={`py-2 text-sm font-semibold hover:no-underline ${headerClass}`}
+                                >
+                                  {field.label}
+                                  {isApproved && (
+                                    <span className="ml-2 text-xs font-medium text-green-600">
+                                      Approved
+                                    </span>
+                                  )}
+                                </AccordionTrigger>
+                                <AccordionContent className="pt-2">
+                                  {field.type === "object" ? (
+                                    field.key === "problemUnderstanding.targetUsersSegments" ? (
+                                      <TargetSegmentsEditor
+                                        title={field.label}
+                                        showTitle={false}
+                                        segments={
+                                          Array.isArray(draftFields[field.key])
+                                            ? (draftFields[field.key] as TargetSegment[])
+                                            : []
+                                        }
+                                        onChange={(nextValue) =>
+                                          setDraftFields((prev) => ({
+                                            ...prev,
+                                            [field.key]: nextValue
+                                          }))
+                                        }
+                                        onApprove={() => approveField(field.key, field.type)}
+                                        onRegenerate={() => regenerateField(field.key)}
+                                        onClear={() => clearField(field.key)}
+                                        approved={isApproved}
+                                        disabled={isBlocked}
+                                        isApproving={approvingFieldKey === field.key}
+                                        isRegenerating={regeneratingFieldKey === field.key}
+                                        isClearing={clearingFieldKey === field.key}
+                                      />
+                                    ) : (
+                                      <PainPointsEditor
+                                        title={field.label}
+                                        showTitle={false}
+                                        themes={
+                                          Array.isArray(draftFields[field.key])
+                                            ? (draftFields[field.key] as PainPointTheme[])
+                                            : []
+                                        }
+                                        onChange={(nextValue) =>
+                                          setDraftFields((prev) => ({
+                                            ...prev,
+                                            [field.key]: nextValue
+                                          }))
+                                        }
+                                        onApprove={() => approveField(field.key, field.type)}
+                                        onRegenerate={() => regenerateField(field.key)}
+                                        onClear={() => clearField(field.key)}
+                                        approved={isApproved}
+                                        disabled={isBlocked}
+                                        isApproving={approvingFieldKey === field.key}
+                                        isRegenerating={regeneratingFieldKey === field.key}
+                                        isClearing={clearingFieldKey === field.key}
+                                      />
+                                    )
+                                  ) : (
+                                    <FieldEditor
+                                      title={field.label}
+                                      showTitle={false}
+                                      type={field.type}
+                                      value={
+                                        typeof draftFields[field.key] === "string"
+                                          ? (draftFields[field.key] as string)
+                                          : ""
+                                      }
+                                      onChange={(nextValue) =>
+                                        setDraftFields((prev) => ({
+                                          ...prev,
+                                          [field.key]: nextValue
+                                        }))
+                                      }
+                                      onApprove={() => approveField(field.key, field.type)}
+                                      onRegenerate={() => regenerateField(field.key)}
+                                      onClear={() => clearField(field.key)}
+                                      approved={isApproved}
+                                      disabled={isBlocked}
+                                      isApproving={approvingFieldKey === field.key}
+                                      isRegenerating={regeneratingFieldKey === field.key}
+                                      isClearing={clearingFieldKey === field.key}
+                                    />
+                                  )}
+                                </AccordionContent>
+                              </AccordionItem>
+                            );
+                          })}
+                        </Accordion>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                ))}
+              </div>
+            )}
           </section>
         </div>
 
@@ -908,37 +1281,46 @@ export function WizardPage() {
             </p>
           </div>
 
-          <div className="space-y-2 text-sm">
-            <p className="font-medium">Incoming info</p>
-            <pre className="whitespace-pre-wrap rounded border bg-gray-50 p-3 text-xs text-gray-700">
-              {inputSummary}
-            </pre>
-          </div>
+          <Accordion type="multiple" className="space-y-2">
+            <AccordionItem value="incoming" className="border rounded">
+              <AccordionTrigger className="px-3 py-2 text-sm font-medium hover:no-underline">
+                Incoming info
+              </AccordionTrigger>
+              <AccordionContent className="px-3 pb-3">
+                <pre className="whitespace-pre-wrap rounded border bg-gray-50 p-3 text-xs text-gray-700">
+                  {inputSummary}
+                </pre>
+              </AccordionContent>
+            </AccordionItem>
 
-          <div className="space-y-2 text-sm">
-            <p className="font-medium">Current output JSON</p>
-            <pre className="whitespace-pre-wrap rounded border bg-gray-50 p-3 text-xs text-gray-700">
-              {currentOutputJson || "No output yet."}
-            </pre>
-          </div>
+            <AccordionItem value="llm-prompt" className="border rounded">
+              <AccordionTrigger className="px-3 py-2 text-sm font-medium hover:no-underline">
+                LLM Prompt
+              </AccordionTrigger>
+              <AccordionContent className="px-3 pb-3">
+                <pre className="whitespace-pre-wrap rounded border bg-gray-50 p-3 text-xs text-gray-700">
+                  {status === "error"
+                    ? debugPrompt || latestRecord?.lastPrompt || "Not available."
+                    : latestRecord?.lastPrompt || debugPrompt || "Not available."}
+                </pre>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="llm-output" className="border rounded">
+              <AccordionTrigger className="px-3 py-2 text-sm font-medium hover:no-underline">
+                LLM output
+              </AccordionTrigger>
+              <AccordionContent className="px-3 pb-3">
+                <pre className="whitespace-pre-wrap rounded border bg-gray-50 p-3 text-xs text-gray-700">
+                  {status === "error"
+                    ? debugOutput || latestRecord?.lastOutput || "Not available."
+                    : latestRecord?.lastOutput || debugOutput || "Not available."}
+                </pre>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </aside>
       </section>
-    </div>
-  );
-}
-
-type SectionGroupProps = {
-  title: string;
-  children: ReactNode;
-};
-
-function SectionGroup({ title, children }: SectionGroupProps) {
-  return (
-    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-      <p className="text-sm font-semibold uppercase tracking-wide text-slate-600">
-        {title}
-      </p>
-      <div className="mt-4 space-y-4">{children}</div>
     </div>
   );
 }
@@ -950,10 +1332,12 @@ type FieldEditorProps = {
   onChange: (value: string) => void;
   onApprove: () => void;
   onRegenerate: () => void;
+  onClear: () => void;
   approved: boolean;
   disabled: boolean;
   isApproving: boolean;
   isRegenerating: boolean;
+  isClearing: boolean;
 };
 
 function FieldEditor({
@@ -963,17 +1347,23 @@ function FieldEditor({
   onChange,
   onApprove,
   onRegenerate,
+  onClear,
   approved,
   disabled,
   isApproving,
-  isRegenerating
-}: FieldEditorProps) {
+  isRegenerating,
+  isClearing,
+  showTitle = true
+}: FieldEditorProps & { showTitle?: boolean }) {
+  const isEmpty = !value || value.trim().length === 0;
   return (
     <div className="rounded border bg-white p-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold text-gray-800">{title}</p>
-        {approved && <span className="text-xs font-medium text-green-600">Approved</span>}
-      </div>
+      {showTitle && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold text-gray-800">{title}</p>
+          {approved && <span className="text-xs font-medium text-green-600">Approved</span>}
+        </div>
+      )}
       <textarea
         className="mt-2 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
         rows={type === "array" ? 4 : 3}
@@ -988,7 +1378,7 @@ function FieldEditor({
             type="button"
             className="inline-flex min-w-[96px] items-center justify-center rounded border border-green-600 px-3 py-2 text-sm font-medium text-green-700 disabled:opacity-60"
             onClick={onApprove}
-            disabled={disabled || approved || isApproving}
+            disabled={disabled || approved || isApproving || isEmpty}
           >
             {isApproving ? "Approving…" : "Approve"}
           </button>
@@ -1001,6 +1391,16 @@ function FieldEditor({
         >
           {isRegenerating ? "Regenerating…" : "Regenerate"}
         </button>
+        {!approved && (
+          <button
+            type="button"
+            className="ml-auto rounded border px-3 py-2 text-sm disabled:opacity-60"
+            onClick={onClear}
+            disabled={isClearing}
+          >
+            {isClearing ? "Clearing…" : "Clear block"}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -1012,10 +1412,13 @@ type TargetSegmentsEditorProps = {
   onChange: (segments: TargetSegment[]) => void;
   onApprove: () => void;
   onRegenerate: () => void;
+  onClear: () => void;
   approved: boolean;
   disabled: boolean;
   isApproving: boolean;
   isRegenerating: boolean;
+  isClearing: boolean;
+  showTitle?: boolean;
 };
 
 function TargetSegmentsEditor({
@@ -1024,12 +1427,16 @@ function TargetSegmentsEditor({
   onChange,
   onApprove,
   onRegenerate,
+  onClear,
   approved,
   disabled,
   isApproving,
-  isRegenerating
+  isRegenerating,
+  isClearing,
+  showTitle = true
 }: TargetSegmentsEditorProps) {
-  const hasSegments = segments.length > 0;
+  const safeSegments = Array.isArray(segments) ? segments : [];
+  const hasSegments = safeSegments.length > 0;
   const [openSegments, setOpenSegments] = useState<string[]>([]);
 
   useEffect(() => {
@@ -1091,12 +1498,14 @@ function TargetSegmentsEditor({
 
   return (
     <div className="rounded border bg-white p-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold text-gray-800">{title}</p>
-        {approved && <span className="text-xs font-medium text-green-600">Approved</span>}
-      </div>
+      {showTitle && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold text-gray-800">{title}</p>
+          {approved && <span className="text-xs font-medium text-green-600">Approved</span>}
+        </div>
+      )}
 
-      {segments.length === 0 && (
+      {safeSegments.length === 0 && (
         <p className="mt-3 text-xs text-gray-500">
           No segments yet. Add one to begin.
         </p>
@@ -1108,7 +1517,7 @@ function TargetSegmentsEditor({
         onValueChange={setOpenSegments}
         className="mt-3 space-y-4"
       >
-        {segments.map((segment, segmentIndex) => {
+        {safeSegments.map((segment, segmentIndex) => {
           const segmentKey = `segment-${segmentIndex}`;
           return (
             <AccordionItem
@@ -1125,7 +1534,7 @@ function TargetSegmentsEditor({
                     <label className="block text-xs text-gray-600">Segment name</label>
                   </div>
                   <input
-                    className="mt-1 w-full rounded border px-2 py-1 text-xs disabled:bg-gray-100"
+                    className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
                     value={segment.segment_name}
                     onChange={(event) =>
                       updateSegment(segmentIndex, {
@@ -1141,7 +1550,7 @@ function TargetSegmentsEditor({
                     Business relevance
                   </label>
                   <input
-                    className="mt-1 w-full rounded border px-2 py-1 text-xs disabled:bg-gray-100"
+                    className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
                     value={segment.business_relevance}
                     onChange={(event) =>
                       updateSegment(segmentIndex, {
@@ -1153,28 +1562,31 @@ function TargetSegmentsEditor({
                   />
                 </div>
                 <div className="flex items-end">
-                {!approved && (
-                  <button
-                    type="button"
-                    className="text-[12px] font-normal leading-none text-slate-600 disabled:opacity-60"
-                    onClick={() => removeSegment(segmentIndex)}
-                    disabled={disabled}
-                  >
-                    ⨯
-                  </button>
-                )}
+                  {!approved && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-slate-600 hover:text-slate-700"
+                      onClick={() => removeSegment(segmentIndex)}
+                      disabled={disabled}
+                      aria-label="Remove segment"
+                    >
+                      <Trash2 />
+                    </Button>
+                  )}
                 </div>
               </div>
               <AccordionContent className="pt-0">
                 <div className="mt-3">
                   <div className="mt-2 space-y-3">
-                    {segment.user_groups.map((group, groupIndex) => (
+                    {(segment.user_groups || []).map((group, groupIndex) => (
                       <div key={groupIndex} className="rounded border border-slate-100 p-2">
                         <div className="grid items-start gap-2 md:grid-cols-[1fr_1fr_auto]">
                           <div>
                             <label className="block text-xs text-gray-600">Group name</label>
                             <input
-                              className="mt-1 w-full rounded border px-2 py-1 text-xs disabled:bg-gray-100"
+                              className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
                               value={group.name}
                               onChange={(event) => {
                                 const nextGroups = segment.user_groups.slice();
@@ -1195,7 +1607,7 @@ function TargetSegmentsEditor({
                               Characteristics (one per line)
                             </label>
                             <textarea
-                              className="mt-1 w-full rounded border px-2 py-1 text-xs disabled:bg-gray-100"
+                              className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
                               rows={3}
                               value={group.characteristics.join("\n")}
                               onChange={(event) => {
@@ -1213,16 +1625,19 @@ function TargetSegmentsEditor({
                             />
                           </div>
                           <div className="flex items-start">
-                          {!approved && (
-                            <button
-                              type="button"
-                              className="text-[12px] font-normal leading-none text-slate-600 disabled:opacity-60"
-                              onClick={() => removeUserGroup(segmentIndex, groupIndex)}
-                              disabled={disabled}
-                            >
-                              ⨯
-                            </button>
-                          )}
+                            {!approved && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-slate-600 hover:text-slate-700"
+                                onClick={() => removeUserGroup(segmentIndex, groupIndex)}
+                                disabled={disabled}
+                                aria-label="Remove user group"
+                              >
+                                <Trash2 />
+                              </Button>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -1275,6 +1690,16 @@ function TargetSegmentsEditor({
         >
           {isRegenerating ? "Regenerating…" : "Regenerate"}
         </button>
+        {!approved && (
+          <button
+            type="button"
+            className="ml-auto rounded border px-3 py-2 text-sm disabled:opacity-60"
+            onClick={onClear}
+            disabled={isClearing}
+          >
+            {isClearing ? "Clearing…" : "Clear block"}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -1286,10 +1711,13 @@ type PainPointsEditorProps = {
   onChange: (themes: PainPointTheme[]) => void;
   onApprove: () => void;
   onRegenerate: () => void;
+  onClear: () => void;
   approved: boolean;
   disabled: boolean;
   isApproving: boolean;
   isRegenerating: boolean;
+  isClearing: boolean;
+  showTitle?: boolean;
 };
 
 const RATING_OPTIONS: Array<PainPoint["severity"]> = ["low", "medium", "high"];
@@ -1300,10 +1728,13 @@ function PainPointsEditor({
   onChange,
   onApprove,
   onRegenerate,
+  onClear,
   approved,
   disabled,
   isApproving,
-  isRegenerating
+  isRegenerating,
+  isClearing,
+  showTitle = true
 }: PainPointsEditorProps) {
   const hasThemes = themes.length > 0;
   const [openThemes, setOpenThemes] = useState<string[]>([]);
@@ -1401,10 +1832,12 @@ function PainPointsEditor({
 
   return (
     <div className="rounded border bg-white p-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold text-gray-800">{title}</p>
-        {approved && <span className="text-xs font-medium text-green-600">Approved</span>}
-      </div>
+      {showTitle && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold text-gray-800">{title}</p>
+          {approved && <span className="text-xs font-medium text-green-600">Approved</span>}
+        </div>
+      )}
 
       {themes.length === 0 && (
         <p className="mt-3 text-xs text-gray-500">
@@ -1436,7 +1869,7 @@ function PainPointsEditor({
                     <label className="block text-xs text-gray-600">Theme name</label>
                   </div>
                   <input
-                    className="mt-1 w-full rounded border px-2 py-1 text-xs disabled:bg-gray-100"
+                    className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
                     value={theme.theme_name}
                     onChange={(event) =>
                       updateTheme(themeIndex, { ...theme, theme_name: event.target.value })
@@ -1446,14 +1879,17 @@ function PainPointsEditor({
                 </div>
                 <div className="flex items-start">
                   {!approved && (
-                    <button
+                    <Button
                       type="button"
-                      className="text-[12px] font-normal leading-none text-slate-600 disabled:opacity-60"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-slate-600 hover:text-slate-700"
                       onClick={() => removeTheme(themeIndex)}
                       disabled={disabled}
+                      aria-label="Remove theme"
                     >
-                      ⨯
-                    </button>
+                      <Trash2 />
+                    </Button>
                   )}
                 </div>
               </div>
@@ -1486,7 +1922,7 @@ function PainPointsEditor({
                               </label>
                             </div>
                             <input
-                              className="mt-1 w-full rounded border px-2 py-1 text-xs disabled:bg-gray-100"
+                              className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
                               value={point.name}
                               onChange={(event) => {
                                 const nextPoints = theme.pain_points.slice();
@@ -1504,14 +1940,17 @@ function PainPointsEditor({
                           </div>
                           <div className="flex items-start">
                             {!approved && (
-                              <button
+                              <Button
                                 type="button"
-                                className="text-[12px] font-normal leading-none text-slate-600 disabled:opacity-60"
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-slate-600 hover:text-slate-700"
                                 onClick={() => removePainPoint(themeIndex, pointIndex)}
                                 disabled={disabled}
+                                aria-label="Remove pain point"
                               >
-                                ⨯
-                              </button>
+                                <Trash2 />
+                              </Button>
                             )}
                           </div>
                         </div>
@@ -1520,8 +1959,8 @@ function PainPointsEditor({
                           <div className="mt-2">
                             <label className="block text-xs text-gray-600">Description</label>
                             <textarea
-                              className="mt-1 w-full rounded border px-2 py-1 text-xs disabled:bg-gray-100"
-                              rows={3}
+                              className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                              rows={1}
                               value={point.description}
                               onChange={(event) => {
                                 const nextPoints = theme.pain_points.slice();
@@ -1542,7 +1981,7 @@ function PainPointsEditor({
                             <div>
                               <label className="block text-xs text-gray-600">Severity</label>
                               <select
-                                className="mt-1 w-full rounded border px-2 py-1 text-xs disabled:bg-gray-100"
+                                className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
                                 value={point.severity}
                                 onChange={(event) => {
                                   const nextPoints = theme.pain_points.slice();
@@ -1567,7 +2006,7 @@ function PainPointsEditor({
                             <div>
                               <label className="block text-xs text-gray-600">Frequency</label>
                               <select
-                                className="mt-1 w-full rounded border px-2 py-1 text-xs disabled:bg-gray-100"
+                                className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
                                 value={point.frequency}
                                 onChange={(event) => {
                                   const nextPoints = theme.pain_points.slice();
@@ -1594,7 +2033,7 @@ function PainPointsEditor({
                                 Business importance
                               </label>
                               <select
-                                className="mt-1 w-full rounded border px-2 py-1 text-xs disabled:bg-gray-100"
+                                className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
                                 value={point.business_importance}
                                 onChange={(event) => {
                                   const nextPoints = theme.pain_points.slice();
@@ -1623,8 +2062,8 @@ function PainPointsEditor({
                               Affected user groups (one per line)
                             </label>
                             <textarea
-                              className="mt-1 w-full rounded border px-2 py-1 text-xs disabled:bg-gray-100"
-                              rows={3}
+                              className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                              rows={1}
                               value={point.affected_user_groups.join("\n")}
                               onChange={(event) => {
                                 const nextPoints = theme.pain_points.slice();
@@ -1692,6 +2131,16 @@ function PainPointsEditor({
         >
           {isRegenerating ? "Regenerating…" : "Regenerate"}
         </button>
+        {!approved && (
+          <button
+            type="button"
+            className="ml-auto rounded border px-3 py-2 text-sm disabled:opacity-60"
+            onClick={onClear}
+            disabled={isClearing}
+          >
+            {isClearing ? "Clearing…" : "Clear block"}
+          </button>
+        )}
       </div>
     </div>
   );
