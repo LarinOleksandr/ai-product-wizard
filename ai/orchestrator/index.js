@@ -73,7 +73,7 @@ const FIELD_DEFINITIONS = [
   {
     key: "problemUnderstanding.contextConstraints",
     section: "context-constraints",
-    type: "array"
+    type: "object"
   },
   {
     key: "marketAndCompetitorAnalysis.marketLandscape",
@@ -353,7 +353,10 @@ function buildEmptyDocument() {
       userPainPoints: {
         pain_point_themes: []
       },
-      contextConstraints: []
+      contextConstraints: {
+        contextual_factors: [],
+        constraints: []
+      }
     },
     marketAndCompetitorAnalysis: {
       marketLandscape: [],
@@ -376,6 +379,9 @@ function emptyValueForField(field) {
   }
   if (field.type === "object" && field.outputKey && field.wrapOutputKey) {
     return { [field.outputKey]: [] };
+  }
+  if (field.key === "problemUnderstanding.contextConstraints") {
+    return { contextual_factors: [], constraints: [] };
   }
   if (field.type === "object") {
     return {};
@@ -448,13 +454,29 @@ async function generateFieldValueWithOutput({
   productIdea,
   targetUser,
   userNotes,
-  currentDocument
+  currentDocument,
+  fieldStatus
 }) {
   const promptAssets = await getDiscoveryPromptAssets();
   const sectionPrompt = promptAssets.sectionPromptMap[field.section] || "";
   const sectionSchema = promptAssets.sectionSchemaMap[field.section] || "";
-  const sectionExamples = promptAssets.sectionExampleMap?.[field.section] || "";
+  const sectionExamples = "";
+  const sectionSchemaJson = promptAssets.sectionSchemaJsonMap?.[field.section];
+  const approvedDocument = buildApprovedDocument(currentDocument, fieldStatus);
+  const inputsBlock = `## Inputs (JSON)\n${JSON.stringify(
+    buildIncomingInfo({
+      productIdea,
+      targetUser,
+      userNotes,
+      currentDocument,
+      fieldStatus
+    }),
+    null,
+    2
+  )}`;
   const prompt = buildFieldPrompt({
+    inputsBlock,
+    approvedDocument,
     systemPrompt: promptAssets.systemPrompt,
     productIdea,
     targetUser,
@@ -490,6 +512,7 @@ async function generateFieldValueWithOutput({
   }
 
   let lastRawText = "";
+  let lastValidationErrors = [];
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
       const response = await model.invoke(messages);
@@ -498,23 +521,82 @@ async function generateFieldValueWithOutput({
       const fieldName = field.key.split(".").pop();
       try {
         const parsed = tryParseDiscoveryResponse(response);
+        if (isPlainObject(parsed) && sectionSchemaJson?.type === "object") {
+          const validation = validateAgainstSchema(parsed, sectionSchemaJson);
+          if (validation.valid) {
+            return { value: parsed, prompt, rawText, validationStatus: "valid" };
+          }
+          lastValidationErrors = validation.errors;
+        }
         if (field.outputKey && typeof parsed?.[field.outputKey] !== "undefined") {
           if (field.wrapOutputKey) {
-            return { value: { [field.outputKey]: parsed[field.outputKey] }, prompt, rawText };
+            const value = { [field.outputKey]: parsed[field.outputKey] };
+            const validation = validateAgainstSchema(
+              value,
+              sectionSchemaJson || null
+            );
+            if (!validation.valid) {
+              lastValidationErrors = validation.errors;
+              continue;
+            }
+            return { value, prompt, rawText, validationStatus: "valid" };
           }
-          return { value: parsed[field.outputKey], prompt, rawText };
+          const value = parsed[field.outputKey];
+          const validationValue = sectionSchemaJson?.type === "object"
+            ? { [field.outputKey]: value }
+            : value;
+          const validation = validateAgainstSchema(
+            validationValue,
+            sectionSchemaJson || null
+          );
+          if (!validation.valid) {
+            lastValidationErrors = validation.errors;
+            continue;
+          }
+          return { value, prompt, rawText, validationStatus: "valid" };
         }
         if (fieldName && typeof parsed?.[fieldName] !== "undefined") {
-          return { value: parsed[fieldName], prompt, rawText };
+          const value = parsed[fieldName];
+          const validationValue = sectionSchemaJson?.type === "object"
+            ? { [fieldName]: value }
+            : value;
+          const validation = validateAgainstSchema(
+            validationValue,
+            sectionSchemaJson || null
+          );
+          if (!validation.valid) {
+            lastValidationErrors = validation.errors;
+            continue;
+          }
+          return { value, prompt, rawText, validationStatus: "valid" };
         }
         const nested = getNestedValue(parsed, field.key);
         if (typeof nested !== "undefined") {
-          return { value: nested, prompt, rawText };
+          const validation = validateAgainstSchema(
+            nested,
+            sectionSchemaJson || null
+          );
+          if (!validation.valid) {
+            lastValidationErrors = validation.errors;
+            continue;
+          }
+          return { value: nested, prompt, rawText, validationStatus: "valid" };
         }
       } catch (parseError) {
         if (rawText) {
           const normalized = normalizeRawFieldValue(rawText, field.type);
-          return { value: normalized, prompt, rawText };
+          const validationValue = sectionSchemaJson?.type === "object"
+            ? { [field.outputKey || fieldName || "value"]: normalized }
+            : normalized;
+          const validation = validateAgainstSchema(
+            validationValue,
+            sectionSchemaJson || null
+          );
+          if (!validation.valid) {
+            lastValidationErrors = validation.errors;
+            continue;
+          }
+          return { value: normalized, prompt, rawText, validationStatus: "valid" };
         }
       }
     } catch (error) {
@@ -526,6 +608,7 @@ async function generateFieldValueWithOutput({
   failure.lastPrompt = prompt;
   failure.lastOutput = lastRawText || null;
   failure.lastOutputFieldKey = field.key;
+  failure.validationErrors = lastValidationErrors;
   throw failure;
 }
 
@@ -567,7 +650,7 @@ async function getDiscoveryPromptAssets() {
   const sectionSchemas = [];
   const sectionPromptMap = {};
   const sectionSchemaMap = {};
-  const sectionExampleMap = {};
+  const sectionSchemaJsonMap = {};
   for (const definition of FIELD_DEFINITIONS) {
     const section = definition.section;
     const promptPath = path.join("sections", `${section}.prompt.md`);
@@ -581,15 +664,11 @@ async function getDiscoveryPromptAssets() {
     if (schemaContent) {
       sectionSchemas.push(`Section: ${section}\n${schemaContent}`);
       sectionSchemaMap[section] = schemaContent;
-    }
-    const examplesPath = path.join("sections", `${section}.examples.json`);
-    let examplesContent = await readPromptFileOptional(examplesPath);
-    if (!examplesContent) {
-      const fallbackExamplesPath = path.join("sections", `${section}.example.json`);
-      examplesContent = await readPromptFileOptional(fallbackExamplesPath);
-    }
-    if (examplesContent) {
-      sectionExampleMap[section] = examplesContent;
+      try {
+        sectionSchemaJsonMap[section] = JSON.parse(schemaContent);
+      } catch (error) {
+        console.warn(`Invalid JSON schema for section ${section}.`);
+      }
     }
   }
 
@@ -603,7 +682,7 @@ async function getDiscoveryPromptAssets() {
     sectionSchemas,
     sectionPromptMap,
     sectionSchemaMap,
-    sectionExampleMap
+    sectionSchemaJsonMap
   };
   return promptCache;
 }
@@ -621,24 +700,58 @@ async function readPromptFile(relativePath) {
   }
 }
 
-async function readPromptFileOptional(relativePath) {
-  try {
-    const filePath = path.join(PROMPTS_DIR, relativePath);
-    return await fs.readFile(filePath, "utf8");
-  } catch (error) {
-    if (error.code === "ENOENT") {
-      return "";
-    }
-    throw error;
-  }
-}
-
 function renderTemplate(template, values) {
   return template.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_, key) => {
     return Object.prototype.hasOwnProperty.call(values, key)
       ? String(values[key])
       : "";
   });
+}
+
+function buildApprovedDocument(document, fieldStatus) {
+  if (!document || !fieldStatus) {
+    return {};
+  }
+  const approvedDocument = {};
+  FIELD_DEFINITIONS.forEach((field) => {
+    const statusInfo = fieldStatus[field.key];
+    if (!statusInfo?.approved) {
+      return;
+    }
+    const value = getNestedValue(document, field.key);
+    if (typeof value === "undefined") {
+      return;
+    }
+    setNestedValue(approvedDocument, field.key, value);
+  });
+  return approvedDocument;
+}
+
+function buildIncomingInfo({
+  productIdea,
+  targetUser,
+  userNotes,
+  currentDocument,
+  fieldStatus
+}) {
+  const approvedDocument = buildApprovedDocument(currentDocument, fieldStatus);
+  const incomingInfo = {
+    productIdea: productIdea || "",
+    targetUser: targetUser || "",
+    userNotes: Array.isArray(userNotes) ? userNotes : []
+  };
+  FIELD_DEFINITIONS.forEach((field) => {
+    const statusInfo = fieldStatus?.[field.key];
+    if (!statusInfo?.approved) {
+      return;
+    }
+    const displayKey = field.outputKey || field.key.split(".").pop() || field.key;
+    const value = getNestedValue(approvedDocument, field.key);
+    if (typeof value !== "undefined") {
+      incomingInfo[displayKey] = value;
+    }
+  });
+  return incomingInfo;
 }
 
 const DiscoveryState = Annotation.Root({
@@ -721,7 +834,34 @@ const discoveryDocumentSchema = z
               .nonempty()
           })
           .strict(),
-        contextConstraints: z.array(z.string().min(3)).nonempty()
+        contextConstraints: z
+          .object({
+            contextual_factors: z
+              .array(
+                z
+                  .object({
+                    name: z.string().min(3),
+                    description: z.string().min(3),
+                    impact_on_user_needs: z.string().min(3),
+                    business_implications: z.string().min(3)
+                  })
+                  .strict()
+              )
+              .optional(),
+            constraints: z
+              .array(
+                z
+                  .object({
+                    name: z.string().min(3),
+                    description: z.string().min(3),
+                    impact_on_user_needs: z.string().min(3),
+                    business_implications: z.string().min(3)
+                  })
+                  .strict()
+              )
+              .optional()
+          })
+          .strict()
       })
       .strict(),
     marketAndCompetitorAnalysis: z
@@ -791,7 +931,8 @@ async function discoveryAgentNode(state) {
     lastPrompt: result.lastPrompt,
     lastPromptFieldKey: result.lastPromptFieldKey,
     lastOutput: result.lastOutput,
-    lastOutputFieldKey: result.lastOutputFieldKey
+    lastOutputFieldKey: result.lastOutputFieldKey,
+    lastValidationStatus: result.lastValidationStatus || null
   };
 }
 
@@ -802,12 +943,13 @@ async function produceDiscoveryDocument({ productIdea, targetUser, userMessages 
     throw new Error("No discovery fields configured.");
   }
 
-  const { value: firstValue, prompt, rawText } = await generateFieldValueWithOutput({
+  const { value: firstValue, prompt, rawText, validationStatus } = await generateFieldValueWithOutput({
     field: firstField,
     productIdea,
     targetUser,
     userNotes: userMessages,
-    currentDocument: emptyDocument
+    currentDocument: emptyDocument,
+    fieldStatus: {}
   });
   setNestedValue(emptyDocument, firstField.key, firstValue);
   return {
@@ -815,7 +957,8 @@ async function produceDiscoveryDocument({ productIdea, targetUser, userMessages 
     lastPrompt: prompt,
     lastPromptFieldKey: firstField.key,
     lastOutput: rawText,
-    lastOutputFieldKey: firstField.key
+    lastOutputFieldKey: firstField.key,
+    lastValidationStatus: validationStatus || null
   };
 }
 
@@ -847,6 +990,8 @@ function getChatModel() {
 }
 
 function buildFieldPrompt({
+  inputsBlock,
+  approvedDocument,
   systemPrompt,
   productIdea,
   targetUser,
@@ -869,33 +1014,165 @@ function buildFieldPrompt({
   const schemaBlock = sectionSchema
     ? `## Section schema\n\n${sectionSchema}`
     : "Section schema: missing.";
-  const examplesBlock = sectionExamples
-    ? `## Section examples\n\n${sectionExamples}`
-    : "";
-
   const prompt = [
     systemPrompt || "You are the Discovery Agent.",
+    inputsBlock,
     "Section prompt:",
     sectionPrompt || "Section prompt missing.",
     outputRules ? `Output rules:\n${outputRules}` : "",
-    schemaBlock,
-    examplesBlock
   ]
     .filter(Boolean)
     .join("\n\n");
 
+  const approved = approvedDocument || {};
   return renderTemplate(prompt, {
     productIdea,
     targetUser,
     userNotes: safeNotes.length ? `- ${safeNotes.join("\n- ")}` : "none",
     problemStatement:
-      getNestedValue(currentDocument, "problemUnderstanding.problemStatement") || "",
+      getNestedValue(approved, "problemUnderstanding.problemStatement") || "",
     targetUsersAndSegments: JSON.stringify(
-      getNestedValue(currentDocument, "problemUnderstanding.targetUsersSegments") || {},
+      getNestedValue(approved, "problemUnderstanding.targetUsersSegments") || {},
+      null,
+      2
+    ),
+    userPainPoints: JSON.stringify(
+      getNestedValue(approved, "problemUnderstanding.userPainPoints") || {},
+      null,
+      2
+    ),
+    contextConstraints: JSON.stringify(
+      getNestedValue(approved, "problemUnderstanding.contextConstraints") || [],
+      null,
+      2
+    ),
+    marketLandscape: JSON.stringify(
+      getNestedValue(approved, "marketAndCompetitorAnalysis.marketLandscape") || {},
+      null,
+      2
+    ),
+    competitorInventory: JSON.stringify(
+      getNestedValue(approved, "marketAndCompetitorAnalysis.competitorInventory") || [],
+      null,
+      2
+    ),
+    competitorCapabilities: JSON.stringify(
+      getNestedValue(approved, "marketAndCompetitorAnalysis.competitorCapabilities") || [],
+      null,
+      2
+    ),
+    gapsOpportunities: JSON.stringify(
+      getNestedValue(approved, "marketAndCompetitorAnalysis.gapsOpportunities") || [],
+      null,
+      2
+    ),
+    opportunityStatement:
+      getNestedValue(approved, "opportunityDefinition.opportunityStatement") || "",
+    valueDrivers: JSON.stringify(
+      getNestedValue(approved, "opportunityDefinition.valueDrivers") || [],
+      null,
+      2
+    ),
+    marketFitHypothesis: JSON.stringify(
+      getNestedValue(approved, "opportunityDefinition.marketFitHypothesis") || [],
+      null,
+      2
+    ),
+    feasibilityAssessment: JSON.stringify(
+      getNestedValue(approved, "opportunityDefinition.feasibilityAssessment") || [],
       null,
       2
     )
   });
+}
+
+function isPlainObject(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function validateAgainstSchema(value, schema, path = "") {
+  const errors = [];
+  if (!schema || typeof schema !== "object") {
+    return { valid: true, errors };
+  }
+
+  const pushError = (message) => {
+    errors.push(path ? `${path}: ${message}` : message);
+  };
+
+  if (schema.enum) {
+    if (!schema.enum.includes(value)) {
+      pushError(`Value must be one of: ${schema.enum.join(", ")}`);
+      return { valid: false, errors };
+    }
+  }
+
+  const type = schema.type;
+  if (type === "string") {
+    if (typeof value !== "string") {
+      pushError("Expected string.");
+      return { valid: false, errors };
+    }
+    if (typeof schema.minLength === "number" && value.length < schema.minLength) {
+      pushError(`String length must be >= ${schema.minLength}.`);
+    }
+    return { valid: errors.length === 0, errors };
+  }
+
+  if (type === "array") {
+    if (!Array.isArray(value)) {
+      pushError("Expected array.");
+      return { valid: false, errors };
+    }
+    if (typeof schema.minItems === "number" && value.length < schema.minItems) {
+      pushError(`Array length must be >= ${schema.minItems}.`);
+    }
+    if (schema.items) {
+      value.forEach((item, index) => {
+        const result = validateAgainstSchema(item, schema.items, `${path}[${index}]`);
+        if (!result.valid) {
+          errors.push(...result.errors);
+        }
+      });
+    }
+    return { valid: errors.length === 0, errors };
+  }
+
+  if (type === "object") {
+    if (!isPlainObject(value)) {
+      pushError("Expected object.");
+      return { valid: false, errors };
+    }
+    const properties = schema.properties || {};
+    const required = schema.required || [];
+    required.forEach((key) => {
+      if (!(key in value)) {
+        errors.push(`${path ? `${path}.` : ""}${key}: Missing required property.`);
+      }
+    });
+    if (schema.additionalProperties === false) {
+      Object.keys(value).forEach((key) => {
+        if (!Object.prototype.hasOwnProperty.call(properties, key)) {
+          errors.push(`${path ? `${path}.` : ""}${key}: Additional property not allowed.`);
+        }
+      });
+    }
+    Object.keys(properties).forEach((key) => {
+      if (Object.prototype.hasOwnProperty.call(value, key)) {
+        const result = validateAgainstSchema(
+          value[key],
+          properties[key],
+          path ? `${path}.${key}` : key
+        );
+        if (!result.valid) {
+          errors.push(...result.errors);
+        }
+      }
+    });
+    return { valid: errors.length === 0, errors };
+  }
+
+  return { valid: true, errors };
 }
 
 function tryParseDiscoveryResponse(response) {
@@ -978,11 +1255,30 @@ function buildFallbackDocument(productIdea, targetUser) {
           }
         ]
       },
-      contextConstraints: [
-        "Time constraints for delivery",
-        "Budget and staffing limits",
-        "Data availability and quality"
-      ]
+      contextConstraints: {
+        contextual_factors: [
+          {
+            name: "Time constraints for delivery",
+            description: "Teams operate under limited delivery timelines.",
+            impact_on_user_needs: "Users expect faster clarity and direction.",
+            business_implications: "Delays increase coordination cost."
+          }
+        ],
+        constraints: [
+          {
+            name: "Budget and staffing limits",
+            description: "Resources are limited during discovery.",
+            impact_on_user_needs: "Users need low-effort validation steps.",
+            business_implications: "Scope must stay tight to deliver value."
+          },
+          {
+            name: "Data availability and quality",
+            description: "Inputs may be incomplete or inconsistent.",
+            impact_on_user_needs: "Users require clear assumptions and gaps.",
+            business_implications: "Low data quality can slow confidence."
+          }
+        ]
+      }
     },
     marketAndCompetitorAnalysis: {
       marketLandscape: [
@@ -1085,7 +1381,8 @@ export async function runDiscoveryWorkflow(input) {
     lastPrompt: finalState.lastPrompt || null,
     lastPromptFieldKey: finalState.lastPromptFieldKey || null,
     lastOutput: finalState.lastOutput || null,
-    lastOutputFieldKey: finalState.lastOutputFieldKey || null
+    lastOutputFieldKey: finalState.lastOutputFieldKey || null,
+    lastValidationStatus: finalState.lastValidationStatus || null
   };
 
   const persisted = await persistDiscoveryResult(record);
@@ -1093,7 +1390,8 @@ export async function runDiscoveryWorkflow(input) {
     status: "in_progress",
     resultType: "created",
     record: persisted.record,
-    savedToSupabase: persisted.savedToSupabase
+    savedToSupabase: persisted.savedToSupabase,
+    validationStatus: finalState.lastValidationStatus || null
   };
 }
 
@@ -1338,18 +1636,21 @@ async function approveDiscoveryField({
 
   const nextField = getNextFieldDefinition(fieldStatus);
   if (nextField) {
-    const { value: nextValue, prompt, rawText } = await generateFieldValueWithOutput({
+    const { value: nextValue, prompt, rawText, validationStatus } =
+      await generateFieldValueWithOutput({
       field: nextField,
       productIdea: record.productIdea,
       targetUser: record.targetUser,
       userNotes: record.userMessages || [],
-      currentDocument: record.discoveryDocument
+      currentDocument: record.discoveryDocument,
+      fieldStatus
     });
     setNestedValue(record.discoveryDocument, nextField.key, nextValue);
     record.lastPrompt = prompt;
     record.lastPromptFieldKey = nextField.key;
     record.lastOutput = rawText;
     record.lastOutputFieldKey = nextField.key;
+    record.lastValidationStatus = validationStatus || null;
     record.currentFieldKey = nextField.key;
     record.approved = false;
   } else {
@@ -1364,7 +1665,11 @@ async function approveDiscoveryField({
     `Approved ${fieldKey}`
   );
 
-  return { record: updatedRecord, savedToSupabase };
+  return {
+    record: updatedRecord,
+    savedToSupabase,
+    validationStatus: record.lastValidationStatus || null
+  };
 }
 
 async function regenerateDiscoveryField({ version, fieldKey, approver }) {
@@ -1397,18 +1702,21 @@ async function regenerateDiscoveryField({ version, fieldKey, approver }) {
   record.currentFieldKey = fieldKey;
 
   const field = FIELD_DEFINITIONS[fieldIndex];
-  const { value: nextValue, prompt, rawText } = await generateFieldValueWithOutput({
+  const { value: nextValue, prompt, rawText, validationStatus } =
+    await generateFieldValueWithOutput({
     field,
     productIdea: record.productIdea,
     targetUser: record.targetUser,
     userNotes: record.userMessages || [],
-    currentDocument: record.discoveryDocument
+    currentDocument: record.discoveryDocument,
+    fieldStatus
   });
   setNestedValue(record.discoveryDocument, field.key, nextValue);
   record.lastPrompt = prompt;
   record.lastPromptFieldKey = field.key;
   record.lastOutput = rawText;
   record.lastOutputFieldKey = field.key;
+  record.lastValidationStatus = validationStatus || null;
 
   const fieldApprovalHistory = Array.isArray(record.fieldApprovalHistory)
     ? record.fieldApprovalHistory
@@ -1427,7 +1735,11 @@ async function regenerateDiscoveryField({ version, fieldKey, approver }) {
     `Regenerated ${fieldKey}`
   );
 
-  return { record: updatedRecord, savedToSupabase };
+  return {
+    record: updatedRecord,
+    savedToSupabase,
+    validationStatus: record.lastValidationStatus || null
+  };
 }
 
 function parseRequestBody(req) {
@@ -1474,7 +1786,8 @@ const server = http.createServer(async (req, res) => {
       sendJson(res, 200, {
         status: result.record.approved ? "approved" : "in_progress",
         record: result.record,
-        savedToSupabase: result.savedToSupabase
+        savedToSupabase: result.savedToSupabase,
+        validationStatus: result.validationStatus || null
       });
       return;
     }
@@ -1489,7 +1802,8 @@ const server = http.createServer(async (req, res) => {
       sendJson(res, 200, {
         status: "in_progress",
         record: result.record,
-        savedToSupabase: result.savedToSupabase
+        savedToSupabase: result.savedToSupabase,
+        validationStatus: result.validationStatus || null
       });
       return;
     }

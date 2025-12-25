@@ -38,6 +38,18 @@ type PainPointTheme = {
   pain_points: PainPoint[];
 };
 
+type ContextConstraintItem = {
+  name: string;
+  description: string;
+  impact_on_user_needs: string;
+  business_implications: string;
+};
+
+type ContextConstraints = {
+  contextual_factors: ContextConstraintItem[];
+  constraints: ContextConstraintItem[];
+};
+
 type DiscoveryDocument = {
   problemUnderstanding?: {
     problemStatement?: string;
@@ -47,7 +59,7 @@ type DiscoveryDocument = {
     userPainPoints?: {
       pain_point_themes?: PainPointTheme[];
     };
-    contextConstraints?: string[];
+    contextConstraints?: ContextConstraints;
   };
   marketAndCompetitorAnalysis?: {
     marketLandscape?: string[];
@@ -108,7 +120,10 @@ const emptyDocument: DiscoveryDocument = {
     userPainPoints: {
       pain_point_themes: []
     },
-    contextConstraints: []
+    contextConstraints: {
+      contextual_factors: [],
+      constraints: []
+    }
   },
   marketAndCompetitorAnalysis: {
     marketLandscape: [],
@@ -155,7 +170,7 @@ const fieldDefinitions: FieldDefinition[] = [
   {
     key: "problemUnderstanding.contextConstraints",
     label: "Context & Constraints",
-    type: "array",
+    type: "object",
     group: "Problem Understanding"
   },
   {
@@ -275,7 +290,7 @@ export function WizardPage() {
   const [debugPrompt, setDebugPrompt] = useState<string | null>(null);
   const [debugOutput, setDebugOutput] = useState<string | null>(null);
   const [draftFields, setDraftFields] = useState<
-    Record<string, string | TargetSegment[] | PainPointTheme[]>
+    Record<string, string | TargetSegment[] | PainPointTheme[] | ContextConstraints>
   >({});
   const [approvingFieldKey, setApprovingFieldKey] = useState<string | null>(null);
   const [regeneratingFieldKey, setRegeneratingFieldKey] = useState<string | null>(null);
@@ -311,6 +326,9 @@ export function WizardPage() {
     }
     if (currentField.type === "object") {
       const items = draftFields[currentField.key];
+      if (currentField.key === "problemUnderstanding.contextConstraints") {
+        return items && typeof items === "object" ? items : null;
+      }
       return Array.isArray(items) ? items : null;
     }
     const rawValue = draftFields[currentField.key];
@@ -387,12 +405,27 @@ export function WizardPage() {
         ? getNestedValue(latestRecord.discoveryDocument || emptyDocument, field.key)
         : "";
       if (field.type === "object") {
-        const outputKey = field.outputKey || "";
-        const collection =
-          outputKey && typeof value === "object" && value !== null
-            ? (value as Record<string, unknown>)[outputKey]
-            : undefined;
-        nextDrafts[field.key] = Array.isArray(collection) ? collection : [];
+        if (field.key === "problemUnderstanding.contextConstraints") {
+          const constraintsValue =
+            typeof value === "object" && value !== null
+              ? (value as ContextConstraints)
+              : { contextual_factors: [], constraints: [] };
+          nextDrafts[field.key] = {
+            contextual_factors: Array.isArray(constraintsValue.contextual_factors)
+              ? constraintsValue.contextual_factors
+              : [],
+            constraints: Array.isArray(constraintsValue.constraints)
+              ? constraintsValue.constraints
+              : []
+          };
+        } else {
+          const outputKey = field.outputKey || "";
+          const collection =
+            outputKey && typeof value === "object" && value !== null
+              ? (value as Record<string, unknown>)[outputKey]
+              : undefined;
+          nextDrafts[field.key] = Array.isArray(collection) ? collection : [];
+        }
       } else {
         nextDrafts[field.key] = toFieldString(value, field.type);
       }
@@ -411,6 +444,8 @@ export function WizardPage() {
 
   const withSupabaseMessage = (text: string, saved?: boolean) =>
     saved ? `${text} Saved to Supabase.` : text;
+  const withValidationMessage = (text: string, status?: string | null) =>
+    status === "valid" ? `${text} JSON validated.` : text;
   const isEmptyDocumentView =
     !latestRecord || latestRecord.changeReason === "Cleared document";
 
@@ -443,7 +478,7 @@ export function WizardPage() {
         [groupName]: currentOpen.concat(currentFieldKey)
       };
     });
-  }, [latestRecord?.currentFieldKey]);
+  }, [latestRecord?.currentFieldKey, latestRecord?.discoveryDocument]);
 
   async function postWithRetry<T>(
     url: string,
@@ -568,11 +603,14 @@ export function WizardPage() {
         setDebugPrompt(data.record.lastPrompt ?? null);
         setDebugOutput(data.record.lastOutput ?? null);
         setMessage(
-          withSupabaseMessage(
-            data.resultType === "created"
-              ? "New discovery document started. Approve each field in order."
-              : "Continue approving fields in order.",
-            data.savedToSupabase
+          withValidationMessage(
+            withSupabaseMessage(
+              data.resultType === "created"
+                ? "New discovery document started. Approve each field in order."
+                : "Continue approving fields in order.",
+              data.savedToSupabase
+            ),
+            data.validationStatus
           )
         );
       }
@@ -629,11 +667,14 @@ export function WizardPage() {
         setDebugPrompt(data.record.lastPrompt ?? null);
         setDebugOutput(data.record.lastOutput ?? null);
         setMessage(
-          withSupabaseMessage(
-            data.status === "approved"
-              ? "All fields approved. Discovery document is complete."
-              : "Field approved. Next field is ready.",
-            data.savedToSupabase
+          withValidationMessage(
+            withSupabaseMessage(
+              data.status === "approved"
+                ? "All fields approved. Discovery document is complete."
+                : "Field approved. Next field is ready.",
+              data.savedToSupabase
+            ),
+            data.validationStatus
           )
         );
       }
@@ -782,9 +823,12 @@ export function WizardPage() {
         setDebugPrompt(data.record.lastPrompt ?? null);
         setDebugOutput(data.record.lastOutput ?? null);
         setMessage(
-          withSupabaseMessage(
-            "Field regenerated. Review and approve.",
-            data.savedToSupabase
+          withValidationMessage(
+            withSupabaseMessage(
+              "Field regenerated. Review and approve.",
+              data.savedToSupabase
+            ),
+            data.validationStatus
           )
         );
       }
@@ -1173,6 +1217,31 @@ export function WizardPage() {
                                         isRegenerating={regeneratingFieldKey === field.key}
                                         isClearing={clearingFieldKey === field.key}
                                       />
+                                    ) : field.key === "problemUnderstanding.contextConstraints" ? (
+                                      <ContextConstraintsEditor
+                                        title={field.label}
+                                        showTitle={false}
+                                        value={
+                                          typeof draftFields[field.key] === "object" &&
+                                          draftFields[field.key] !== null
+                                            ? (draftFields[field.key] as ContextConstraints)
+                                            : { contextual_factors: [], constraints: [] }
+                                        }
+                                        onChange={(nextValue) =>
+                                          setDraftFields((prev) => ({
+                                            ...prev,
+                                            [field.key]: nextValue
+                                          }))
+                                        }
+                                        onApprove={() => approveField(field.key, field.type)}
+                                        onRegenerate={() => regenerateField(field.key)}
+                                        onClear={() => clearField(field.key)}
+                                        approved={isApproved}
+                                        disabled={isBlocked}
+                                        isApproving={approvingFieldKey === field.key}
+                                        isRegenerating={regeneratingFieldKey === field.key}
+                                        isClearing={clearingFieldKey === field.key}
+                                      />
                                     ) : (
                                       <PainPointsEditor
                                         title={field.label}
@@ -1274,25 +1343,7 @@ export function WizardPage() {
             </div>
           )}
 
-          <div className="space-y-2 text-sm">
-            <p className="font-medium">Actions</p>
-            <p className="text-gray-600">
-              Approve each field in order. The next field appears after approval.
-            </p>
-          </div>
-
           <Accordion type="multiple" className="space-y-2">
-            <AccordionItem value="incoming" className="border rounded">
-              <AccordionTrigger className="px-3 py-2 text-sm font-medium hover:no-underline">
-                Incoming info
-              </AccordionTrigger>
-              <AccordionContent className="px-3 pb-3">
-                <pre className="whitespace-pre-wrap rounded border bg-gray-50 p-3 text-xs text-gray-700">
-                  {inputSummary}
-                </pre>
-              </AccordionContent>
-            </AccordionItem>
-
             <AccordionItem value="llm-prompt" className="border rounded">
               <AccordionTrigger className="px-3 py-2 text-sm font-medium hover:no-underline">
                 LLM Prompt
@@ -1549,8 +1600,9 @@ function TargetSegmentsEditor({
                   <label className="block text-xs text-gray-600">
                     Business relevance
                   </label>
-                  <input
+                  <textarea
                     className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                    rows={2}
                     value={segment.business_relevance}
                     onChange={(event) =>
                       updateSegment(segmentIndex, {
@@ -2119,6 +2171,240 @@ function PainPointsEditor({
             className="inline-flex min-w-[96px] items-center justify-center rounded border border-green-600 px-3 py-2 text-sm font-medium text-green-700 disabled:opacity-60"
             onClick={onApprove}
             disabled={disabled || !hasThemes || isApproving}
+          >
+            {isApproving ? "Approving…" : "Approve"}
+          </button>
+        )}
+        <button
+          type="button"
+          className="inline-flex min-w-[108px] items-center justify-center rounded border border-blue-600 px-3 py-2 text-sm font-medium text-blue-700 disabled:opacity-60"
+          onClick={onRegenerate}
+          disabled={isRegenerating}
+        >
+          {isRegenerating ? "Regenerating…" : "Regenerate"}
+        </button>
+        {!approved && (
+          <button
+            type="button"
+            className="ml-auto rounded border px-3 py-2 text-sm disabled:opacity-60"
+            onClick={onClear}
+            disabled={isClearing}
+          >
+            {isClearing ? "Clearing…" : "Clear block"}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+type ContextConstraintsEditorProps = {
+  title: string;
+  value: ContextConstraints;
+  onChange: (value: ContextConstraints) => void;
+  onApprove: () => void;
+  onRegenerate: () => void;
+  onClear: () => void;
+  approved: boolean;
+  disabled: boolean;
+  isApproving: boolean;
+  isRegenerating: boolean;
+  isClearing: boolean;
+  showTitle?: boolean;
+};
+
+function ContextConstraintsEditor({
+  title,
+  value,
+  onChange,
+  onApprove,
+  onRegenerate,
+  onClear,
+  approved,
+  disabled,
+  isApproving,
+  isRegenerating,
+  isClearing,
+  showTitle = true
+}: ContextConstraintsEditorProps) {
+  const safeValue: ContextConstraints = {
+    contextual_factors: Array.isArray(value?.contextual_factors)
+      ? value.contextual_factors
+      : [],
+    constraints: Array.isArray(value?.constraints) ? value.constraints : []
+  };
+
+  const updateList = (
+    key: keyof ContextConstraints,
+    nextItems: ContextConstraintItem[]
+  ) => {
+    onChange({ ...safeValue, [key]: nextItems });
+  };
+
+  const updateItem = (
+    key: keyof ContextConstraints,
+    index: number,
+    nextItem: ContextConstraintItem
+  ) => {
+    const items = safeValue[key].slice();
+    items[index] = nextItem;
+    updateList(key, items);
+  };
+
+  const addItem = (key: keyof ContextConstraints) => {
+    updateList(key, safeValue[key].concat([
+      {
+        name: "",
+        description: "",
+        impact_on_user_needs: "",
+        business_implications: ""
+      }
+    ]));
+  };
+
+  const removeItem = (key: keyof ContextConstraints, index: number) => {
+    const items = safeValue[key].slice();
+    items.splice(index, 1);
+    updateList(key, items);
+  };
+
+  const renderList = (label: string, key: keyof ContextConstraints) => (
+    <Accordion type="multiple" defaultValue={[key]}>
+      <AccordionItem value={key} className="border-0">
+        <AccordionTrigger className="py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 hover:no-underline">
+          {label}
+        </AccordionTrigger>
+        <AccordionContent className="pt-2">
+          <Accordion type="multiple" className="space-y-3">
+        {safeValue[key].map((item, index) => {
+          const itemKey = `${key}-${index}`;
+          return (
+            <AccordionItem
+              key={itemKey}
+              value={itemKey}
+              className="rounded border border-slate-100 p-2"
+            >
+              <div className="grid items-start gap-2 md:grid-cols-[1fr_auto]">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <AccordionTrigger className="flex-none justify-center gap-0 py-0 text-slate-600 hover:no-underline [&>svg]:h-3 [&>svg]:w-3">
+                      <span className="sr-only">Toggle item</span>
+                    </AccordionTrigger>
+                    <label className="block text-xs text-gray-600">Name</label>
+                  </div>
+                  <input
+                    className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                    value={item.name}
+                    onChange={(event) =>
+                      updateItem(key, index, { ...item, name: event.target.value })
+                    }
+                    disabled={disabled || approved}
+                  />
+                </div>
+                <div className="flex items-start">
+                  {!approved && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-slate-600 hover:text-slate-700"
+                      onClick={() => removeItem(key, index)}
+                      disabled={disabled}
+                      aria-label={`Remove ${label.toLowerCase()} item`}
+                    >
+                      <Trash2 />
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <AccordionContent className="pt-0">
+                <div className="mt-2">
+                  <label className="block text-xs text-gray-600">Description</label>
+                  <textarea
+                    className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                    rows={1}
+                    value={item.description}
+                    onChange={(event) =>
+                      updateItem(key, index, { ...item, description: event.target.value })
+                    }
+                    disabled={disabled || approved}
+                  />
+                </div>
+                <div className="mt-2 grid gap-3 md:grid-cols-2">
+                  <div>
+                    <label className="block text-xs text-gray-600">
+                      Impact on user needs
+                    </label>
+                    <textarea
+                      className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                      rows={1}
+                      value={item.impact_on_user_needs}
+                      onChange={(event) =>
+                        updateItem(key, index, {
+                          ...item,
+                          impact_on_user_needs: event.target.value
+                        })
+                      }
+                      disabled={disabled || approved}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-600">
+                      Business implications
+                    </label>
+                    <textarea
+                      className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                      rows={1}
+                      value={item.business_implications}
+                      onChange={(event) =>
+                        updateItem(key, index, {
+                          ...item,
+                          business_implications: event.target.value
+                        })
+                      }
+                      disabled={disabled || approved}
+                    />
+                  </div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          );
+        })}
+          </Accordion>
+          {!approved && (
+            <button
+              type="button"
+              className="mt-3 text-xs text-blue-600 disabled:opacity-60"
+              onClick={() => addItem(key)}
+              disabled={disabled}
+            >
+              + {label === "Contextual factors" ? "Factor" : "Constraint"}
+            </button>
+          )}
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
+  );
+
+  return (
+    <div className="rounded border bg-white p-4">
+      {showTitle && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold text-gray-800">{title}</p>
+          {approved && <span className="text-xs font-medium text-green-600">Approved</span>}
+        </div>
+      )}
+
+      {renderList("Contextual factors", "contextual_factors")}
+      {renderList("Constraints", "constraints")}
+
+      <div className="mt-4 flex items-center gap-2">
+        {!approved && (
+          <button
+            type="button"
+            className="inline-flex min-w-[96px] items-center justify-center rounded border border-green-600 px-3 py-2 text-sm font-medium text-green-700 disabled:opacity-60"
+            onClick={onApprove}
+            disabled={disabled || isApproving}
           >
             {isApproving ? "Approving…" : "Approve"}
           </button>
