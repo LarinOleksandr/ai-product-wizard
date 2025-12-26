@@ -25,14 +25,22 @@ Produce a **Context & Constraints** section that identifies contextual factors a
 - Avoid deep psychological or behavioral assumptions.
 - Unlimited number of items; include all relevant, omit irrelevant.
 
+## Anti-copy constraints (hard)
+- Generate the output **from scratch** using only the Inputs and domain-generic reasoning.
+- The output is **invalid** if it contains **any sequence of 6+ consecutive tokens** appearing anywhere in the example section.
+- Do not reuse any example field values, sentence structures, or named capability labels.
+- If you detect you are reproducing any example-like phrasing, rewrite using different wording.
+- Do not extract product idea from examples.
+
 ## Output contract
 - Return **only** the JSON object for this section.
-- Do not include schema text or commentary.
+- Do not include schema text, explanations, or commentary.
 
 ## Section examples
 - Examples show structure, tone, and specificity.
 - Do not copy or paraphrase examples.
-- Don not use examples to define scope or number of elements.
+- Do not use examples to define scope or number of elements.
+- Do not use examples to define product idea.
 
 ### Example 1
 {
@@ -68,82 +76,6 @@ Produce a **Context & Constraints** section that identifies contextual factors a
             "description": "Handling financial data involves regulatory considerations.",
             "impact_on_user_needs": "Users expect responsible data handling.",
             "business_implications": "Compliance adds operational overhead and limits flexibility."
-        }
-    ]
-}
-
-### Example 2
-{
-    "contextual_factors": [
-        {
-            "name": "Shared household responsibility environment",
-            "description": "Household tasks are distributed across people with different routines.",
-            "impact_on_user_needs": "Users need clarity on responsibilities without constant coordination.",
-            "business_implications": "Multi-user misalignment directly affects perceived value."
-        },
-        {
-            "name": "Informal task management norms",
-            "description": "Household work is often managed through memory or casual communication.",
-            "impact_on_user_needs": "Users expect coordination to fit existing habits.",
-            "business_implications": "Adoption depends on alignment with current behavior."
-        },
-        {
-            "name": "Changing daily schedules",
-            "description": "Household routines frequently change due to daily life events.",
-            "impact_on_user_needs": "Users require flexibility around task timing.",
-            "business_implications": "Rigid systems increase disengagement risk."
-        }
-    ],
-    "constraints": [
-        {
-            "name": "Dependence on multiple participants",
-            "description": "Effective coordination requires engagement from more than one person.",
-            "impact_on_user_needs": "Value decreases when participation is uneven.",
-            "business_implications": "Partial adoption reduces usefulness."
-        },
-        {
-            "name": "Notification fatigue risk",
-            "description": "Frequent reminders can become easy to ignore.",
-            "impact_on_user_needs": "Users disengage if coordination creates noise.",
-            "business_implications": "Over-communication increases churn risk."
-        }
-    ]
-}
-
-### Example 3
-{
-    "contextual_factors": [
-        {
-            "name": "Learning in short time windows",
-            "description": "Users learn during brief breaks between activities.",
-            "impact_on_user_needs": "Users expect learning to fit into limited time.",
-            "business_implications": "Value must be delivered quickly."
-        },
-        {
-            "name": "Self-directed learning environment",
-            "description": "Users manage learning without external structure.",
-            "impact_on_user_needs": "Users need clarity and momentum without oversight.",
-            "business_implications": "Drop-off risk is high without visible progress."
-        },
-        {
-            "name": "Expectation of immediate relevance",
-            "description": "Users want to apply skills soon after learning.",
-            "impact_on_user_needs": "Users expect clear connection to real situations.",
-            "business_implications": "Unclear relevance reduces retention."
-        }
-    ],
-    "constraints": [
-        {
-            "name": "Limited sustained attention",
-            "description": "Users cannot dedicate long uninterrupted periods.",
-            "impact_on_user_needs": "Users struggle with extended learning sessions.",
-            "business_implications": "Long-form engagement reduces completion."
-        },
-        {
-            "name": "Content credibility dependency",
-            "description": "Perceived value depends on content quality.",
-            "impact_on_user_needs": "Users disengage if content feels impractical.",
-            "business_implications": "Ongoing effort is required to maintain quality."
         }
     ]
 }

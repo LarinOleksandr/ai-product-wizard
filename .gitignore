@@ -1,6 +1,5 @@
 # Documentation
 docs/
-knowledge-base/
 
 # Logs
 logs
@@ -161,7 +160,6 @@ dist/
 # JetBrains IDE (optional)
 .idea/
 *.iml
-
 
 
 

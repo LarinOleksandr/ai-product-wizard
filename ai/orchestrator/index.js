@@ -78,42 +78,52 @@ const FIELD_DEFINITIONS = [
   {
     key: "marketAndCompetitorAnalysis.marketLandscape",
     section: "market-landscape",
-    type: "array"
+    type: "object"
   },
   {
     key: "marketAndCompetitorAnalysis.competitorInventory",
     section: "competitor-inventory",
-    type: "array"
+    type: "object"
   },
   {
     key: "marketAndCompetitorAnalysis.competitorCapabilities",
     section: "competitor-capabilities",
-    type: "array"
+    type: "object"
   },
   {
     key: "marketAndCompetitorAnalysis.gapsOpportunities",
     section: "gaps-opportunities",
-    type: "array"
+    type: "object",
+    outputKey: "gaps_and_opportunities",
+    wrapOutputKey: true
   },
   {
     key: "opportunityDefinition.opportunityStatement",
     section: "opportunity-statement",
-    type: "string"
+    type: "object",
+    outputKey: "opportunity_statement",
+    wrapOutputKey: true
   },
   {
     key: "opportunityDefinition.valueDrivers",
     section: "value-drivers",
-    type: "array"
+    type: "object",
+    outputKey: "value_drivers",
+    wrapOutputKey: true
   },
   {
     key: "opportunityDefinition.marketFitHypothesis",
     section: "market-fit-hypothesis",
-    type: "array"
+    type: "object",
+    outputKey: "market_fit_hypothesis",
+    wrapOutputKey: true
   },
   {
     key: "opportunityDefinition.feasibilityAssessment",
     section: "feasibility-assessment",
-    type: "array"
+    type: "object",
+    outputKey: "feasibility_assessment",
+    wrapOutputKey: true
   }
 ];
 
@@ -359,16 +369,59 @@ function buildEmptyDocument() {
       }
     },
     marketAndCompetitorAnalysis: {
-      marketLandscape: [],
-      competitorInventory: [],
-      competitorCapabilities: [],
-      gapsOpportunities: []
+      marketLandscape: {
+        market_definition: {
+          description: "",
+          excluded_adjacent_spaces: []
+        },
+        market_size: {
+          description: ""
+        },
+        market_maturity: {
+          classification: "emerging",
+          rationale: ""
+        },
+        market_trends: [],
+        market_dynamics: [],
+        market_forces: [],
+        adoption_drivers: [],
+        adoption_barriers: []
+      },
+      competitorInventory: {
+        competitors: []
+      },
+      competitorCapabilities: {
+        competitor_capabilities: [],
+        industry_capability_patterns: []
+      },
+      gapsOpportunities: {
+        gaps_and_opportunities: {
+          functional: [],
+          technical: [],
+          business: []
+        }
+      }
     },
     opportunityDefinition: {
-      opportunityStatement: "",
-      valueDrivers: [],
-      marketFitHypothesis: [],
-      feasibilityAssessment: []
+      opportunityStatement: {
+        opportunity_statement: ""
+      },
+      valueDrivers: {
+        value_drivers: []
+      },
+      marketFitHypothesis: {
+        market_fit_hypothesis: {
+          desirability: [],
+          viability: []
+        }
+      },
+      feasibilityAssessment: {
+        feasibility_assessment: {
+          business_constraints: [],
+          user_constraints: [],
+          technical_concerns: []
+        }
+      }
     }
   };
 }
@@ -382,6 +435,67 @@ function emptyValueForField(field) {
   }
   if (field.key === "problemUnderstanding.contextConstraints") {
     return { contextual_factors: [], constraints: [] };
+  }
+  if (field.key === "marketAndCompetitorAnalysis.marketLandscape") {
+    return {
+      market_definition: {
+        description: "",
+        excluded_adjacent_spaces: []
+      },
+      market_size: {
+        description: ""
+      },
+      market_maturity: {
+        classification: "emerging",
+        rationale: ""
+      },
+      market_trends: [],
+      market_dynamics: [],
+      market_forces: [],
+      adoption_drivers: [],
+      adoption_barriers: []
+    };
+  }
+  if (field.key === "marketAndCompetitorAnalysis.competitorInventory") {
+    return { competitors: [] };
+  }
+  if (field.key === "marketAndCompetitorAnalysis.competitorCapabilities") {
+    return {
+      competitor_capabilities: [],
+      industry_capability_patterns: []
+    };
+  }
+  if (field.key === "marketAndCompetitorAnalysis.gapsOpportunities") {
+    return {
+      gaps_and_opportunities: {
+        functional: [],
+        technical: [],
+        business: []
+      }
+    };
+  }
+  if (field.key === "opportunityDefinition.opportunityStatement") {
+    return { opportunity_statement: "" };
+  }
+  if (field.key === "opportunityDefinition.valueDrivers") {
+    return { value_drivers: [] };
+  }
+  if (field.key === "opportunityDefinition.marketFitHypothesis") {
+    return {
+      market_fit_hypothesis: {
+        desirability: [],
+        viability: []
+      }
+    };
+  }
+  if (field.key === "opportunityDefinition.feasibilityAssessment") {
+    return {
+      feasibility_assessment: {
+        business_constraints: [],
+        user_constraints: [],
+        technical_concerns: []
+      }
+    };
   }
   if (field.type === "object") {
     return {};
@@ -520,67 +634,100 @@ async function generateFieldValueWithOutput({
       lastRawText = rawText;
       const fieldName = field.key.split(".").pop();
       try {
-        const parsed = tryParseDiscoveryResponse(response);
-        if (isPlainObject(parsed) && sectionSchemaJson?.type === "object") {
-          const validation = validateAgainstSchema(parsed, sectionSchemaJson);
+        const parsed = normalizeParsedFieldValue(
+          field,
+          tryParseDiscoveryResponse(response)
+        );
+        if (field.type === "object" && isPlainObject(parsed) && sectionSchemaJson?.type === "object") {
+          const candidate = parsed;
+          const validation = validateAgainstSchema(candidate, sectionSchemaJson);
           if (validation.valid) {
-            return { value: parsed, prompt, rawText, validationStatus: "valid" };
+            return {
+              value: candidate,
+              prompt,
+              rawText,
+              validationStatus: "valid"
+            };
           }
           lastValidationErrors = validation.errors;
         }
         if (field.outputKey && typeof parsed?.[field.outputKey] !== "undefined") {
           if (field.wrapOutputKey) {
             const value = { [field.outputKey]: parsed[field.outputKey] };
-            const validation = validateAgainstSchema(
-              value,
-              sectionSchemaJson || null
-            );
+            const candidate = value;
+            const validation = validateAgainstSchema(candidate, sectionSchemaJson || null);
             if (!validation.valid) {
               lastValidationErrors = validation.errors;
               continue;
             }
-            return { value, prompt, rawText, validationStatus: "valid" };
+            return {
+              value: candidate,
+              prompt,
+              rawText,
+              validationStatus: "valid"
+            };
           }
           const value = parsed[field.outputKey];
           const validationValue = sectionSchemaJson?.type === "object"
             ? { [field.outputKey]: value }
             : value;
+          const candidateValue = value;
+          const candidateForValidation = validationValue;
           const validation = validateAgainstSchema(
-            validationValue,
+            candidateForValidation,
             sectionSchemaJson || null
           );
           if (!validation.valid) {
             lastValidationErrors = validation.errors;
             continue;
           }
-          return { value, prompt, rawText, validationStatus: "valid" };
+          return {
+            value: candidateValue,
+            prompt,
+            rawText,
+            validationStatus: "valid"
+          };
         }
         if (fieldName && typeof parsed?.[fieldName] !== "undefined") {
           const value = parsed[fieldName];
           const validationValue = sectionSchemaJson?.type === "object"
             ? { [fieldName]: value }
             : value;
+          const candidateValue = value;
+          const candidateForValidation = validationValue;
           const validation = validateAgainstSchema(
-            validationValue,
+            candidateForValidation,
             sectionSchemaJson || null
           );
           if (!validation.valid) {
             lastValidationErrors = validation.errors;
             continue;
           }
-          return { value, prompt, rawText, validationStatus: "valid" };
+          return {
+            value: candidateValue,
+            prompt,
+            rawText,
+            validationStatus: "valid"
+          };
         }
         const nested = getNestedValue(parsed, field.key);
         if (typeof nested !== "undefined") {
+          const candidateValue = nested;
+          const candidateForValidation = nested;
           const validation = validateAgainstSchema(
-            nested,
+            candidateForValidation,
             sectionSchemaJson || null
           );
           if (!validation.valid) {
             lastValidationErrors = validation.errors;
             continue;
           }
-          return { value: nested, prompt, rawText, validationStatus: "valid" };
+          return {
+            value: candidateValue,
+            prompt,
+            rawText,
+            validationStatus: "valid"
+          };
         }
       } catch (parseError) {
         if (rawText) {
@@ -588,15 +735,22 @@ async function generateFieldValueWithOutput({
           const validationValue = sectionSchemaJson?.type === "object"
             ? { [field.outputKey || fieldName || "value"]: normalized }
             : normalized;
+          const candidateValue = normalized;
+          const candidateForValidation = validationValue;
           const validation = validateAgainstSchema(
-            validationValue,
+            candidateForValidation,
             sectionSchemaJson || null
           );
           if (!validation.valid) {
             lastValidationErrors = validation.errors;
             continue;
           }
-          return { value: normalized, prompt, rawText, validationStatus: "valid" };
+          return {
+            value: candidateValue,
+            prompt,
+            rawText,
+            validationStatus: "valid"
+          };
         }
       }
     } catch (error) {
@@ -630,9 +784,85 @@ function normalizeRawFieldValue(text, fieldType) {
   return text.trim();
 }
 
+function normalizeParsedFieldValue(field, parsed) {
+  if (!isPlainObject(parsed)) {
+    return parsed;
+  }
+  if (field.key === "marketAndCompetitorAnalysis.marketLandscape") {
+    if (parsed.market_landscape && !parsed.market_definition) {
+      const { market_landscape, ...rest } = parsed;
+      return { ...rest, market_definition: market_landscape };
+    }
+    if (parsed.marketLandscape && !parsed.market_definition) {
+      const { marketLandscape, ...rest } = parsed;
+      return { ...rest, market_definition: marketLandscape };
+    }
+  }
+  if (field.key === "marketAndCompetitorAnalysis.competitorInventory") {
+    if (parsed.competitor_inventory && parsed.competitor_inventory.competitors) {
+      return parsed.competitor_inventory;
+    }
+    if (parsed.competitorInventory && parsed.competitorInventory.competitors) {
+      return parsed.competitorInventory;
+    }
+    if (Array.isArray(parsed.competitors)) {
+      return { competitors: parsed.competitors };
+    }
+    if (Array.isArray(parsed["Competitor Inventory"])) {
+      return { competitors: parsed["Competitor Inventory"] };
+    }
+  }
+  if (field.key === "problemUnderstanding.userPainPoints") {
+    if (parsed.user_pain_points && parsed.user_pain_points.pain_point_themes) {
+      return parsed.user_pain_points;
+    }
+  }
+  if (field.key === "marketAndCompetitorAnalysis.competitorCapabilities") {
+    if (parsed.competitorCapabilities && parsed.competitorCapabilities.competitor_capabilities) {
+      return parsed.competitorCapabilities;
+    }
+  }
+  if (field.key === "marketAndCompetitorAnalysis.gapsOpportunities") {
+    if (parsed.gapsOpportunities && parsed.gapsOpportunities.gaps_and_opportunities) {
+      return parsed.gapsOpportunities;
+    }
+    if (parsed.gaps_and_opportunities) {
+      return { gaps_and_opportunities: parsed.gaps_and_opportunities };
+    }
+  }
+  if (field.key === "opportunityDefinition.valueDrivers") {
+    if (parsed.valueDrivers && parsed.valueDrivers.value_drivers) {
+      return parsed.valueDrivers;
+    }
+    if (parsed.value_drivers) {
+      return { value_drivers: parsed.value_drivers };
+    }
+  }
+  if (field.key === "opportunityDefinition.marketFitHypothesis") {
+    if (parsed.marketFitHypothesis && parsed.marketFitHypothesis.market_fit_hypothesis) {
+      return parsed.marketFitHypothesis;
+    }
+    if (parsed.market_fit_hypothesis) {
+      return { market_fit_hypothesis: parsed.market_fit_hypothesis };
+    }
+  }
+  if (field.key === "opportunityDefinition.feasibilityAssessment") {
+    if (parsed.feasibilityAssessment && parsed.feasibilityAssessment.feasibility_assessment) {
+      return parsed.feasibilityAssessment;
+    }
+    if (parsed.feasibility_assessment) {
+      return { feasibility_assessment: parsed.feasibility_assessment };
+    }
+  }
+  return parsed;
+}
+
 function buildFallbackFieldValue(field) {
   if (field.type === "string") {
     return "Draft content needs review.";
+  }
+  if (field.type === "object") {
+    return emptyValueForField(field);
   }
   return ["Draft item needs review."];
 }
@@ -643,7 +873,6 @@ async function getDiscoveryPromptAssets() {
   }
 
   const systemPrompt = await readPromptFile("product-manager-system-prompt.md");
-  const outputRules = await readPromptFile("document-output-rules.md");
   const finalSchema = await readPromptFile("discovery-document-schema.json");
 
   const sectionPrompts = [];
@@ -676,7 +905,7 @@ async function getDiscoveryPromptAssets() {
     systemPrompt:
       systemPrompt ||
       "You are the Discovery Agent. Respond only with JSON that matches the required schema. Do not write prose.",
-    outputRules: outputRules || "",
+    outputRules: "",
     finalSchema: finalSchema || "",
     sectionPrompts,
     sectionSchemas,
@@ -866,18 +1095,290 @@ const discoveryDocumentSchema = z
       .strict(),
     marketAndCompetitorAnalysis: z
       .object({
-        marketLandscape: z.array(z.string().min(3)).nonempty(),
-        competitorInventory: z.array(z.string().min(3)).nonempty(),
-        competitorCapabilities: z.array(z.string().min(3)).nonempty(),
-        gapsOpportunities: z.array(z.string().min(3)).nonempty()
+        marketLandscape: z
+          .object({
+            market_definition: z
+              .object({
+                description: z.string().min(1),
+                excluded_adjacent_spaces: z.array(z.string().min(1))
+              })
+              .strict(),
+            market_size: z
+              .object({
+                description: z.string().min(1)
+              })
+              .strict(),
+            market_maturity: z
+              .object({
+                classification: z.enum([
+                  "emerging",
+                  "fragmented",
+                  "consolidating",
+                  "mature"
+                ]),
+                rationale: z.string().min(1)
+              })
+              .strict(),
+            market_trends: z
+              .array(
+                z
+                  .object({
+                    name: z.string().min(1),
+                    description: z.string().min(1),
+                    time_horizon: z.enum(["short", "mid", "long"]),
+                    affected_target_segments: z.array(z.string().min(1)),
+                    basis: z.enum([
+                      "evidence_from_inputs",
+                      "domain_generic_assumption"
+                    ]),
+                    confidence: z.enum(["low", "medium", "high"])
+                  })
+                  .strict()
+              ),
+            market_dynamics: z
+              .array(
+                z
+                  .object({
+                    name: z.string().min(1),
+                    description: z.string().min(1),
+                    affected_target_segments: z.array(z.string().min(1)),
+                    basis: z.enum([
+                      "evidence_from_inputs",
+                      "domain_generic_assumption"
+                    ]),
+                    confidence: z.enum(["low", "medium", "high"])
+                  })
+                  .strict()
+              ),
+            market_forces: z
+              .array(
+                z
+                  .object({
+                    name: z.string().min(1),
+                    description: z.string().min(1),
+                    affected_target_segments: z.array(z.string().min(1)),
+                    basis: z.enum([
+                      "evidence_from_inputs",
+                      "domain_generic_assumption"
+                    ]),
+                    confidence: z.enum(["low", "medium", "high"])
+                  })
+                  .strict()
+              ),
+            adoption_drivers: z
+              .array(
+                z
+                  .object({
+                    name: z.string().min(1),
+                    description: z.string().min(1),
+                    affected_target_segments: z.array(z.string().min(1))
+                  })
+                  .strict()
+              ),
+            adoption_barriers: z
+              .array(
+                z
+                  .object({
+                    name: z.string().min(1),
+                    description: z.string().min(1),
+                    affected_target_segments: z.array(z.string().min(1))
+                  })
+                  .strict()
+              )
+          })
+          .strict(),
+        competitorInventory: z
+          .object({
+            competitors: z
+              .array(
+                z
+                  .object({
+                    name: z.string().min(1),
+                    url: z.string().url(),
+                    category: z.enum(["direct", "indirect", "substitute"]),
+                    description: z.string().min(3),
+                    target_audience: z.string().min(3),
+                    positioning: z.string().min(3)
+                  })
+                  .strict()
+              )
+              .nonempty()
+          })
+          .strict(),
+        competitorCapabilities: z
+          .object({
+            competitor_capabilities: z
+              .array(
+                z
+                  .object({
+                    competitor_name: z.string().min(1),
+                    functional_capabilities: z.array(z.string().min(1)),
+                    technical_capabilities: z.array(z.string().min(1)),
+                    business_capabilities: z.array(z.string().min(1)),
+                    strengths: z.array(z.string().min(1)),
+                    limitations: z.array(z.string().min(1)),
+                    alignment_with_user_needs: z.string().min(3)
+                  })
+                  .strict()
+              )
+              .nonempty(),
+            industry_capability_patterns: z
+              .array(
+                z
+                  .object({
+                    pattern_name: z.string().min(1),
+                    description: z.string().min(3)
+                  })
+                  .strict()
+              )
+              .nonempty()
+          })
+          .strict(),
+        gapsOpportunities: z
+          .object({
+            gaps_and_opportunities: z
+              .object({
+                functional: z
+                  .array(
+                    z
+                      .object({
+                        gap_description: z.string().min(10),
+                        affected_user_segments: z.array(z.string().min(3)).nonempty(),
+                        opportunity_description: z.string().min(10),
+                        user_value_potential: z.enum(["low", "medium", "high"]),
+                        feasibility: z.enum(["low", "medium", "high"])
+                      })
+                      .strict()
+                  )
+                  .nonempty(),
+                technical: z
+                  .array(
+                    z
+                      .object({
+                        gap_description: z.string().min(10),
+                        affected_user_segments: z.array(z.string().min(3)).nonempty(),
+                        opportunity_description: z.string().min(10),
+                        user_value_potential: z.enum(["low", "medium", "high"]),
+                        feasibility: z.enum(["low", "medium", "high"])
+                      })
+                      .strict()
+                  )
+                  .nonempty(),
+                business: z
+                  .array(
+                    z
+                      .object({
+                        gap_description: z.string().min(10),
+                        affected_user_segments: z.array(z.string().min(3)).nonempty(),
+                        opportunity_description: z.string().min(10),
+                        user_value_potential: z.enum(["low", "medium", "high"]),
+                        feasibility: z.enum(["low", "medium", "high"])
+                      })
+                      .strict()
+                  )
+                  .nonempty()
+              })
+              .strict()
+          })
+          .strict()
       })
       .strict(),
     opportunityDefinition: z
       .object({
-        opportunityStatement: z.string().min(20),
-        valueDrivers: z.array(z.string().min(3)).nonempty(),
-        marketFitHypothesis: z.array(z.string().min(3)).nonempty(),
-        feasibilityAssessment: z.array(z.string().min(3)).nonempty()
+      opportunityStatement: z
+        .object({
+          opportunity_statement: z.string().min(3)
+        })
+        .strict(),
+      valueDrivers: z
+        .object({
+          value_drivers: z
+            .array(
+              z
+                .object({
+                  name: z.string().min(3),
+                  user_need_or_pain: z.string().min(3),
+                  user_value_impact: z.enum(["low", "medium", "high"]),
+                  business_value_lever: z.string().min(3),
+                  business_value_impact: z.enum(["low", "medium", "high"]),
+                  priority: z.enum(["low", "medium", "high"])
+                })
+                .strict()
+            )
+            .nonempty()
+        })
+        .strict(),
+      marketFitHypothesis: z
+        .object({
+          market_fit_hypothesis: z
+            .object({
+              desirability: z
+                .array(
+                  z
+                    .object({
+                      hypothesis: z.string().min(3),
+                      rationale: z.string().min(3),
+                      key_risks_or_unknowns: z.array(z.string().min(3)).nonempty()
+                    })
+                    .strict()
+                )
+                .nonempty(),
+              viability: z
+                .array(
+                  z
+                    .object({
+                      hypothesis: z.string().min(3),
+                      rationale: z.string().min(3),
+                      key_risks_or_unknowns: z.array(z.string().min(3)).nonempty()
+                    })
+                    .strict()
+                )
+                .nonempty()
+            })
+            .strict()
+        })
+        .strict(),
+      feasibilityAssessment: z
+        .object({
+          feasibility_assessment: z
+            .object({
+              business_constraints: z
+                .array(
+                  z
+                    .object({
+                      name: z.string().min(3),
+                      description: z.string().min(5),
+                      readiness: z.enum(["low", "medium", "high"])
+                    })
+                    .strict()
+                )
+                .nonempty(),
+              user_constraints: z
+                .array(
+                  z
+                    .object({
+                      name: z.string().min(3),
+                      description: z.string().min(5),
+                      readiness: z.enum(["low", "medium", "high"])
+                    })
+                    .strict()
+                )
+                .nonempty(),
+              technical_concerns: z
+                .array(
+                  z
+                    .object({
+                      name: z.string().min(3),
+                      description: z.string().min(5),
+                      readiness: z.enum(["low", "medium", "high"])
+                    })
+                    .strict()
+                )
+                .nonempty()
+            })
+            .strict()
+        })
+        .strict()
       })
       .strict()
   })
@@ -936,7 +1437,11 @@ async function discoveryAgentNode(state) {
   };
 }
 
-async function produceDiscoveryDocument({ productIdea, targetUser, userMessages }) {
+async function produceDiscoveryDocument({
+  productIdea,
+  targetUser,
+  userMessages
+}) {
   const emptyDocument = buildEmptyDocument();
   const firstField = FIELD_DEFINITIONS[0];
   if (!firstField) {
@@ -1042,7 +1547,10 @@ function buildFieldPrompt({
       2
     ),
     contextConstraints: JSON.stringify(
-      getNestedValue(approved, "problemUnderstanding.contextConstraints") || [],
+      getNestedValue(approved, "problemUnderstanding.contextConstraints") || {
+        contextual_factors: [],
+        constraints: []
+      },
       null,
       2
     ),
@@ -1052,34 +1560,64 @@ function buildFieldPrompt({
       2
     ),
     competitorInventory: JSON.stringify(
-      getNestedValue(approved, "marketAndCompetitorAnalysis.competitorInventory") || [],
+      getNestedValue(approved, "marketAndCompetitorAnalysis.competitorInventory") || {
+        competitors: []
+      },
       null,
       2
     ),
     competitorCapabilities: JSON.stringify(
-      getNestedValue(approved, "marketAndCompetitorAnalysis.competitorCapabilities") || [],
+      getNestedValue(approved, "marketAndCompetitorAnalysis.competitorCapabilities") || {
+        competitor_capabilities: [],
+        industry_capability_patterns: []
+      },
       null,
       2
     ),
     gapsOpportunities: JSON.stringify(
-      getNestedValue(approved, "marketAndCompetitorAnalysis.gapsOpportunities") || [],
+      getNestedValue(approved, "marketAndCompetitorAnalysis.gapsOpportunities") || {
+        gaps_and_opportunities: {
+          functional: [],
+          technical: [],
+          business: []
+        }
+      },
       null,
       2
     ),
     opportunityStatement:
-      getNestedValue(approved, "opportunityDefinition.opportunityStatement") || "",
+      JSON.stringify(
+        getNestedValue(approved, "opportunityDefinition.opportunityStatement") || {
+          opportunity_statement: ""
+        },
+        null,
+        2
+      ),
     valueDrivers: JSON.stringify(
-      getNestedValue(approved, "opportunityDefinition.valueDrivers") || [],
+      getNestedValue(approved, "opportunityDefinition.valueDrivers") || {
+        value_drivers: []
+      },
       null,
       2
     ),
     marketFitHypothesis: JSON.stringify(
-      getNestedValue(approved, "opportunityDefinition.marketFitHypothesis") || [],
+      getNestedValue(approved, "opportunityDefinition.marketFitHypothesis") || {
+        market_fit_hypothesis: {
+          desirability: [],
+          viability: []
+        }
+      },
       null,
       2
     ),
     feasibilityAssessment: JSON.stringify(
-      getNestedValue(approved, "opportunityDefinition.feasibilityAssessment") || [],
+      getNestedValue(approved, "opportunityDefinition.feasibilityAssessment") || {
+        feasibility_assessment: {
+          business_constraints: [],
+          user_constraints: [],
+          technical_concerns: []
+        }
+      },
       null,
       2
     )
@@ -1281,43 +1819,168 @@ function buildFallbackDocument(productIdea, targetUser) {
       }
     },
     marketAndCompetitorAnalysis: {
-      marketLandscape: [
-        "Market is fragmented with manual discovery workflows",
-        "Teams rely on documents and spreadsheets",
-        "Buyers seek faster alignment"
-      ],
-      competitorInventory: [
-        "Document templates",
-        "Product management suites",
-        "Internal tools"
-      ],
-      competitorCapabilities: [
-        "Capture requirements",
-        "Track approvals",
-        "Share documents"
-      ],
-      gapsOpportunities: [
-        "Lack of AI-driven draft generation",
-        "Limited focus on discovery outcomes",
-        "Poor visibility into open questions"
-      ]
+      marketLandscape: {
+        market_definition: {
+          description: "Discovery planning tools supporting product teams.",
+          excluded_adjacent_spaces: ["General project management suites"]
+        },
+        market_size: {
+          description: "Mid-sized market with steady adoption across product teams."
+        },
+        market_maturity: {
+          classification: "fragmented",
+          rationale: "Many tools exist, but few dominate the segment."
+        },
+        market_trends: [
+          {
+            name: "AI-assisted drafting",
+            description: "Teams expect faster initial drafts from AI.",
+            time_horizon: "short",
+            affected_target_segments: ["Product leads"],
+            basis: "domain_generic_assumption",
+            confidence: "medium"
+          }
+        ],
+        market_dynamics: [
+          {
+            name: "Preference for workflow fit",
+            description: "Teams choose tools that match existing processes.",
+            affected_target_segments: ["Product managers"],
+            basis: "domain_generic_assumption",
+            confidence: "medium"
+          }
+        ],
+        market_forces: [
+          {
+            name: "Budget scrutiny",
+            description: "Spending on new tools requires clear ROI.",
+            affected_target_segments: ["Budget owners"],
+            basis: "domain_generic_assumption",
+            confidence: "low"
+          }
+        ],
+        adoption_drivers: [
+          {
+            name: "Faster discovery cycles",
+            description: "Teams want to reduce time to draft.",
+            affected_target_segments: ["Product teams"]
+          }
+        ],
+        adoption_barriers: [
+          {
+            name: "Change fatigue",
+            description: "Teams are cautious about new tools.",
+            affected_target_segments: ["Product teams"]
+          }
+        ]
+      },
+      competitorInventory: {
+        competitors: [
+          {
+            name: "Discovery templates",
+            url: "https://example.com/templates",
+            category: "substitute",
+            description: "Static templates used to draft discovery documents.",
+            target_audience: "Product teams",
+            positioning: "Lightweight and familiar."
+          }
+        ]
+      },
+      competitorCapabilities: {
+        competitor_capabilities: [
+          {
+            competitor_name: "Discovery templates",
+            functional_capabilities: ["Static templates"],
+            technical_capabilities: ["Document export"],
+            business_capabilities: ["Low-cost usage"],
+            strengths: ["Easy to adopt"],
+            limitations: ["No AI assistance"],
+            alignment_with_user_needs: "Basic guidance but limited depth."
+          }
+        ],
+        industry_capability_patterns: [
+          {
+            pattern_name: "Template-first workflows",
+            description: "Teams rely on static templates to structure discovery."
+          }
+        ]
+      },
+      gapsOpportunities: {
+        gaps_and_opportunities: {
+          functional: [
+            {
+              gap_description: "Drafts are created manually with limited automation.",
+              affected_user_segments: ["Product teams"],
+              opportunity_description: "Automated draft generation could reduce effort.",
+              user_value_potential: "high",
+              feasibility: "medium"
+            }
+          ],
+          technical: [],
+          business: []
+        }
+      }
     },
     opportunityDefinition: {
-      opportunityStatement:
-        "Provide a clear, structured discovery draft that accelerates alignment and decision-making.",
-      valueDrivers: [
-        "Speed of creating the first draft",
-        "Shared understanding across stakeholders",
-        "Clear next-step readiness"
-      ],
-      marketFitHypothesis: [
-        "Teams will adopt the tool if it reduces discovery time by 50%",
-        "Stakeholders will approve faster with clearer summaries"
-      ],
-      feasibilityAssessment: [
-        "LLM can generate the first draft from minimal input",
-        "Data storage and approval tracking are straightforward"
-      ]
+      opportunityStatement: {
+        opportunity_statement:
+          "Provide a clear, structured discovery draft that accelerates alignment and decision-making."
+      },
+      valueDrivers: {
+        value_drivers: [
+          {
+            name: "Faster draft creation",
+            user_need_or_pain: "Teams need to move from idea to draft quickly.",
+            user_value_impact: "high",
+            business_value_lever: "Reduced preparation time",
+            business_value_impact: "medium",
+            priority: "high"
+          }
+        ]
+      },
+      marketFitHypothesis: {
+        market_fit_hypothesis: {
+          desirability: [
+            {
+              hypothesis: "Users want a faster way to align on discovery inputs.",
+              rationale: "Manual drafting slows teams down.",
+              key_risks_or_unknowns: ["Adoption willingness", "Change resistance"]
+            }
+          ],
+          viability: [
+            {
+              hypothesis: "Teams will pay for reduced discovery time.",
+              rationale: "Faster alignment shortens planning cycles.",
+              key_risks_or_unknowns: ["Budget approval", "Procurement delays"]
+            }
+          ]
+        }
+      },
+      feasibilityAssessment: {
+        feasibility_assessment: {
+          business_constraints: [
+            {
+              name: "Budget approval cycles",
+              description: "Purchases may require multi-step approvals.",
+              readiness: "medium"
+            }
+          ],
+          user_constraints: [
+            {
+              name: "Time constraints",
+              description: "Users have limited time to maintain long documents.",
+              readiness: "medium"
+            }
+          ],
+          technical_concerns: [
+            {
+              name: "Model availability",
+              description: "LLM access may be limited by infrastructure.",
+              readiness: "medium"
+            }
+          ]
+        }
+      }
     }
   };
 }
@@ -1337,7 +2000,6 @@ export async function runDiscoveryWorkflow(input) {
   const targetUser = (input.targetUser || "").trim();
   const userMessages = normalizeUserMessages(input.userMessages);
   const changeReason = (input.changeReason || "").trim();
-
   const pendingApproval = input?.forceNew ? null : await checkApprovalGate();
   if (pendingApproval) {
     return pendingApproval;
@@ -1636,8 +2298,12 @@ async function approveDiscoveryField({
 
   const nextField = getNextFieldDefinition(fieldStatus);
   if (nextField) {
-    const { value: nextValue, prompt, rawText, validationStatus } =
-      await generateFieldValueWithOutput({
+    const {
+      value: nextValue,
+      prompt,
+      rawText,
+      validationStatus
+    } = await generateFieldValueWithOutput({
       field: nextField,
       productIdea: record.productIdea,
       targetUser: record.targetUser,
@@ -1672,7 +2338,11 @@ async function approveDiscoveryField({
   };
 }
 
-async function regenerateDiscoveryField({ version, fieldKey, approver }) {
+async function regenerateDiscoveryField({
+  version,
+  fieldKey,
+  approver
+}) {
   if (!Number.isFinite(Number(version))) {
     throw new Error("A numeric version is required for regeneration.");
   }
@@ -1702,8 +2372,12 @@ async function regenerateDiscoveryField({ version, fieldKey, approver }) {
   record.currentFieldKey = fieldKey;
 
   const field = FIELD_DEFINITIONS[fieldIndex];
-  const { value: nextValue, prompt, rawText, validationStatus } =
-    await generateFieldValueWithOutput({
+  const {
+    value: nextValue,
+    prompt,
+    rawText,
+    validationStatus
+  } = await generateFieldValueWithOutput({
     field,
     productIdea: record.productIdea,
     targetUser: record.targetUser,

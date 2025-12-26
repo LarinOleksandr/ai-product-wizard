@@ -3,14 +3,93 @@
   "type": "object",
   "additionalProperties": false,
   "properties": {
-    "competitorCapabilities": {
+    "competitor_capabilities": {
       "type": "array",
+      "minItems": 1,
       "items": {
-        "type": "string",
-        "minLength": 3
-      },
-      "minItems": 1
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "competitor_name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "functional_capabilities": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "technical_capabilities": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "business_capabilities": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "strengths": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "limitations": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "alignment_with_user_needs": {
+            "type": "string",
+            "minLength": 3
+          }
+        },
+        "required": [
+          "competitor_name",
+          "functional_capabilities",
+          "technical_capabilities",
+          "business_capabilities",
+          "strengths",
+          "limitations",
+          "alignment_with_user_needs"
+        ]
+      }
+    },
+    "industry_capability_patterns": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "pattern_name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "minLength": 3
+          }
+        },
+        "required": [
+          "pattern_name",
+          "description"
+        ]
+      }
     }
   },
-  "required": ["competitorCapabilities"]
+  "required": [
+    "competitor_capabilities",
+    "industry_capability_patterns"
+  ]
 }

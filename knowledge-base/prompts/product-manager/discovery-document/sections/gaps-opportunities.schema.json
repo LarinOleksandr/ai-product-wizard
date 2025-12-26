@@ -3,14 +3,82 @@
   "type": "object",
   "additionalProperties": false,
   "properties": {
-    "gapsOpportunities": {
-      "type": "array",
-      "items": {
-        "type": "string",
-        "minLength": 3
+    "gaps_and_opportunities": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "functional": {
+          "$ref": "#/$defs/gapOpportunityArray"
+        },
+        "technical": {
+          "$ref": "#/$defs/gapOpportunityArray"
+        },
+        "business": {
+          "$ref": "#/$defs/gapOpportunityArray"
+        }
       },
-      "minItems": 1
+      "required": [
+        "functional",
+        "technical",
+        "business"
+      ]
     }
   },
-  "required": ["gapsOpportunities"]
+  "required": [
+    "gaps_and_opportunities"
+  ],
+  "$defs": {
+    "gapOpportunityArray": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/gapOpportunityItem"
+      }
+    },
+    "gapOpportunityItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "gap_description": {
+          "type": "string",
+          "minLength": 10
+        },
+        "affected_user_segments": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 3
+          }
+        },
+        "opportunity_description": {
+          "type": "string",
+          "minLength": 10
+        },
+        "user_value_potential": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ]
+        },
+        "feasibility": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ]
+        }
+      },
+      "required": [
+        "gap_description",
+        "affected_user_segments",
+        "opportunity_description",
+        "user_value_potential",
+        "feasibility"
+      ]
+    }
+  }
 }

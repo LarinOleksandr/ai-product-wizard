@@ -17,14 +17,22 @@ Produce a **Problem Statement** in exactly 3 sentences.
 - No solutions for the problem.
 - No market assumptions.
 
+## Anti-copy constraints (hard)
+- Generate the output **from scratch** using only the Inputs and domain-generic reasoning.
+- The output is **invalid** if it contains **any sequence of 6+ consecutive tokens** appearing anywhere in the example section.
+- Do not reuse any example field values, sentence structures, or named capability labels.
+- If you detect you are reproducing any example-like phrasing, rewrite using different wording.
+- Do not extract product idea from examples.
+
 ## Output contract
 - Return **only** the JSON object for this section.
-- Do not include schema text or commentary.
+- Do not include schema text, explanations, or commentary.
 
 ## Section examples
 - Examples show structure, tone, and specificity.
 - Do not copy or paraphrase examples.
-- Don not use examples to define scope or number of elements.
+- Do not use examples to define scope or number of elements.
+- Do not use examples to define product idea.
 
 ### Example 1
 {

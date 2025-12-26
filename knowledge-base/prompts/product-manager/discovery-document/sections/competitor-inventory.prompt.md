@@ -1,10 +1,10 @@
 ## Objective
-Produce a **Competitor Inventory** section that identifies and organizes direct, indirect, and substitute competitors relevant to the problem space, using external research and verifiable public information.
+Produce **Competitors** for a Competitor Inventory section that identifies and organizes direct, indirect, and substitute competitors relevant to the problem space, using external research and verifiable public information.
 
 The goal is comprehensive coverage and clear categorization, not competitive evaluation or differentiation.
 
 ## Workflow
-1. Identify direct competitors:
+1. Identify direct competitors based on the Internet Search Results and your knowledge:
    - Find companies or products that address the same core problem for similar target users.
    - Use external sources (official websites, product pages, reputable articles).
 2. Identify indirect competitors:
@@ -26,18 +26,20 @@ The goal is comprehensive coverage and clear categorization, not competitive eva
 ## Rules
 - Actively use external tools and web search to gather information.
 - Use only publicly available, verifiable information.
-- Do NOT invent competitors, products, or capabilities.
-- Do NOT include market size, pricing, feature comparisons, or competitive advantages.
-- Do NOT evaluate, rank, or recommend competitors.
-- Keep descriptions factual, neutral, and high-level.
-- Use clear, simple, non-technical language.
+- Do NOT invent competitors.
 - Unlimited number of competitors; include all relevant, omit irrelevant.
+- Ensure that these applications are up-to-date for a current year and have a lot of users.
+- Return only unique competitors, avoid including web and mobile versions of one app in the list
+- Ensure that URLs you include directly lead to app pages.
+- Ensure that URLs you include don't lead to error pages or redirects.
+- Eliminate URLS that lead to third-party reviews, articles, app stores, or download pages.
 
 ## Anti-copy constraints (hard)
 - Generate the output **from scratch** using only the Inputs and domain-generic reasoning.
 - The output is **invalid** if it contains **any sequence of 6+ consecutive tokens** appearing anywhere in the example section.
 - Do not reuse any example field values, sentence structures, or named segment labels.
 - If you detect you are reproducing any example-like phrasing, rewrite using different wording.
+- Do not extract product idea from examples.
 
 ## Output contract
 - Return **only** the JSON object for this section.
@@ -47,6 +49,7 @@ The goal is comprehensive coverage and clear categorization, not competitive eva
 - Examples show structure, tone, and specificity.
 - Do not copy or paraphrase examples.
 - Do not use examples to define scope or number of elements.
+- Do not use examples to define product idea.
 
 ### Example 1
 {

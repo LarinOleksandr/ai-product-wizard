@@ -3,10 +3,12 @@
   "type": "object",
   "additionalProperties": false,
   "properties": {
-    "opportunityStatement": {
+    "opportunity_statement": {
       "type": "string",
-      "minLength": 20
+      "minLength": 3
     }
   },
-  "required": ["opportunityStatement"]
+  "required": [
+    "opportunity_statement"
+  ]
 }

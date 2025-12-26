@@ -21,14 +21,22 @@ Produce high-quality **Target Users & Segments** non-overlapping and grounded st
 - Outputs containing synonym-based user groups without distinct behaviors must be rejected and regenerated.
 - Use industry-standard product and UX terminology only.
 
+## Anti-copy constraints (hard)
+- Generate the output **from scratch** using only the Inputs and domain-generic reasoning.
+- The output is **invalid** if it contains **any sequence of 6+ consecutive tokens** appearing anywhere in the example section.
+- Do not reuse any example field values, sentence structures, or named capability labels.
+- If you detect you are reproducing any example-like phrasing, rewrite using different wording.
+- Do not extract product idea from examples.
+
 ## Output contract
 - Return **only** the JSON object for this section.
-- Do not include schema text or commentary.
+- Do not include schema text, explanations, or commentary.
 
 ## Section examples
 - Examples show structure, tone, and specificity.
 - Do not copy or paraphrase examples.
-- Don not use examples to define scope or number of elements.
+- Do not use examples to define scope or number of elements.
+- Do not use examples to define product idea.
 
 ### Example 1
 {
@@ -49,58 +57,6 @@ Produce high-quality **Target Users & Segments** non-overlapping and grounded st
                     "characteristics": [
                         "Check transaction history weekly or monthly rather than continuously",
                         "Notice spending patterns only after reviewing past statements"
-                    ]
-                }
-            ]
-        }
-    ]
-}
-
-### Example 2
-{
-    "target_segments": [
-        {
-            "segment_name": "Household members coordinating shared responsibilities",
-            "business_relevance": "This segment represents the core coordination problem where breakdowns in shared task management create ongoing friction and inefficiency.",
-            "user_groups": [
-                {
-                    "name": "Household members sharing recurring chores",
-                    "characteristics": [
-                        "Rely on informal agreements or memory to manage recurring tasks",
-                        "Miss or delay chores when schedules change"
-                    ]
-                },
-                {
-                    "name": "Household members managing shared schedules",
-                    "characteristics": [
-                        "Coordinate tasks through messages or verbal reminders",
-                        "Experience misalignment when one person completes or skips a task"
-                    ]
-                }
-            ]
-        }
-    ]
-}
-
-### Example 3
-{
-    "target_segments": [
-        {
-            "segment_name": "Adults engaging in self-directed skill learning with limited time",
-            "business_relevance": "This segment directly reflects the problem of inconsistent progress and low application of learning due to time constraints and content structure.",
-            "user_groups": [
-                {
-                    "name": "Adults consuming learning content in short sessions",
-                    "characteristics": [
-                        "Access learning materials in brief time windows between other activities",
-                        "Pause or abandon lessons when sessions exceed available time"
-                    ]
-                },
-                {
-                    "name": "Adults attempting to apply new skills shortly after learning",
-                    "characteristics": [
-                        "Try to use newly learned concepts in real situations soon after exposure",
-                        "Discontinue learning when content does not translate into immediate action"
                     ]
                 }
             ]

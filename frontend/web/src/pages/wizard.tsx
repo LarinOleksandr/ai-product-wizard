@@ -50,6 +50,151 @@ type ContextConstraints = {
   constraints: ContextConstraintItem[];
 };
 
+type MarketDefinition = {
+  description: string;
+  excluded_adjacent_spaces: string[];
+};
+
+type MarketSize = {
+  description: string;
+};
+
+type MarketMaturity = {
+  classification: "emerging" | "fragmented" | "consolidating" | "mature";
+  rationale: string;
+};
+
+type MarketTrend = {
+  name: string;
+  description: string;
+  time_horizon: "short" | "mid" | "long";
+  affected_target_segments: string[];
+  basis: "evidence_from_inputs" | "domain_generic_assumption";
+  confidence: "low" | "medium" | "high";
+};
+
+type MarketDynamic = {
+  name: string;
+  description: string;
+  affected_target_segments: string[];
+  basis: "evidence_from_inputs" | "domain_generic_assumption";
+  confidence: "low" | "medium" | "high";
+};
+
+type MarketForce = MarketDynamic;
+
+type AdoptionDriver = {
+  name: string;
+  description: string;
+  affected_target_segments: string[];
+};
+
+type AdoptionBarrier = AdoptionDriver;
+
+type MarketLandscape = {
+  market_definition: MarketDefinition;
+  market_size: MarketSize;
+  market_maturity: MarketMaturity;
+  market_trends: MarketTrend[];
+  market_dynamics: MarketDynamic[];
+  market_forces: MarketForce[];
+  adoption_drivers: AdoptionDriver[];
+  adoption_barriers: AdoptionBarrier[];
+};
+
+type CompetitorEntry = {
+  name: string;
+  url: string;
+  category: "direct" | "indirect" | "substitute";
+  description: string;
+  target_audience: string;
+  positioning: string;
+};
+
+type CompetitorInventory = {
+  competitors: CompetitorEntry[];
+};
+
+type CompetitorCapabilityEntry = {
+  competitor_name: string;
+  functional_capabilities: string[];
+  technical_capabilities: string[];
+  business_capabilities: string[];
+  strengths: string[];
+  limitations: string[];
+  alignment_with_user_needs: string;
+};
+
+type IndustryCapabilityPattern = {
+  pattern_name: string;
+  description: string;
+};
+
+type CompetitorCapabilities = {
+  competitor_capabilities: CompetitorCapabilityEntry[];
+  industry_capability_patterns: IndustryCapabilityPattern[];
+};
+
+type GapOpportunity = {
+  gap_description: string;
+  affected_user_segments: string[];
+  opportunity_description: string;
+  user_value_potential: "low" | "medium" | "high";
+  feasibility: "low" | "medium" | "high";
+};
+
+type GapsOpportunities = {
+  gaps_and_opportunities: {
+    functional: GapOpportunity[];
+    technical: GapOpportunity[];
+    business: GapOpportunity[];
+  };
+};
+
+type OpportunityStatement = {
+  opportunity_statement: string;
+};
+
+type ValueDriver = {
+  name: string;
+  user_need_or_pain: string;
+  user_value_impact: "low" | "medium" | "high";
+  business_value_lever: string;
+  business_value_impact: "low" | "medium" | "high";
+  priority: "low" | "medium" | "high";
+};
+
+type ValueDrivers = {
+  value_drivers: ValueDriver[];
+};
+
+type MarketFitHypothesisItem = {
+  hypothesis: string;
+  rationale: string;
+  key_risks_or_unknowns: string[];
+};
+
+type MarketFitHypothesis = {
+  market_fit_hypothesis: {
+    desirability: MarketFitHypothesisItem[];
+    viability: MarketFitHypothesisItem[];
+  };
+};
+
+type FeasibilityConstraintItem = {
+  name: string;
+  description: string;
+  readiness: "low" | "medium" | "high";
+};
+
+type FeasibilityAssessment = {
+  feasibility_assessment: {
+    business_constraints: FeasibilityConstraintItem[];
+    user_constraints: FeasibilityConstraintItem[];
+    technical_concerns: FeasibilityConstraintItem[];
+  };
+};
+
 type DiscoveryDocument = {
   problemUnderstanding?: {
     problemStatement?: string;
@@ -62,16 +207,16 @@ type DiscoveryDocument = {
     contextConstraints?: ContextConstraints;
   };
   marketAndCompetitorAnalysis?: {
-    marketLandscape?: string[];
-    competitorInventory?: string[];
-    competitorCapabilities?: string[];
-    gapsOpportunities?: string[];
+    marketLandscape?: MarketLandscape;
+    competitorInventory?: CompetitorInventory;
+    competitorCapabilities?: CompetitorCapabilities;
+    gapsOpportunities?: GapsOpportunities;
   };
   opportunityDefinition?: {
-    opportunityStatement?: string;
-    valueDrivers?: string[];
-    marketFitHypothesis?: string[];
-    feasibilityAssessment?: string[];
+    opportunityStatement?: OpportunityStatement;
+    valueDrivers?: ValueDrivers;
+    marketFitHypothesis?: MarketFitHypothesis;
+    feasibilityAssessment?: FeasibilityAssessment;
   };
 };
 
@@ -112,6 +257,42 @@ const statusColors: Record<ApiStatus, string> = {
   error: "bg-red-100 text-red-800"
 };
 
+const emptyMarketLandscape: MarketLandscape = {
+  market_definition: {
+    description: "",
+    excluded_adjacent_spaces: []
+  },
+  market_size: {
+    description: ""
+  },
+  market_maturity: {
+    classification: "emerging",
+    rationale: ""
+  },
+  market_trends: [],
+  market_dynamics: [],
+  market_forces: [],
+  adoption_drivers: [],
+  adoption_barriers: []
+};
+
+const emptyCompetitorInventory: CompetitorInventory = {
+  competitors: []
+};
+
+const emptyCompetitorCapabilities: CompetitorCapabilities = {
+  competitor_capabilities: [],
+  industry_capability_patterns: []
+};
+
+const emptyGapsOpportunities: GapsOpportunities = {
+  gaps_and_opportunities: {
+    functional: [],
+    technical: [],
+    business: []
+  }
+};
+
 const emptyDocument: DiscoveryDocument = {
   problemUnderstanding: {
     targetUsersSegments: {
@@ -126,15 +307,31 @@ const emptyDocument: DiscoveryDocument = {
     }
   },
   marketAndCompetitorAnalysis: {
-    marketLandscape: [],
-    competitorInventory: [],
-    competitorCapabilities: [],
-    gapsOpportunities: []
+    marketLandscape: emptyMarketLandscape,
+    competitorInventory: emptyCompetitorInventory,
+    competitorCapabilities: emptyCompetitorCapabilities,
+    gapsOpportunities: emptyGapsOpportunities
   },
   opportunityDefinition: {
-    valueDrivers: [],
-    marketFitHypothesis: [],
-    feasibilityAssessment: []
+    opportunityStatement: {
+      opportunity_statement: ""
+    },
+    valueDrivers: {
+      value_drivers: []
+    },
+    marketFitHypothesis: {
+      market_fit_hypothesis: {
+        desirability: [],
+        viability: []
+      }
+    },
+    feasibilityAssessment: {
+      feasibility_assessment: {
+        business_constraints: [],
+        user_constraints: [],
+        technical_concerns: []
+      }
+    }
   }
 };
 
@@ -176,49 +373,50 @@ const fieldDefinitions: FieldDefinition[] = [
   {
     key: "marketAndCompetitorAnalysis.marketLandscape",
     label: "Market Landscape",
-    type: "array",
+    type: "object",
     group: "Market and Competitor Analysis"
   },
   {
     key: "marketAndCompetitorAnalysis.competitorInventory",
     label: "Competitor Inventory",
-    type: "array",
+    type: "object",
     group: "Market and Competitor Analysis"
   },
   {
     key: "marketAndCompetitorAnalysis.competitorCapabilities",
     label: "Competitor Capabilities",
-    type: "array",
+    type: "object",
     group: "Market and Competitor Analysis"
   },
   {
     key: "marketAndCompetitorAnalysis.gapsOpportunities",
     label: "Gaps & Opportunities",
-    type: "array",
+    type: "object",
     group: "Market and Competitor Analysis"
   },
   {
     key: "opportunityDefinition.opportunityStatement",
     label: "Opportunity Statement",
-    type: "string",
-    group: "Opportunity Definition"
+    type: "object",
+    group: "Opportunity Definition",
+    outputKey: "opportunity_statement"
   },
   {
     key: "opportunityDefinition.valueDrivers",
     label: "Value Drivers",
-    type: "array",
+    type: "object",
     group: "Opportunity Definition"
   },
   {
     key: "opportunityDefinition.marketFitHypothesis",
     label: "Market Fit Hypothesis",
-    type: "array",
+    type: "object",
     group: "Opportunity Definition"
   },
   {
     key: "opportunityDefinition.feasibilityAssessment",
     label: "Feasibility Assessment",
-    type: "array",
+    type: "object",
     group: "Opportunity Definition"
   }
 ];
@@ -275,6 +473,237 @@ function getFieldDisplayKey(field: FieldDefinition) {
   return field.outputKey || field.key.split(".").pop() || field.key;
 }
 
+function normalizeMarketLandscapeValue(value?: MarketLandscape | null): MarketLandscape {
+  return {
+    market_definition: {
+      description: value?.market_definition?.description || "",
+      excluded_adjacent_spaces: Array.isArray(
+        value?.market_definition?.excluded_adjacent_spaces
+      )
+        ? value?.market_definition?.excluded_adjacent_spaces || []
+        : []
+    },
+    market_size: {
+      description: value?.market_size?.description || ""
+    },
+    market_maturity: {
+      classification: value?.market_maturity?.classification || "emerging",
+      rationale: value?.market_maturity?.rationale || ""
+    },
+    market_trends: Array.isArray(value?.market_trends) ? value?.market_trends || [] : [],
+    market_dynamics: Array.isArray(value?.market_dynamics)
+      ? value?.market_dynamics || []
+      : [],
+    market_forces: Array.isArray(value?.market_forces) ? value?.market_forces || [] : [],
+    adoption_drivers: Array.isArray(value?.adoption_drivers)
+      ? value?.adoption_drivers || []
+      : [],
+    adoption_barriers: Array.isArray(value?.adoption_barriers)
+      ? value?.adoption_barriers || []
+      : []
+  };
+}
+
+function normalizeCompetitorInventoryValue(
+  value?: CompetitorInventory | null
+): CompetitorInventory {
+  return {
+    competitors: Array.isArray(value?.competitors) ? value?.competitors || [] : []
+  };
+}
+
+function normalizeCompetitorCapabilitiesValue(
+  value?: CompetitorCapabilities | null
+): CompetitorCapabilities {
+  return {
+    competitor_capabilities: Array.isArray(value?.competitor_capabilities)
+      ? value?.competitor_capabilities || []
+      : [],
+    industry_capability_patterns: Array.isArray(value?.industry_capability_patterns)
+      ? value?.industry_capability_patterns || []
+      : []
+  };
+}
+
+function normalizeGapsOpportunitiesValue(
+  value?: GapsOpportunities | null
+): GapsOpportunities {
+  const legacyList = Array.isArray(
+    (value as { gaps_and_opportunities?: unknown })?.gaps_and_opportunities
+  )
+    ? (value as { gaps_and_opportunities: GapOpportunity[] }).gaps_and_opportunities
+    : null;
+  return {
+    gaps_and_opportunities: {
+      functional: legacyList
+        ? legacyList
+        : Array.isArray(value?.gaps_and_opportunities?.functional)
+          ? value?.gaps_and_opportunities?.functional || []
+          : [],
+      technical: Array.isArray(value?.gaps_and_opportunities?.technical)
+        ? value?.gaps_and_opportunities?.technical || []
+        : [],
+      business: Array.isArray(value?.gaps_and_opportunities?.business)
+        ? value?.gaps_and_opportunities?.business || []
+        : []
+    }
+  };
+}
+
+function normalizeOpportunityStatementValue(
+  value?: OpportunityStatement | null
+): OpportunityStatement {
+  if (typeof value === "string") {
+    return { opportunity_statement: value };
+  }
+  return {
+    opportunity_statement: value?.opportunity_statement || ""
+  };
+}
+
+function normalizeValueDriversValue(value?: ValueDrivers | null): ValueDrivers {
+  return {
+    value_drivers: Array.isArray(value?.value_drivers) ? value?.value_drivers || [] : []
+  };
+}
+
+function normalizeMarketFitHypothesisValue(
+  value?: MarketFitHypothesis | null
+): MarketFitHypothesis {
+  return {
+    market_fit_hypothesis: {
+      desirability: Array.isArray(value?.market_fit_hypothesis?.desirability)
+        ? value?.market_fit_hypothesis?.desirability || []
+        : [],
+      viability: Array.isArray(value?.market_fit_hypothesis?.viability)
+        ? value?.market_fit_hypothesis?.viability || []
+        : []
+    }
+  };
+}
+
+function normalizeFeasibilityAssessmentValue(
+  value?: FeasibilityAssessment | null
+): FeasibilityAssessment {
+  return {
+    feasibility_assessment: {
+      business_constraints: Array.isArray(value?.feasibility_assessment?.business_constraints)
+        ? value?.feasibility_assessment?.business_constraints || []
+        : [],
+      user_constraints: Array.isArray(value?.feasibility_assessment?.user_constraints)
+        ? value?.feasibility_assessment?.user_constraints || []
+        : [],
+      technical_concerns: Array.isArray(value?.feasibility_assessment?.technical_concerns)
+        ? value?.feasibility_assessment?.technical_concerns || []
+        : []
+    }
+  };
+}
+
+function hasFieldValue(field: FieldDefinition, value: unknown): boolean {
+  if (field.type === "string") {
+    return typeof value === "string" && value.trim().length > 0;
+  }
+  if (field.type === "array") {
+    return Array.isArray(value) && value.length > 0;
+  }
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  if (field.key === "problemUnderstanding.contextConstraints") {
+    const constraintsValue = value as ContextConstraints;
+    return Boolean(
+      (Array.isArray(constraintsValue.contextual_factors) &&
+        constraintsValue.contextual_factors.length > 0) ||
+        (Array.isArray(constraintsValue.constraints) &&
+          constraintsValue.constraints.length > 0)
+    );
+  }
+  if (field.key === "marketAndCompetitorAnalysis.marketLandscape") {
+    const landscapeValue = value as MarketLandscape;
+    return Boolean(
+      landscapeValue.market_definition?.description?.trim() ||
+        landscapeValue.market_size?.description?.trim() ||
+        landscapeValue.market_maturity?.rationale?.trim() ||
+        (Array.isArray(landscapeValue.market_trends) &&
+          landscapeValue.market_trends.length > 0) ||
+        (Array.isArray(landscapeValue.market_dynamics) &&
+          landscapeValue.market_dynamics.length > 0) ||
+        (Array.isArray(landscapeValue.market_forces) &&
+          landscapeValue.market_forces.length > 0) ||
+        (Array.isArray(landscapeValue.adoption_drivers) &&
+          landscapeValue.adoption_drivers.length > 0) ||
+        (Array.isArray(landscapeValue.adoption_barriers) &&
+          landscapeValue.adoption_barriers.length > 0)
+    );
+  }
+  if (field.key === "marketAndCompetitorAnalysis.competitorInventory") {
+    const inventoryValue = value as CompetitorInventory;
+    return Array.isArray(inventoryValue.competitors) && inventoryValue.competitors.length > 0;
+  }
+  if (field.key === "marketAndCompetitorAnalysis.competitorCapabilities") {
+    const capabilityValue = value as CompetitorCapabilities;
+    return Boolean(
+      (Array.isArray(capabilityValue.competitor_capabilities) &&
+        capabilityValue.competitor_capabilities.length > 0) ||
+        (Array.isArray(capabilityValue.industry_capability_patterns) &&
+          capabilityValue.industry_capability_patterns.length > 0)
+    );
+  }
+  if (field.key === "marketAndCompetitorAnalysis.gapsOpportunities") {
+    const gapsValue = value as GapsOpportunities;
+    return (
+      (Array.isArray(gapsValue.gaps_and_opportunities?.functional) &&
+        gapsValue.gaps_and_opportunities.functional.length > 0) ||
+      (Array.isArray(gapsValue.gaps_and_opportunities?.technical) &&
+        gapsValue.gaps_and_opportunities.technical.length > 0) ||
+      (Array.isArray(gapsValue.gaps_and_opportunities?.business) &&
+        gapsValue.gaps_and_opportunities.business.length > 0)
+    );
+  }
+  if (field.key === "opportunityDefinition.opportunityStatement") {
+    const statementValue = value as OpportunityStatement;
+    return Boolean(statementValue?.opportunity_statement?.trim());
+  }
+  if (field.key === "opportunityDefinition.valueDrivers") {
+    const driversValue = value as ValueDrivers;
+    return Array.isArray(driversValue.value_drivers) && driversValue.value_drivers.length > 0;
+  }
+  if (field.key === "opportunityDefinition.marketFitHypothesis") {
+    const hypothesisValue = value as MarketFitHypothesis;
+    return Boolean(
+      (Array.isArray(hypothesisValue.market_fit_hypothesis?.desirability) &&
+        hypothesisValue.market_fit_hypothesis.desirability.length > 0) ||
+        (Array.isArray(hypothesisValue.market_fit_hypothesis?.viability) &&
+          hypothesisValue.market_fit_hypothesis.viability.length > 0)
+    );
+  }
+  if (field.key === "opportunityDefinition.feasibilityAssessment") {
+    const assessmentValue = value as FeasibilityAssessment;
+    return Boolean(
+      (Array.isArray(assessmentValue.feasibility_assessment?.business_constraints) &&
+        assessmentValue.feasibility_assessment.business_constraints.length > 0) ||
+        (Array.isArray(assessmentValue.feasibility_assessment?.user_constraints) &&
+          assessmentValue.feasibility_assessment.user_constraints.length > 0) ||
+        (Array.isArray(assessmentValue.feasibility_assessment?.technical_concerns) &&
+          assessmentValue.feasibility_assessment.technical_concerns.length > 0)
+    );
+  }
+  if (field.outputKey) {
+    const collection = (value as Record<string, unknown>)[field.outputKey];
+    return Array.isArray(collection) && collection.length > 0;
+  }
+  return Object.values(value).some((entry) => {
+    if (typeof entry === "string") {
+      return entry.trim().length > 0;
+    }
+    if (Array.isArray(entry)) {
+      return entry.length > 0;
+    }
+    return Boolean(entry);
+  });
+}
+
 export function WizardPage() {
   const [form, setForm] = useState({
     productIdea: "",
@@ -290,7 +719,21 @@ export function WizardPage() {
   const [debugPrompt, setDebugPrompt] = useState<string | null>(null);
   const [debugOutput, setDebugOutput] = useState<string | null>(null);
   const [draftFields, setDraftFields] = useState<
-    Record<string, string | TargetSegment[] | PainPointTheme[] | ContextConstraints>
+    Record<
+      string,
+      | string
+      | TargetSegment[]
+      | PainPointTheme[]
+      | ContextConstraints
+      | MarketLandscape
+      | CompetitorInventory
+      | CompetitorCapabilities
+      | GapsOpportunities
+      | OpportunityStatement
+      | ValueDrivers
+      | MarketFitHypothesis
+      | FeasibilityAssessment
+    >
   >({});
   const [approvingFieldKey, setApprovingFieldKey] = useState<string | null>(null);
   const [regeneratingFieldKey, setRegeneratingFieldKey] = useState<string | null>(null);
@@ -329,6 +772,30 @@ export function WizardPage() {
       if (currentField.key === "problemUnderstanding.contextConstraints") {
         return items && typeof items === "object" ? items : null;
       }
+      if (currentField.key === "marketAndCompetitorAnalysis.marketLandscape") {
+        return items && typeof items === "object" ? items : null;
+      }
+      if (currentField.key === "marketAndCompetitorAnalysis.competitorInventory") {
+        return items && typeof items === "object" ? items : null;
+      }
+      if (currentField.key === "marketAndCompetitorAnalysis.competitorCapabilities") {
+        return items && typeof items === "object" ? items : null;
+      }
+      if (currentField.key === "marketAndCompetitorAnalysis.gapsOpportunities") {
+        return items && typeof items === "object" ? items : null;
+      }
+      if (currentField.key === "opportunityDefinition.opportunityStatement") {
+        return items && typeof items === "object" ? items : null;
+      }
+      if (currentField.key === "opportunityDefinition.valueDrivers") {
+        return items && typeof items === "object" ? items : null;
+      }
+      if (currentField.key === "opportunityDefinition.marketFitHypothesis") {
+        return items && typeof items === "object" ? items : null;
+      }
+      if (currentField.key === "opportunityDefinition.feasibilityAssessment") {
+        return items && typeof items === "object" ? items : null;
+      }
       return Array.isArray(items) ? items : null;
     }
     const rawValue = draftFields[currentField.key];
@@ -356,7 +823,53 @@ export function WizardPage() {
         const fieldName = getFieldDisplayKey(field);
         if (field.type === "object") {
           const items = draftFields[field.key];
-          previousOutputs[fieldName] = Array.isArray(items) ? items : [];
+          if (field.key === "problemUnderstanding.contextConstraints") {
+            previousOutputs[fieldName] =
+              items && typeof items === "object"
+                ? items
+                : { contextual_factors: [], constraints: [] };
+          } else if (field.key === "marketAndCompetitorAnalysis.marketLandscape") {
+            previousOutputs[fieldName] =
+              items && typeof items === "object" ? items : emptyMarketLandscape;
+          } else if (field.key === "marketAndCompetitorAnalysis.competitorInventory") {
+            previousOutputs[fieldName] =
+              items && typeof items === "object" ? items : emptyCompetitorInventory;
+          } else if (field.key === "marketAndCompetitorAnalysis.competitorCapabilities") {
+            previousOutputs[fieldName] =
+              items && typeof items === "object" ? items : emptyCompetitorCapabilities;
+          } else if (field.key === "marketAndCompetitorAnalysis.gapsOpportunities") {
+            previousOutputs[fieldName] =
+              items && typeof items === "object" ? items : emptyGapsOpportunities;
+          } else if (field.key === "opportunityDefinition.opportunityStatement") {
+            previousOutputs[fieldName] =
+              items && typeof items === "object" ? items : { opportunity_statement: "" };
+          } else if (field.key === "opportunityDefinition.valueDrivers") {
+            previousOutputs[fieldName] =
+              items && typeof items === "object" ? items : { value_drivers: [] };
+          } else if (field.key === "opportunityDefinition.marketFitHypothesis") {
+            previousOutputs[fieldName] =
+              items && typeof items === "object"
+                ? items
+                : {
+                  market_fit_hypothesis: {
+                    desirability: [],
+                    viability: []
+                  }
+                };
+          } else if (field.key === "opportunityDefinition.feasibilityAssessment") {
+            previousOutputs[fieldName] =
+              items && typeof items === "object"
+                ? items
+                : {
+                  feasibility_assessment: {
+                    business_constraints: [],
+                    user_constraints: [],
+                    technical_concerns: []
+                  }
+                };
+          } else {
+            previousOutputs[fieldName] = Array.isArray(items) ? items : [];
+          }
         } else {
           const rawValue = draftFields[field.key];
           const textValue = typeof rawValue === "string" ? rawValue : "";
@@ -394,16 +907,29 @@ export function WizardPage() {
       setProgressText("");
       return;
     }
-    const nextDrafts: Record<string, string | TargetSegment[] | PainPointTheme[]> = {};
+    const nextDrafts: Record<
+      string,
+      | string
+      | TargetSegment[]
+      | PainPointTheme[]
+      | ContextConstraints
+      | MarketLandscape
+      | CompetitorInventory
+      | CompetitorCapabilities
+      | GapsOpportunities
+      | OpportunityStatement
+    > = {};
     let approvedCount = 0;
     fieldDefinitions.forEach((field) => {
       const statusInfo = latestRecord.fieldStatus?.[field.key];
       const isApproved = statusInfo?.approved ?? false;
       const isCurrent = latestRecord.currentFieldKey === field.key;
-      const shouldShow = isApproved || isCurrent;
-      const value = shouldShow
-        ? getNestedValue(latestRecord.discoveryDocument || emptyDocument, field.key)
-        : "";
+      const rawValue = getNestedValue(
+        latestRecord.discoveryDocument || emptyDocument,
+        field.key
+      );
+      const shouldShow = isApproved || isCurrent || hasFieldValue(field, rawValue);
+      const value = shouldShow ? rawValue : "";
       if (field.type === "object") {
         if (field.key === "problemUnderstanding.contextConstraints") {
           const constraintsValue =
@@ -418,6 +944,54 @@ export function WizardPage() {
               ? constraintsValue.constraints
               : []
           };
+        } else if (field.key === "marketAndCompetitorAnalysis.marketLandscape") {
+          const landscapeValue =
+            typeof value === "object" && value !== null
+              ? (value as MarketLandscape)
+              : null;
+          nextDrafts[field.key] = normalizeMarketLandscapeValue(landscapeValue);
+        } else if (field.key === "marketAndCompetitorAnalysis.competitorInventory") {
+          const inventoryValue =
+            typeof value === "object" && value !== null
+              ? (value as CompetitorInventory)
+              : null;
+          nextDrafts[field.key] = normalizeCompetitorInventoryValue(inventoryValue);
+        } else if (field.key === "marketAndCompetitorAnalysis.competitorCapabilities") {
+          const capabilityValue =
+            typeof value === "object" && value !== null
+              ? (value as CompetitorCapabilities)
+              : null;
+          nextDrafts[field.key] = normalizeCompetitorCapabilitiesValue(capabilityValue);
+        } else if (field.key === "marketAndCompetitorAnalysis.gapsOpportunities") {
+          const gapsValue =
+            typeof value === "object" && value !== null
+              ? (value as GapsOpportunities)
+              : null;
+          nextDrafts[field.key] = normalizeGapsOpportunitiesValue(gapsValue);
+        } else if (field.key === "opportunityDefinition.opportunityStatement") {
+          const statementValue =
+            typeof value === "object" && value !== null
+              ? (value as OpportunityStatement)
+              : null;
+          nextDrafts[field.key] = normalizeOpportunityStatementValue(statementValue);
+        } else if (field.key === "opportunityDefinition.valueDrivers") {
+          const driversValue =
+            typeof value === "object" && value !== null
+              ? (value as ValueDrivers)
+              : null;
+          nextDrafts[field.key] = normalizeValueDriversValue(driversValue);
+        } else if (field.key === "opportunityDefinition.marketFitHypothesis") {
+          const hypothesisValue =
+            typeof value === "object" && value !== null
+              ? (value as MarketFitHypothesis)
+              : null;
+          nextDrafts[field.key] = normalizeMarketFitHypothesisValue(hypothesisValue);
+        } else if (field.key === "opportunityDefinition.feasibilityAssessment") {
+          const assessmentValue =
+            typeof value === "object" && value !== null
+              ? (value as FeasibilityAssessment)
+              : null;
+          nextDrafts[field.key] = normalizeFeasibilityAssessmentValue(assessmentValue);
         } else {
           const outputKey = field.outputKey || "";
           const collection =
@@ -574,12 +1148,12 @@ export function WizardPage() {
     setQuestions([]);
     setError(null);
 
-      const payload = {
-        productIdea: form.productIdea.trim(),
-        targetUser: form.targetUser.trim(),
-        userMessages: notesArray,
-        forceNew: true
-      };
+    const payload = {
+      productIdea: form.productIdea.trim(),
+      targetUser: form.targetUser.trim(),
+      userMessages: notesArray,
+      forceNew: true
+    };
 
     try {
       const data = await postWithRetry(
@@ -795,6 +1369,10 @@ export function WizardPage() {
       const rawValue = draftFields[key];
       if (Array.isArray(rawValue)) {
         return rawValue.length > 0;
+      }
+      if (rawValue && typeof rawValue === "object") {
+        const field = fieldDefinitions.find((item) => item.key === key);
+        return field ? hasFieldValue(field, rawValue) : false;
       }
       return typeof rawValue === "string" && rawValue.trim().length > 0;
     });
@@ -1160,7 +1738,12 @@ export function WizardPage() {
                             const isCurrent = latestRecord?.currentFieldKey
                               ? latestRecord.currentFieldKey === field.key
                               : false;
-                            const shouldRender = isApproved || isCurrent;
+                            const recordValue = getNestedValue(
+                              latestRecord?.discoveryDocument || emptyDocument,
+                              field.key
+                            );
+                            const shouldRender =
+                              isApproved || isCurrent || hasFieldValue(field, recordValue);
                             const isEditable =
                               !!latestRecord && !latestRecord.approved && isCurrent && !isApproved;
                             const isBlocked = !isEditable;
@@ -1184,12 +1767,30 @@ export function WizardPage() {
                                 <AccordionTrigger
                                   className={`py-2 text-sm font-semibold hover:no-underline ${headerClass}`}
                                 >
-                                  {field.label}
-                                  {isApproved && (
-                                    <span className="ml-2 text-xs font-medium text-green-600">
-                                      Approved
-                                    </span>
-                                  )}
+                                  <div className="flex w-full items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                      <span>{field.label}</span>
+                                      {isApproved && (
+                                        <span className="text-xs font-medium text-green-600">
+                                          Approved
+                                        </span>
+                                      )}
+                                    </div>
+                                    {!isApproved && isCurrent && (
+                                      <button
+                                        type="button"
+                                        className="rounded border bg-white px-3 py-2 text-sm font-normal text-gray-700 disabled:opacity-60"
+                                        onClick={(event) => {
+                                          event.preventDefault();
+                                          event.stopPropagation();
+                                          clearField(field.key);
+                                        }}
+                                        disabled={clearingFieldKey === field.key}
+                                      >
+                                        {clearingFieldKey === field.key ? "Clearing…" : "Clear block"}
+                                      </button>
+                                    )}
+                                  </div>
                                 </AccordionTrigger>
                                 <AccordionContent className="pt-2">
                                   {field.type === "object" ? (
@@ -1201,6 +1802,228 @@ export function WizardPage() {
                                           Array.isArray(draftFields[field.key])
                                             ? (draftFields[field.key] as TargetSegment[])
                                             : []
+                                        }
+                                        onChange={(nextValue) =>
+                                          setDraftFields((prev) => ({
+                                            ...prev,
+                                            [field.key]: nextValue
+                                          }))
+                                        }
+                                        onApprove={() => approveField(field.key, field.type)}
+                                        onRegenerate={() => regenerateField(field.key)}
+                                        onClear={() => clearField(field.key)}
+                                        approved={isApproved}
+                                        disabled={isBlocked}
+                                        isApproving={approvingFieldKey === field.key}
+                                        isRegenerating={regeneratingFieldKey === field.key}
+                                        isClearing={clearingFieldKey === field.key}
+                                      />
+                                    ) : field.key ===
+                                      "marketAndCompetitorAnalysis.marketLandscape" ? (
+                                      <MarketLandscapeEditor
+                                        title={field.label}
+                                        showTitle={false}
+                                        value={
+                                          typeof draftFields[field.key] === "object" &&
+                                          draftFields[field.key] !== null
+                                            ? (draftFields[field.key] as MarketLandscape)
+                                            : emptyMarketLandscape
+                                        }
+                                        onChange={(nextValue) =>
+                                          setDraftFields((prev) => ({
+                                            ...prev,
+                                            [field.key]: nextValue
+                                          }))
+                                        }
+                                        onApprove={() => approveField(field.key, field.type)}
+                                        onRegenerate={() => regenerateField(field.key)}
+                                        onClear={() => clearField(field.key)}
+                                        approved={isApproved}
+                                        disabled={isBlocked}
+                                        isApproving={approvingFieldKey === field.key}
+                                        isRegenerating={regeneratingFieldKey === field.key}
+                                        isClearing={clearingFieldKey === field.key}
+                                      />
+                                    ) : field.key ===
+                                      "marketAndCompetitorAnalysis.competitorInventory" ? (
+                                      <CompetitorInventoryEditor
+                                        title={field.label}
+                                        showTitle={false}
+                                        value={
+                                          typeof draftFields[field.key] === "object" &&
+                                          draftFields[field.key] !== null
+                                            ? (draftFields[field.key] as CompetitorInventory)
+                                            : emptyCompetitorInventory
+                                        }
+                                        onChange={(nextValue) =>
+                                          setDraftFields((prev) => ({
+                                            ...prev,
+                                            [field.key]: nextValue
+                                          }))
+                                        }
+                                        onApprove={() => approveField(field.key, field.type)}
+                                        onRegenerate={() => regenerateField(field.key)}
+                                        onClear={() => clearField(field.key)}
+                                        approved={isApproved}
+                                        disabled={isBlocked}
+                                        isApproving={approvingFieldKey === field.key}
+                                        isRegenerating={regeneratingFieldKey === field.key}
+                                        isClearing={clearingFieldKey === field.key}
+                                      />
+                                    ) : field.key ===
+                                      "marketAndCompetitorAnalysis.competitorCapabilities" ? (
+                                      <CompetitorCapabilitiesEditor
+                                        title={field.label}
+                                        showTitle={false}
+                                        value={
+                                          typeof draftFields[field.key] === "object" &&
+                                          draftFields[field.key] !== null
+                                            ? (draftFields[field.key] as CompetitorCapabilities)
+                                            : emptyCompetitorCapabilities
+                                        }
+                                        onChange={(nextValue) =>
+                                          setDraftFields((prev) => ({
+                                            ...prev,
+                                            [field.key]: nextValue
+                                          }))
+                                        }
+                                        onApprove={() => approveField(field.key, field.type)}
+                                        onRegenerate={() => regenerateField(field.key)}
+                                        onClear={() => clearField(field.key)}
+                                        approved={isApproved}
+                                        disabled={isBlocked}
+                                        isApproving={approvingFieldKey === field.key}
+                                        isRegenerating={regeneratingFieldKey === field.key}
+                                        isClearing={clearingFieldKey === field.key}
+                                      />
+                                    ) : field.key ===
+                                      "marketAndCompetitorAnalysis.gapsOpportunities" ? (
+                                      <GapsOpportunitiesEditor
+                                        title={field.label}
+                                        showTitle={false}
+                                        value={
+                                          typeof draftFields[field.key] === "object" &&
+                                          draftFields[field.key] !== null
+                                            ? (draftFields[field.key] as GapsOpportunities)
+                                            : emptyGapsOpportunities
+                                        }
+                                        onChange={(nextValue) =>
+                                          setDraftFields((prev) => ({
+                                            ...prev,
+                                            [field.key]: nextValue
+                                          }))
+                                        }
+                                        onApprove={() => approveField(field.key, field.type)}
+                                        onRegenerate={() => regenerateField(field.key)}
+                                        onClear={() => clearField(field.key)}
+                                        approved={isApproved}
+                                        disabled={isBlocked}
+                                        isApproving={approvingFieldKey === field.key}
+                                        isRegenerating={regeneratingFieldKey === field.key}
+                                        isClearing={clearingFieldKey === field.key}
+                                      />
+                                    ) : field.key ===
+                                      "opportunityDefinition.opportunityStatement" ? (
+                                      <FieldEditor
+                                        title={field.label}
+                                        showTitle={false}
+                                        type="string"
+                                        value={
+                                          typeof draftFields[field.key] === "object" &&
+                                          draftFields[field.key] !== null
+                                            ? (draftFields[field.key] as OpportunityStatement)
+                                                .opportunity_statement
+                                            : ""
+                                        }
+                                        onChange={(nextValue) =>
+                                          setDraftFields((prev) => ({
+                                            ...prev,
+                                            [field.key]: {
+                                              opportunity_statement: nextValue
+                                            }
+                                          }))
+                                        }
+                                        onApprove={() => approveField(field.key, field.type)}
+                                        onRegenerate={() => regenerateField(field.key)}
+                                        onClear={() => clearField(field.key)}
+                                        approved={isApproved}
+                                        disabled={isBlocked}
+                                        isApproving={approvingFieldKey === field.key}
+                                        isRegenerating={regeneratingFieldKey === field.key}
+                                        isClearing={clearingFieldKey === field.key}
+                                      />
+                                    ) : field.key === "opportunityDefinition.valueDrivers" ? (
+                                      <ValueDriversEditor
+                                        title={field.label}
+                                        showTitle={false}
+                                        value={
+                                          typeof draftFields[field.key] === "object" &&
+                                          draftFields[field.key] !== null
+                                            ? (draftFields[field.key] as ValueDrivers)
+                                            : { value_drivers: [] }
+                                        }
+                                        onChange={(nextValue) =>
+                                          setDraftFields((prev) => ({
+                                            ...prev,
+                                            [field.key]: nextValue
+                                          }))
+                                        }
+                                        onApprove={() => approveField(field.key, field.type)}
+                                        onRegenerate={() => regenerateField(field.key)}
+                                        onClear={() => clearField(field.key)}
+                                        approved={isApproved}
+                                        disabled={isBlocked}
+                                        isApproving={approvingFieldKey === field.key}
+                                        isRegenerating={regeneratingFieldKey === field.key}
+                                        isClearing={clearingFieldKey === field.key}
+                                      />
+                                    ) : field.key ===
+                                      "opportunityDefinition.marketFitHypothesis" ? (
+                                      <MarketFitHypothesisEditor
+                                        title={field.label}
+                                        showTitle={false}
+                                        value={
+                                          typeof draftFields[field.key] === "object" &&
+                                          draftFields[field.key] !== null
+                                            ? (draftFields[field.key] as MarketFitHypothesis)
+                                            : {
+                                              market_fit_hypothesis: {
+                                                desirability: [],
+                                                viability: []
+                                              }
+                                            }
+                                        }
+                                        onChange={(nextValue) =>
+                                          setDraftFields((prev) => ({
+                                            ...prev,
+                                            [field.key]: nextValue
+                                          }))
+                                        }
+                                        onApprove={() => approveField(field.key, field.type)}
+                                        onRegenerate={() => regenerateField(field.key)}
+                                        onClear={() => clearField(field.key)}
+                                        approved={isApproved}
+                                        disabled={isBlocked}
+                                        isApproving={approvingFieldKey === field.key}
+                                        isRegenerating={regeneratingFieldKey === field.key}
+                                        isClearing={clearingFieldKey === field.key}
+                                      />
+                                    ) : field.key ===
+                                      "opportunityDefinition.feasibilityAssessment" ? (
+                                      <FeasibilityAssessmentEditor
+                                        title={field.label}
+                                        showTitle={false}
+                                        value={
+                                          typeof draftFields[field.key] === "object" &&
+                                          draftFields[field.key] !== null
+                                            ? (draftFields[field.key] as FeasibilityAssessment)
+                                            : {
+                                              feasibility_assessment: {
+                                                business_constraints: [],
+                                                user_constraints: [],
+                                                technical_concerns: []
+                                              }
+                                            }
                                         }
                                         onChange={(nextValue) =>
                                           setDraftFields((prev) => ({
@@ -1242,7 +2065,8 @@ export function WizardPage() {
                                         isRegenerating={regeneratingFieldKey === field.key}
                                         isClearing={clearingFieldKey === field.key}
                                       />
-                                    ) : (
+                                    ) : field.key ===
+                                      "problemUnderstanding.userPainPoints" ? (
                                       <PainPointsEditor
                                         title={field.label}
                                         showTitle={false}
@@ -1266,7 +2090,7 @@ export function WizardPage() {
                                         isRegenerating={regeneratingFieldKey === field.key}
                                         isClearing={clearingFieldKey === field.key}
                                       />
-                                    )
+                                    ) : null
                                   ) : (
                                     <FieldEditor
                                       title={field.label}
@@ -1376,6 +2200,23 @@ export function WizardPage() {
   );
 }
 
+function useOpenItems(items: unknown[], prefix: string) {
+  const [openItems, setOpenItems] = useState<string[]>([]);
+  useEffect(() => {
+    const keys = items.map((_, index) => `${prefix}-${index}`);
+    setOpenItems((prev) => {
+      const next = prev.filter((key) => keys.includes(key));
+      keys.forEach((key) => {
+        if (!next.includes(key)) {
+          next.push(key);
+        }
+      });
+      return next;
+    });
+  }, [items.length, prefix]);
+  return [openItems, setOpenItems] as const;
+}
+
 type FieldEditorProps = {
   title: string;
   type: "string" | "array";
@@ -1411,8 +2252,20 @@ function FieldEditor({
     <div className="rounded border bg-white p-4">
       {showTitle && (
         <div className="flex items-center justify-between">
-          <p className="text-sm font-semibold text-gray-800">{title}</p>
-          {approved && <span className="text-xs font-medium text-green-600">Approved</span>}
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-semibold text-gray-800">{title}</p>
+            {approved && <span className="text-xs font-medium text-green-600">Approved</span>}
+          </div>
+          {!approved && (
+            <button
+              type="button"
+              className="rounded border px-3 py-2 text-sm disabled:opacity-60"
+              onClick={onClear}
+              disabled={isClearing}
+            >
+              {isClearing ? "Clearing…" : "Clear block"}
+            </button>
+          )}
         </div>
       )}
       <textarea
@@ -1442,16 +2295,6 @@ function FieldEditor({
         >
           {isRegenerating ? "Regenerating…" : "Regenerate"}
         </button>
-        {!approved && (
-          <button
-            type="button"
-            className="ml-auto rounded border px-3 py-2 text-sm disabled:opacity-60"
-            onClick={onClear}
-            disabled={isClearing}
-          >
-            {isClearing ? "Clearing…" : "Clear block"}
-          </button>
-        )}
       </div>
     </div>
   );
@@ -1551,8 +2394,20 @@ function TargetSegmentsEditor({
     <div className="rounded border bg-white p-4">
       {showTitle && (
         <div className="flex items-center justify-between">
-          <p className="text-sm font-semibold text-gray-800">{title}</p>
-          {approved && <span className="text-xs font-medium text-green-600">Approved</span>}
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-semibold text-gray-800">{title}</p>
+            {approved && <span className="text-xs font-medium text-green-600">Approved</span>}
+          </div>
+          {!approved && (
+            <button
+              type="button"
+              className="rounded border px-3 py-2 text-sm disabled:opacity-60"
+              onClick={onClear}
+              disabled={isClearing}
+            >
+              {isClearing ? "Clearing…" : "Clear block"}
+            </button>
+          )}
         </div>
       )}
 
@@ -1742,16 +2597,6 @@ function TargetSegmentsEditor({
         >
           {isRegenerating ? "Regenerating…" : "Regenerate"}
         </button>
-        {!approved && (
-          <button
-            type="button"
-            className="ml-auto rounded border px-3 py-2 text-sm disabled:opacity-60"
-            onClick={onClear}
-            disabled={isClearing}
-          >
-            {isClearing ? "Clearing…" : "Clear block"}
-          </button>
-        )}
       </div>
     </div>
   );
@@ -1773,6 +2618,31 @@ type PainPointsEditorProps = {
 };
 
 const RATING_OPTIONS: Array<PainPoint["severity"]> = ["low", "medium", "high"];
+const MARKET_MATURITY_OPTIONS: Array<MarketMaturity["classification"]> = [
+  "emerging",
+  "fragmented",
+  "consolidating",
+  "mature"
+];
+const TIME_HORIZON_OPTIONS: Array<MarketTrend["time_horizon"]> = [
+  "short",
+  "mid",
+  "long"
+];
+const BASIS_OPTIONS: Array<MarketTrend["basis"]> = [
+  "evidence_from_inputs",
+  "domain_generic_assumption"
+];
+const CONFIDENCE_OPTIONS: Array<MarketTrend["confidence"]> = [
+  "low",
+  "medium",
+  "high"
+];
+const COMPETITOR_CATEGORY_OPTIONS: Array<CompetitorEntry["category"]> = [
+  "direct",
+  "indirect",
+  "substitute"
+];
 
 function PainPointsEditor({
   title,
@@ -1886,8 +2756,20 @@ function PainPointsEditor({
     <div className="rounded border bg-white p-4">
       {showTitle && (
         <div className="flex items-center justify-between">
-          <p className="text-sm font-semibold text-gray-800">{title}</p>
-          {approved && <span className="text-xs font-medium text-green-600">Approved</span>}
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-semibold text-gray-800">{title}</p>
+            {approved && <span className="text-xs font-medium text-green-600">Approved</span>}
+          </div>
+          {!approved && (
+            <button
+              type="button"
+              className="rounded border px-3 py-2 text-sm disabled:opacity-60"
+              onClick={onClear}
+              disabled={isClearing}
+            >
+              {isClearing ? "Clearing…" : "Clear block"}
+            </button>
+          )}
         </div>
       )}
 
@@ -2183,16 +3065,6 @@ function PainPointsEditor({
         >
           {isRegenerating ? "Regenerating…" : "Regenerate"}
         </button>
-        {!approved && (
-          <button
-            type="button"
-            className="ml-auto rounded border px-3 py-2 text-sm disabled:opacity-60"
-            onClick={onClear}
-            disabled={isClearing}
-          >
-            {isClearing ? "Clearing…" : "Clear block"}
-          </button>
-        )}
       </div>
     </div>
   );
@@ -2390,8 +3262,20 @@ function ContextConstraintsEditor({
     <div className="rounded border bg-white p-4">
       {showTitle && (
         <div className="flex items-center justify-between">
-          <p className="text-sm font-semibold text-gray-800">{title}</p>
-          {approved && <span className="text-xs font-medium text-green-600">Approved</span>}
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-semibold text-gray-800">{title}</p>
+            {approved && <span className="text-xs font-medium text-green-600">Approved</span>}
+          </div>
+          {!approved && (
+            <button
+              type="button"
+              className="rounded border px-3 py-2 text-sm disabled:opacity-60"
+              onClick={onClear}
+              disabled={isClearing}
+            >
+              {isClearing ? "Clearing…" : "Clear block"}
+            </button>
+          )}
         </div>
       )}
 
@@ -2417,16 +3301,2838 @@ function ContextConstraintsEditor({
         >
           {isRegenerating ? "Regenerating…" : "Regenerate"}
         </button>
+      </div>
+    </div>
+  );
+}
+
+type MarketLandscapeEditorProps = {
+  title: string;
+  value: MarketLandscape;
+  onChange: (value: MarketLandscape) => void;
+  onApprove: () => void;
+  onRegenerate: () => void;
+  onClear: () => void;
+  approved: boolean;
+  disabled: boolean;
+  isApproving: boolean;
+  isRegenerating: boolean;
+  isClearing: boolean;
+  showTitle?: boolean;
+};
+
+function MarketLandscapeEditor({
+  title,
+  value,
+  onChange,
+  onApprove,
+  onRegenerate,
+  onClear,
+  approved,
+  disabled,
+  isApproving,
+  isRegenerating,
+  isClearing,
+  showTitle = true
+}: MarketLandscapeEditorProps) {
+  const safeValue = normalizeMarketLandscapeValue(value);
+
+  const hasContent =
+    safeValue.market_definition.description.trim().length > 0 ||
+    safeValue.market_definition.excluded_adjacent_spaces.some((item) => item.trim()) ||
+    safeValue.market_size.description.trim().length > 0 ||
+    safeValue.market_maturity.rationale.trim().length > 0 ||
+    safeValue.market_trends.length > 0 ||
+    safeValue.market_dynamics.length > 0 ||
+    safeValue.market_forces.length > 0 ||
+    safeValue.adoption_drivers.length > 0 ||
+    safeValue.adoption_barriers.length > 0;
+
+  const updateMarketDefinition = (next: MarketDefinition) => {
+    onChange({ ...safeValue, market_definition: next });
+  };
+
+  const updateMarketSize = (next: MarketSize) => {
+    onChange({ ...safeValue, market_size: next });
+  };
+
+  const updateMarketMaturity = (next: MarketMaturity) => {
+    onChange({ ...safeValue, market_maturity: next });
+  };
+
+  const [openTrends, setOpenTrends] = useOpenItems(
+    safeValue.market_trends,
+    "trend"
+  );
+  const [openDynamics, setOpenDynamics] = useOpenItems(
+    safeValue.market_dynamics,
+    "dynamic"
+  );
+  const [openForces, setOpenForces] = useOpenItems(
+    safeValue.market_forces,
+    "force"
+  );
+  const [openDrivers, setOpenDrivers] = useOpenItems(
+    safeValue.adoption_drivers,
+    "driver"
+  );
+  const [openBarriers, setOpenBarriers] = useOpenItems(
+    safeValue.adoption_barriers,
+    "barrier"
+  );
+
+  const updateTrend = (index: number, nextItem: MarketTrend) => {
+    const next = safeValue.market_trends.slice();
+    next[index] = nextItem;
+    onChange({ ...safeValue, market_trends: next });
+  };
+
+  const addTrend = () => {
+    onChange({
+      ...safeValue,
+      market_trends: safeValue.market_trends.concat([
+        {
+          name: "",
+          description: "",
+          time_horizon: "short",
+          affected_target_segments: [""],
+          basis: "domain_generic_assumption",
+          confidence: "medium"
+        }
+      ])
+    });
+  };
+
+  const removeTrend = (index: number) => {
+    const next = safeValue.market_trends.slice();
+    next.splice(index, 1);
+    onChange({ ...safeValue, market_trends: next });
+  };
+
+  const updateDynamic = (index: number, nextItem: MarketDynamic) => {
+    const next = safeValue.market_dynamics.slice();
+    next[index] = nextItem;
+    onChange({ ...safeValue, market_dynamics: next });
+  };
+
+  const addDynamic = () => {
+    onChange({
+      ...safeValue,
+      market_dynamics: safeValue.market_dynamics.concat([
+        {
+          name: "",
+          description: "",
+          affected_target_segments: [""],
+          basis: "domain_generic_assumption",
+          confidence: "medium"
+        }
+      ])
+    });
+  };
+
+  const removeDynamic = (index: number) => {
+    const next = safeValue.market_dynamics.slice();
+    next.splice(index, 1);
+    onChange({ ...safeValue, market_dynamics: next });
+  };
+
+  const updateForce = (index: number, nextItem: MarketForce) => {
+    const next = safeValue.market_forces.slice();
+    next[index] = nextItem;
+    onChange({ ...safeValue, market_forces: next });
+  };
+
+  const addForce = () => {
+    onChange({
+      ...safeValue,
+      market_forces: safeValue.market_forces.concat([
+        {
+          name: "",
+          description: "",
+          affected_target_segments: [""],
+          basis: "domain_generic_assumption",
+          confidence: "medium"
+        }
+      ])
+    });
+  };
+
+  const removeForce = (index: number) => {
+    const next = safeValue.market_forces.slice();
+    next.splice(index, 1);
+    onChange({ ...safeValue, market_forces: next });
+  };
+
+  const updateDriver = (index: number, nextItem: AdoptionDriver) => {
+    const next = safeValue.adoption_drivers.slice();
+    next[index] = nextItem;
+    onChange({ ...safeValue, adoption_drivers: next });
+  };
+
+  const addDriver = () => {
+    onChange({
+      ...safeValue,
+      adoption_drivers: safeValue.adoption_drivers.concat([
+        {
+          name: "",
+          description: "",
+          affected_target_segments: [""]
+        }
+      ])
+    });
+  };
+
+  const removeDriver = (index: number) => {
+    const next = safeValue.adoption_drivers.slice();
+    next.splice(index, 1);
+    onChange({ ...safeValue, adoption_drivers: next });
+  };
+
+  const updateBarrier = (index: number, nextItem: AdoptionBarrier) => {
+    const next = safeValue.adoption_barriers.slice();
+    next[index] = nextItem;
+    onChange({ ...safeValue, adoption_barriers: next });
+  };
+
+  const addBarrier = () => {
+    onChange({
+      ...safeValue,
+      adoption_barriers: safeValue.adoption_barriers.concat([
+        {
+          name: "",
+          description: "",
+          affected_target_segments: [""]
+        }
+      ])
+    });
+  };
+
+  const removeBarrier = (index: number) => {
+    const next = safeValue.adoption_barriers.slice();
+    next.splice(index, 1);
+    onChange({ ...safeValue, adoption_barriers: next });
+  };
+
+  return (
+    <div className="rounded border bg-white p-4">
+      {showTitle && (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-semibold text-gray-800">{title}</p>
+            {approved && <span className="text-xs font-medium text-green-600">Approved</span>}
+          </div>
+          {!approved && (
+            <button
+              type="button"
+              className="rounded border px-3 py-2 text-sm disabled:opacity-60"
+              onClick={onClear}
+              disabled={isClearing}
+            >
+              {isClearing ? "Clearing…" : "Clear block"}
+            </button>
+          )}
+        </div>
+      )}
+
+      <Accordion type="multiple" defaultValue={["market-definition"]}>
+        <AccordionItem value="market-definition" className="border-0">
+          <AccordionTrigger className="py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 hover:no-underline">
+            Market definition
+          </AccordionTrigger>
+          <AccordionContent className="pt-2">
+            <div className="mt-2">
+              <label className="block text-xs text-gray-600">Description</label>
+              <textarea
+                className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                rows={1}
+                value={safeValue.market_definition.description}
+                onChange={(event) =>
+                  updateMarketDefinition({
+                    ...safeValue.market_definition,
+                    description: event.target.value
+                  })
+                }
+                disabled={disabled || approved}
+              />
+            </div>
+            <div className="mt-2">
+              <label className="block text-xs text-gray-600">
+                Excluded adjacent spaces (one per line)
+              </label>
+              <textarea
+                className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                rows={1}
+                value={safeValue.market_definition.excluded_adjacent_spaces.join("\n")}
+                onChange={(event) =>
+                  updateMarketDefinition({
+                    ...safeValue.market_definition,
+                    excluded_adjacent_spaces: event.target.value.split("\n")
+                  })
+                }
+                disabled={disabled || approved}
+              />
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+
+      <Accordion type="multiple" defaultValue={["market-size"]}>
+        <AccordionItem value="market-size" className="border-0">
+          <AccordionTrigger className="py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 hover:no-underline">
+            Market size
+          </AccordionTrigger>
+          <AccordionContent className="pt-2">
+            <div className="mt-2">
+              <label className="block text-xs text-gray-600">Description</label>
+              <textarea
+                className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                rows={1}
+                value={safeValue.market_size.description}
+                onChange={(event) =>
+                  updateMarketSize({ description: event.target.value })
+                }
+                disabled={disabled || approved}
+              />
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+
+      <Accordion type="multiple" defaultValue={["market-maturity"]}>
+        <AccordionItem value="market-maturity" className="border-0">
+          <AccordionTrigger className="py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 hover:no-underline">
+            Market maturity
+          </AccordionTrigger>
+          <AccordionContent className="pt-2">
+            <div className="mt-2 grid gap-2 md:grid-cols-2">
+              <div>
+                <label className="block text-xs text-gray-600">Classification</label>
+                <select
+                  className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                  value={safeValue.market_maturity.classification}
+                  onChange={(event) =>
+                    updateMarketMaturity({
+                      ...safeValue.market_maturity,
+                      classification: event.target.value as MarketMaturity["classification"]
+                    })
+                  }
+                  disabled={disabled || approved}
+                >
+                  {MARKET_MATURITY_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-600">Rationale</label>
+                <textarea
+                  className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                  rows={1}
+                  value={safeValue.market_maturity.rationale}
+                  onChange={(event) =>
+                    updateMarketMaturity({
+                      ...safeValue.market_maturity,
+                      rationale: event.target.value
+                    })
+                  }
+                  disabled={disabled || approved}
+                />
+              </div>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+
+      <Accordion type="multiple" defaultValue={["market-trends"]}>
+        <AccordionItem value="market-trends" className="border-0">
+          <AccordionTrigger className="py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 hover:no-underline">
+            Market trends
+          </AccordionTrigger>
+          <AccordionContent className="pt-2">
+            <Accordion
+              type="multiple"
+              value={openTrends}
+              onValueChange={setOpenTrends}
+              className="space-y-3"
+            >
+              {safeValue.market_trends.map((trend, index) => {
+                const trendKey = `trend-${index}`;
+                return (
+                  <AccordionItem
+                    key={trendKey}
+                    value={trendKey}
+                    className="rounded border border-slate-100 p-2"
+                  >
+                    <div className="grid items-start gap-2 md:grid-cols-[1fr_auto]">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <AccordionTrigger className="flex-none justify-center gap-0 py-0 text-slate-600 hover:no-underline [&>svg]:h-3 [&>svg]:w-3">
+                            <span className="sr-only">Toggle trend</span>
+                          </AccordionTrigger>
+                          <label className="block text-xs text-gray-600">Trend name</label>
+                        </div>
+                        <input
+                          className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                          value={trend.name}
+                          onChange={(event) =>
+                            updateTrend(index, { ...trend, name: event.target.value })
+                          }
+                          disabled={disabled || approved}
+                        />
+                      </div>
+                      <div className="flex items-start">
+                        {!approved && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-slate-600 hover:text-slate-700"
+                            onClick={() => removeTrend(index)}
+                            disabled={disabled}
+                            aria-label="Remove trend"
+                          >
+                            <Trash2 />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    <AccordionContent className="pt-0">
+                      <div className="mt-2">
+                        <label className="block text-xs text-gray-600">Description</label>
+                        <textarea
+                          className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                          rows={1}
+                          value={trend.description}
+                          onChange={(event) =>
+                            updateTrend(index, {
+                              ...trend,
+                              description: event.target.value
+                            })
+                          }
+                          disabled={disabled || approved}
+                        />
+                      </div>
+                      <div className="mt-2 grid gap-2 md:grid-cols-3">
+                        <div>
+                          <label className="block text-xs text-gray-600">Time horizon</label>
+                          <select
+                            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                            value={trend.time_horizon}
+                            onChange={(event) =>
+                              updateTrend(index, {
+                                ...trend,
+                                time_horizon: event.target.value as MarketTrend["time_horizon"]
+                              })
+                            }
+                            disabled={disabled || approved}
+                          >
+                            {TIME_HORIZON_OPTIONS.map((option) => (
+                              <option key={option} value={option}>
+                                {option}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-600">Basis</label>
+                          <select
+                            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                            value={trend.basis}
+                            onChange={(event) =>
+                              updateTrend(index, {
+                                ...trend,
+                                basis: event.target.value as MarketTrend["basis"]
+                              })
+                            }
+                            disabled={disabled || approved}
+                          >
+                            {BASIS_OPTIONS.map((option) => (
+                              <option key={option} value={option}>
+                                {option}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-600">Confidence</label>
+                          <select
+                            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                            value={trend.confidence}
+                            onChange={(event) =>
+                              updateTrend(index, {
+                                ...trend,
+                                confidence: event.target.value as MarketTrend["confidence"]
+                              })
+                            }
+                            disabled={disabled || approved}
+                          >
+                            {CONFIDENCE_OPTIONS.map((option) => (
+                              <option key={option} value={option}>
+                                {option}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                      <div className="mt-2">
+                        <label className="block text-xs text-gray-600">
+                          Affected target segments (one per line)
+                        </label>
+                        <textarea
+                          className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                          rows={1}
+                          value={trend.affected_target_segments.join("\n")}
+                          onChange={(event) =>
+                            updateTrend(index, {
+                              ...trend,
+                              affected_target_segments: event.target.value.split("\n")
+                            })
+                          }
+                          disabled={disabled || approved}
+                        />
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                );
+              })}
+            </Accordion>
+            {!approved && (
+              <button
+                type="button"
+                className="mt-2 text-xs text-blue-600 disabled:opacity-60"
+                onClick={addTrend}
+                disabled={disabled}
+              >
+                + Trend
+              </button>
+            )}
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+
+      <Accordion type="multiple" defaultValue={["market-dynamics"]}>
+        <AccordionItem value="market-dynamics" className="border-0">
+          <AccordionTrigger className="py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 hover:no-underline">
+            Market dynamics
+          </AccordionTrigger>
+          <AccordionContent className="pt-2">
+            <Accordion
+              type="multiple"
+              value={openDynamics}
+              onValueChange={setOpenDynamics}
+              className="space-y-3"
+            >
+              {safeValue.market_dynamics.map((item, index) => {
+                const dynamicKey = `dynamic-${index}`;
+                return (
+                  <AccordionItem
+                    key={dynamicKey}
+                    value={dynamicKey}
+                    className="rounded border border-slate-100 p-2"
+                  >
+                    <div className="grid items-start gap-2 md:grid-cols-[1fr_auto]">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <AccordionTrigger className="flex-none justify-center gap-0 py-0 text-slate-600 hover:no-underline [&>svg]:h-3 [&>svg]:w-3">
+                            <span className="sr-only">Toggle dynamic</span>
+                          </AccordionTrigger>
+                          <label className="block text-xs text-gray-600">Name</label>
+                        </div>
+                        <input
+                          className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                          value={item.name}
+                          onChange={(event) =>
+                            updateDynamic(index, { ...item, name: event.target.value })
+                          }
+                          disabled={disabled || approved}
+                        />
+                      </div>
+                      <div className="flex items-start">
+                        {!approved && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-slate-600 hover:text-slate-700"
+                            onClick={() => removeDynamic(index)}
+                            disabled={disabled}
+                            aria-label="Remove dynamic"
+                          >
+                            <Trash2 />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    <AccordionContent className="pt-0">
+                      <div className="mt-2">
+                        <label className="block text-xs text-gray-600">Description</label>
+                        <textarea
+                          className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                          rows={1}
+                          value={item.description}
+                          onChange={(event) =>
+                            updateDynamic(index, {
+                              ...item,
+                              description: event.target.value
+                            })
+                          }
+                          disabled={disabled || approved}
+                        />
+                      </div>
+                      <div className="mt-2 grid gap-2 md:grid-cols-2">
+                        <div>
+                          <label className="block text-xs text-gray-600">Basis</label>
+                          <select
+                            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                            value={item.basis}
+                            onChange={(event) =>
+                              updateDynamic(index, {
+                                ...item,
+                                basis: event.target.value as MarketDynamic["basis"]
+                              })
+                            }
+                            disabled={disabled || approved}
+                          >
+                            {BASIS_OPTIONS.map((option) => (
+                              <option key={option} value={option}>
+                                {option}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-600">Confidence</label>
+                          <select
+                            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                            value={item.confidence}
+                            onChange={(event) =>
+                              updateDynamic(index, {
+                                ...item,
+                                confidence: event.target.value as MarketDynamic["confidence"]
+                              })
+                            }
+                            disabled={disabled || approved}
+                          >
+                            {CONFIDENCE_OPTIONS.map((option) => (
+                              <option key={option} value={option}>
+                                {option}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                      <div className="mt-2">
+                        <label className="block text-xs text-gray-600">
+                          Affected target segments (one per line)
+                        </label>
+                        <textarea
+                          className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                          rows={1}
+                          value={item.affected_target_segments.join("\n")}
+                          onChange={(event) =>
+                            updateDynamic(index, {
+                              ...item,
+                              affected_target_segments: event.target.value.split("\n")
+                            })
+                          }
+                          disabled={disabled || approved}
+                        />
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                );
+              })}
+            </Accordion>
+            {!approved && (
+              <button
+                type="button"
+                className="mt-2 text-xs text-blue-600 disabled:opacity-60"
+                onClick={addDynamic}
+                disabled={disabled}
+              >
+                + Dynamic
+              </button>
+            )}
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+
+      <Accordion type="multiple" defaultValue={["market-forces"]}>
+        <AccordionItem value="market-forces" className="border-0">
+          <AccordionTrigger className="py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 hover:no-underline">
+            Market forces
+          </AccordionTrigger>
+          <AccordionContent className="pt-2">
+            <Accordion
+              type="multiple"
+              value={openForces}
+              onValueChange={setOpenForces}
+              className="space-y-3"
+            >
+              {safeValue.market_forces.map((item, index) => {
+                const forceKey = `force-${index}`;
+                return (
+                  <AccordionItem
+                    key={forceKey}
+                    value={forceKey}
+                    className="rounded border border-slate-100 p-2"
+                  >
+                    <div className="grid items-start gap-2 md:grid-cols-[1fr_auto]">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <AccordionTrigger className="flex-none justify-center gap-0 py-0 text-slate-600 hover:no-underline [&>svg]:h-3 [&>svg]:w-3">
+                            <span className="sr-only">Toggle force</span>
+                          </AccordionTrigger>
+                          <label className="block text-xs text-gray-600">Name</label>
+                        </div>
+                        <input
+                          className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                          value={item.name}
+                          onChange={(event) =>
+                            updateForce(index, { ...item, name: event.target.value })
+                          }
+                          disabled={disabled || approved}
+                        />
+                      </div>
+                      <div className="flex items-start">
+                        {!approved && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-slate-600 hover:text-slate-700"
+                            onClick={() => removeForce(index)}
+                            disabled={disabled}
+                            aria-label="Remove force"
+                          >
+                            <Trash2 />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    <AccordionContent className="pt-0">
+                      <div className="mt-2">
+                        <label className="block text-xs text-gray-600">Description</label>
+                        <textarea
+                          className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                          rows={1}
+                          value={item.description}
+                          onChange={(event) =>
+                            updateForce(index, {
+                              ...item,
+                              description: event.target.value
+                            })
+                          }
+                          disabled={disabled || approved}
+                        />
+                      </div>
+                      <div className="mt-2 grid gap-2 md:grid-cols-2">
+                        <div>
+                          <label className="block text-xs text-gray-600">Basis</label>
+                          <select
+                            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                            value={item.basis}
+                            onChange={(event) =>
+                              updateForce(index, {
+                                ...item,
+                                basis: event.target.value as MarketForce["basis"]
+                              })
+                            }
+                            disabled={disabled || approved}
+                          >
+                            {BASIS_OPTIONS.map((option) => (
+                              <option key={option} value={option}>
+                                {option}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-600">Confidence</label>
+                          <select
+                            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                            value={item.confidence}
+                            onChange={(event) =>
+                              updateForce(index, {
+                                ...item,
+                                confidence: event.target.value as MarketForce["confidence"]
+                              })
+                            }
+                            disabled={disabled || approved}
+                          >
+                            {CONFIDENCE_OPTIONS.map((option) => (
+                              <option key={option} value={option}>
+                                {option}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                      <div className="mt-2">
+                        <label className="block text-xs text-gray-600">
+                          Affected target segments (one per line)
+                        </label>
+                        <textarea
+                          className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                          rows={1}
+                          value={item.affected_target_segments.join("\n")}
+                          onChange={(event) =>
+                            updateForce(index, {
+                              ...item,
+                              affected_target_segments: event.target.value.split("\n")
+                            })
+                          }
+                          disabled={disabled || approved}
+                        />
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                );
+              })}
+            </Accordion>
+            {!approved && (
+              <button
+                type="button"
+                className="mt-2 text-xs text-blue-600 disabled:opacity-60"
+                onClick={addForce}
+                disabled={disabled}
+              >
+                + Force
+              </button>
+            )}
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+
+      <Accordion type="multiple" defaultValue={["adoption-drivers"]}>
+        <AccordionItem value="adoption-drivers" className="border-0">
+          <AccordionTrigger className="py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 hover:no-underline">
+            Adoption drivers
+          </AccordionTrigger>
+          <AccordionContent className="pt-2">
+            <Accordion
+              type="multiple"
+              value={openDrivers}
+              onValueChange={setOpenDrivers}
+              className="space-y-3"
+            >
+              {safeValue.adoption_drivers.map((item, index) => {
+                const driverKey = `driver-${index}`;
+                return (
+                  <AccordionItem
+                    key={driverKey}
+                    value={driverKey}
+                    className="rounded border border-slate-100 p-2"
+                  >
+                    <div className="grid items-start gap-2 md:grid-cols-[1fr_auto]">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <AccordionTrigger className="flex-none justify-center gap-0 py-0 text-slate-600 hover:no-underline [&>svg]:h-3 [&>svg]:w-3">
+                            <span className="sr-only">Toggle driver</span>
+                          </AccordionTrigger>
+                          <label className="block text-xs text-gray-600">Name</label>
+                        </div>
+                        <input
+                          className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                          value={item.name}
+                          onChange={(event) =>
+                            updateDriver(index, { ...item, name: event.target.value })
+                          }
+                          disabled={disabled || approved}
+                        />
+                      </div>
+                      <div className="flex items-start">
+                        {!approved && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-slate-600 hover:text-slate-700"
+                            onClick={() => removeDriver(index)}
+                            disabled={disabled}
+                            aria-label="Remove driver"
+                          >
+                            <Trash2 />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    <AccordionContent className="pt-0">
+                      <div className="mt-2">
+                        <label className="block text-xs text-gray-600">Description</label>
+                        <textarea
+                          className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                          rows={1}
+                          value={item.description}
+                          onChange={(event) =>
+                            updateDriver(index, {
+                              ...item,
+                              description: event.target.value
+                            })
+                          }
+                          disabled={disabled || approved}
+                        />
+                      </div>
+                      <div className="mt-2">
+                        <label className="block text-xs text-gray-600">
+                          Affected target segments (one per line)
+                        </label>
+                        <textarea
+                          className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                          rows={1}
+                          value={item.affected_target_segments.join("\n")}
+                          onChange={(event) =>
+                            updateDriver(index, {
+                              ...item,
+                              affected_target_segments: event.target.value.split("\n")
+                            })
+                          }
+                          disabled={disabled || approved}
+                        />
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                );
+              })}
+            </Accordion>
+            {!approved && (
+              <button
+                type="button"
+                className="mt-2 text-xs text-blue-600 disabled:opacity-60"
+                onClick={addDriver}
+                disabled={disabled}
+              >
+                + Driver
+              </button>
+            )}
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+
+      <Accordion type="multiple" defaultValue={["adoption-barriers"]}>
+        <AccordionItem value="adoption-barriers" className="border-0">
+          <AccordionTrigger className="py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 hover:no-underline">
+            Adoption barriers
+          </AccordionTrigger>
+          <AccordionContent className="pt-2">
+            <Accordion
+              type="multiple"
+              value={openBarriers}
+              onValueChange={setOpenBarriers}
+              className="space-y-3"
+            >
+              {safeValue.adoption_barriers.map((item, index) => {
+                const barrierKey = `barrier-${index}`;
+                return (
+                  <AccordionItem
+                    key={barrierKey}
+                    value={barrierKey}
+                    className="rounded border border-slate-100 p-2"
+                  >
+                    <div className="grid items-start gap-2 md:grid-cols-[1fr_auto]">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <AccordionTrigger className="flex-none justify-center gap-0 py-0 text-slate-600 hover:no-underline [&>svg]:h-3 [&>svg]:w-3">
+                            <span className="sr-only">Toggle barrier</span>
+                          </AccordionTrigger>
+                          <label className="block text-xs text-gray-600">Name</label>
+                        </div>
+                        <input
+                          className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                          value={item.name}
+                          onChange={(event) =>
+                            updateBarrier(index, { ...item, name: event.target.value })
+                          }
+                          disabled={disabled || approved}
+                        />
+                      </div>
+                      <div className="flex items-start">
+                        {!approved && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-slate-600 hover:text-slate-700"
+                            onClick={() => removeBarrier(index)}
+                            disabled={disabled}
+                            aria-label="Remove barrier"
+                          >
+                            <Trash2 />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    <AccordionContent className="pt-0">
+                      <div className="mt-2">
+                        <label className="block text-xs text-gray-600">Description</label>
+                        <textarea
+                          className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                          rows={1}
+                          value={item.description}
+                          onChange={(event) =>
+                            updateBarrier(index, {
+                              ...item,
+                              description: event.target.value
+                            })
+                          }
+                          disabled={disabled || approved}
+                        />
+                      </div>
+                      <div className="mt-2">
+                        <label className="block text-xs text-gray-600">
+                          Affected target segments (one per line)
+                        </label>
+                        <textarea
+                          className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                          rows={1}
+                          value={item.affected_target_segments.join("\n")}
+                          onChange={(event) =>
+                            updateBarrier(index, {
+                              ...item,
+                              affected_target_segments: event.target.value.split("\n")
+                            })
+                          }
+                          disabled={disabled || approved}
+                        />
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                );
+              })}
+            </Accordion>
+            {!approved && (
+              <button
+                type="button"
+                className="mt-2 text-xs text-blue-600 disabled:opacity-60"
+                onClick={addBarrier}
+                disabled={disabled}
+              >
+                + Barrier
+              </button>
+            )}
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+
+      <div className="mt-4 flex items-center gap-2">
         {!approved && (
           <button
             type="button"
-            className="ml-auto rounded border px-3 py-2 text-sm disabled:opacity-60"
-            onClick={onClear}
-            disabled={isClearing}
+            className="inline-flex min-w-[96px] items-center justify-center rounded border border-green-600 px-3 py-2 text-sm font-medium text-green-700 disabled:opacity-60"
+            onClick={onApprove}
+            disabled={disabled || !hasContent || isApproving}
           >
-            {isClearing ? "Clearing…" : "Clear block"}
+            {isApproving ? "Approving…" : "Approve"}
           </button>
         )}
+        <button
+          type="button"
+          className="inline-flex min-w-[108px] items-center justify-center rounded border border-blue-600 px-3 py-2 text-sm font-medium text-blue-700 disabled:opacity-60"
+          onClick={onRegenerate}
+          disabled={isRegenerating}
+        >
+          {isRegenerating ? "Regenerating…" : "Regenerate"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+type CompetitorInventoryEditorProps = {
+  title: string;
+  value: CompetitorInventory;
+  onChange: (value: CompetitorInventory) => void;
+  onApprove: () => void;
+  onRegenerate: () => void;
+  onClear: () => void;
+  approved: boolean;
+  disabled: boolean;
+  isApproving: boolean;
+  isRegenerating: boolean;
+  isClearing: boolean;
+  showTitle?: boolean;
+};
+
+function CompetitorInventoryEditor({
+  title,
+  value,
+  onChange,
+  onApprove,
+  onRegenerate,
+  onClear,
+  approved,
+  disabled,
+  isApproving,
+  isRegenerating,
+  isClearing,
+  showTitle = true
+}: CompetitorInventoryEditorProps) {
+  const safeValue = normalizeCompetitorInventoryValue(value);
+  const hasCompetitors = safeValue.competitors.length > 0;
+  const [openCompetitors, setOpenCompetitors] = useOpenItems(
+    safeValue.competitors,
+    "competitor"
+  );
+
+  const updateCompetitor = (index: number, nextItem: CompetitorEntry) => {
+    const next = safeValue.competitors.slice();
+    next[index] = nextItem;
+    onChange({ competitors: next });
+  };
+
+  const addCompetitor = () => {
+    onChange({
+      competitors: safeValue.competitors.concat([
+        {
+          name: "",
+          url: "",
+          category: "direct",
+          description: "",
+          target_audience: "",
+          positioning: ""
+        }
+      ])
+    });
+  };
+
+  const removeCompetitor = (index: number) => {
+    const next = safeValue.competitors.slice();
+    next.splice(index, 1);
+    onChange({ competitors: next });
+  };
+
+  return (
+    <div className="rounded border bg-white p-4">
+      {showTitle && (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-semibold text-gray-800">{title}</p>
+            {approved && <span className="text-xs font-medium text-green-600">Approved</span>}
+          </div>
+          {!approved && (
+            <button
+              type="button"
+              className="rounded border px-3 py-2 text-sm disabled:opacity-60"
+              onClick={onClear}
+              disabled={isClearing}
+            >
+              {isClearing ? "Clearing…" : "Clear block"}
+            </button>
+          )}
+        </div>
+      )}
+
+      {safeValue.competitors.length === 0 && (
+        <p className="mt-3 text-xs text-gray-500">
+          No competitors yet. Add one to begin.
+        </p>
+      )}
+
+      <Accordion
+        type="multiple"
+        value={openCompetitors}
+        onValueChange={setOpenCompetitors}
+        className="mt-3 space-y-3"
+      >
+        {safeValue.competitors.map((competitor, index) => {
+          const itemKey = `competitor-${index}`;
+          return (
+            <AccordionItem
+              key={itemKey}
+              value={itemKey}
+              className="rounded border border-slate-100 p-2"
+            >
+              <div className="grid items-start gap-2 md:grid-cols-[1fr_auto]">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <AccordionTrigger className="flex-none justify-center gap-0 py-0 text-slate-600 hover:no-underline [&>svg]:h-3 [&>svg]:w-3">
+                      <span className="sr-only">Toggle competitor</span>
+                    </AccordionTrigger>
+                    <label className="block text-xs text-gray-600">Competitor name</label>
+                  </div>
+                  <input
+                    className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                    value={competitor.name}
+                    onChange={(event) =>
+                      updateCompetitor(index, { ...competitor, name: event.target.value })
+                    }
+                    disabled={disabled || approved}
+                  />
+                </div>
+                <div className="flex items-start">
+                  {!approved && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-slate-600 hover:text-slate-700"
+                      onClick={() => removeCompetitor(index)}
+                      disabled={disabled}
+                      aria-label="Remove competitor"
+                    >
+                      <Trash2 />
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <AccordionContent className="pt-0">
+                <div className="mt-2 grid gap-2 md:grid-cols-2">
+                  <div>
+                    <label className="block text-xs text-gray-600">URL</label>
+                    <input
+                      className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                      value={competitor.url}
+                      onChange={(event) =>
+                        updateCompetitor(index, { ...competitor, url: event.target.value })
+                      }
+                      disabled={disabled || approved}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-600">Category</label>
+                    <select
+                      className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                      value={competitor.category}
+                      onChange={(event) =>
+                        updateCompetitor(index, {
+                          ...competitor,
+                          category: event.target.value as CompetitorEntry["category"]
+                        })
+                      }
+                      disabled={disabled || approved}
+                    >
+                      {COMPETITOR_CATEGORY_OPTIONS.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="mt-2">
+                  <label className="block text-xs text-gray-600">Description</label>
+                  <textarea
+                    className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                    rows={1}
+                    value={competitor.description}
+                    onChange={(event) =>
+                      updateCompetitor(index, {
+                        ...competitor,
+                        description: event.target.value
+                      })
+                    }
+                    disabled={disabled || approved}
+                  />
+                </div>
+                <div className="mt-2 grid gap-2 md:grid-cols-2">
+                  <div>
+                    <label className="block text-xs text-gray-600">Target audience</label>
+                    <textarea
+                      className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                      rows={1}
+                      value={competitor.target_audience}
+                      onChange={(event) =>
+                        updateCompetitor(index, {
+                          ...competitor,
+                          target_audience: event.target.value
+                        })
+                      }
+                      disabled={disabled || approved}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-600">Positioning</label>
+                    <textarea
+                      className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                      rows={1}
+                      value={competitor.positioning}
+                      onChange={(event) =>
+                        updateCompetitor(index, {
+                          ...competitor,
+                          positioning: event.target.value
+                        })
+                      }
+                      disabled={disabled || approved}
+                    />
+                  </div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          );
+        })}
+      </Accordion>
+
+      {!approved && (
+        <button
+          type="button"
+          className="mt-3 inline-flex items-center rounded border border-slate-300 px-3 py-1 text-xs text-slate-700 disabled:opacity-60"
+          onClick={addCompetitor}
+          disabled={disabled}
+        >
+          + Competitor
+        </button>
+      )}
+
+      <div className="mt-3 flex items-center gap-2">
+        {!approved && (
+          <button
+            type="button"
+            className="inline-flex min-w-[96px] items-center justify-center rounded border border-green-600 px-3 py-2 text-sm font-medium text-green-700 disabled:opacity-60"
+            onClick={onApprove}
+            disabled={disabled || !hasCompetitors || isApproving}
+          >
+            {isApproving ? "Approving…" : "Approve"}
+          </button>
+        )}
+        <button
+          type="button"
+          className="inline-flex min-w-[108px] items-center justify-center rounded border border-blue-600 px-3 py-2 text-sm font-medium text-blue-700 disabled:opacity-60"
+          onClick={onRegenerate}
+          disabled={isRegenerating}
+        >
+          {isRegenerating ? "Regenerating…" : "Regenerate"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+type CompetitorCapabilitiesEditorProps = {
+  title: string;
+  value: CompetitorCapabilities;
+  onChange: (value: CompetitorCapabilities) => void;
+  onApprove: () => void;
+  onRegenerate: () => void;
+  onClear: () => void;
+  approved: boolean;
+  disabled: boolean;
+  isApproving: boolean;
+  isRegenerating: boolean;
+  isClearing: boolean;
+  showTitle?: boolean;
+};
+
+function CompetitorCapabilitiesEditor({
+  title,
+  value,
+  onChange,
+  onApprove,
+  onRegenerate,
+  onClear,
+  approved,
+  disabled,
+  isApproving,
+  isRegenerating,
+  isClearing,
+  showTitle = true
+}: CompetitorCapabilitiesEditorProps) {
+  const safeValue = normalizeCompetitorCapabilitiesValue(value);
+  const hasCompetitors = safeValue.competitor_capabilities.length > 0;
+  const hasPatterns = safeValue.industry_capability_patterns.length > 0;
+  const [openCompetitors, setOpenCompetitors] = useOpenItems(
+    safeValue.competitor_capabilities,
+    "competitor-capability"
+  );
+  const [openPatterns, setOpenPatterns] = useOpenItems(
+    safeValue.industry_capability_patterns,
+    "industry-pattern"
+  );
+
+  const updateCompetitor = (
+    index: number,
+    nextItem: CompetitorCapabilityEntry
+  ) => {
+    const next = safeValue.competitor_capabilities.slice();
+    next[index] = nextItem;
+    onChange({ ...safeValue, competitor_capabilities: next });
+  };
+
+  const addCompetitor = () => {
+    onChange({
+      ...safeValue,
+      competitor_capabilities: safeValue.competitor_capabilities.concat([
+        {
+          competitor_name: "",
+          functional_capabilities: [""],
+          technical_capabilities: [""],
+          business_capabilities: [""],
+          strengths: [""],
+          limitations: [""],
+          alignment_with_user_needs: ""
+        }
+      ])
+    });
+  };
+
+  const removeCompetitor = (index: number) => {
+    const next = safeValue.competitor_capabilities.slice();
+    next.splice(index, 1);
+    onChange({ ...safeValue, competitor_capabilities: next });
+  };
+
+  const updatePattern = (index: number, nextItem: IndustryCapabilityPattern) => {
+    const next = safeValue.industry_capability_patterns.slice();
+    next[index] = nextItem;
+    onChange({ ...safeValue, industry_capability_patterns: next });
+  };
+
+  const addPattern = () => {
+    onChange({
+      ...safeValue,
+      industry_capability_patterns: safeValue.industry_capability_patterns.concat([
+        { pattern_name: "", description: "" }
+      ])
+    });
+  };
+
+  const removePattern = (index: number) => {
+    const next = safeValue.industry_capability_patterns.slice();
+    next.splice(index, 1);
+    onChange({ ...safeValue, industry_capability_patterns: next });
+  };
+
+  return (
+    <div className="rounded border bg-white p-4">
+      {showTitle && (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-semibold text-gray-800">{title}</p>
+            {approved && <span className="text-xs font-medium text-green-600">Approved</span>}
+          </div>
+          {!approved && (
+            <button
+              type="button"
+              className="rounded border px-3 py-2 text-sm disabled:opacity-60"
+              onClick={onClear}
+              disabled={isClearing}
+            >
+              {isClearing ? "Clearing…" : "Clear block"}
+            </button>
+          )}
+        </div>
+      )}
+
+      <Accordion type="multiple" defaultValue={["competitor_capabilities"]}>
+        <AccordionItem value="competitor_capabilities" className="border-0">
+          <AccordionTrigger className="py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 hover:no-underline">
+            Competitor capabilities
+          </AccordionTrigger>
+          <AccordionContent className="pt-2">
+            <Accordion
+              type="multiple"
+              value={openCompetitors}
+              onValueChange={setOpenCompetitors}
+              className="space-y-3"
+            >
+              {safeValue.competitor_capabilities.map((item, index) => {
+                const itemKey = `competitor-capability-${index}`;
+                return (
+                  <AccordionItem
+                    key={itemKey}
+                    value={itemKey}
+                    className="rounded border border-slate-100 p-2"
+                  >
+                    <div className="grid items-start gap-2 md:grid-cols-[1fr_auto]">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <AccordionTrigger className="flex-none justify-center gap-0 py-0 text-slate-600 hover:no-underline [&>svg]:h-3 [&>svg]:w-3">
+                            <span className="sr-only">Toggle competitor</span>
+                          </AccordionTrigger>
+                          <label className="block text-xs text-gray-600">Competitor name</label>
+                        </div>
+                        <input
+                          className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                          value={item.competitor_name}
+                          onChange={(event) =>
+                            updateCompetitor(index, {
+                              ...item,
+                              competitor_name: event.target.value
+                            })
+                          }
+                          disabled={disabled || approved}
+                        />
+                      </div>
+                      <div className="flex items-start">
+                        {!approved && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-slate-600 hover:text-slate-700"
+                            onClick={() => removeCompetitor(index)}
+                            disabled={disabled}
+                            aria-label="Remove competitor capability"
+                          >
+                            <Trash2 />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    <AccordionContent className="pt-0">
+                      <div className="mt-2 grid gap-2 md:grid-cols-2">
+                        <div>
+                          <label className="block text-xs text-gray-600">
+                            Functional capabilities (one per line)
+                          </label>
+                          <textarea
+                            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                            rows={2}
+                            value={item.functional_capabilities.join("\n")}
+                            onChange={(event) =>
+                              updateCompetitor(index, {
+                                ...item,
+                                functional_capabilities: event.target.value.split("\n")
+                              })
+                            }
+                            disabled={disabled || approved}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-600">
+                            Technical capabilities (one per line)
+                          </label>
+                          <textarea
+                            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                            rows={2}
+                            value={item.technical_capabilities.join("\n")}
+                            onChange={(event) =>
+                              updateCompetitor(index, {
+                                ...item,
+                                technical_capabilities: event.target.value.split("\n")
+                              })
+                            }
+                            disabled={disabled || approved}
+                          />
+                        </div>
+                      </div>
+                      <div className="mt-2 grid gap-2 md:grid-cols-2">
+                        <div>
+                          <label className="block text-xs text-gray-600">
+                            Business capabilities (one per line)
+                          </label>
+                          <textarea
+                            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                            rows={2}
+                            value={item.business_capabilities.join("\n")}
+                            onChange={(event) =>
+                              updateCompetitor(index, {
+                                ...item,
+                                business_capabilities: event.target.value.split("\n")
+                              })
+                            }
+                            disabled={disabled || approved}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-600">
+                            Strengths (one per line)
+                          </label>
+                          <textarea
+                            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                            rows={2}
+                            value={item.strengths.join("\n")}
+                            onChange={(event) =>
+                              updateCompetitor(index, {
+                                ...item,
+                                strengths: event.target.value.split("\n")
+                              })
+                            }
+                            disabled={disabled || approved}
+                          />
+                        </div>
+                      </div>
+                      <div className="mt-2 grid gap-2 md:grid-cols-2">
+                        <div>
+                          <label className="block text-xs text-gray-600">
+                            Limitations (one per line)
+                          </label>
+                          <textarea
+                            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                            rows={2}
+                            value={item.limitations.join("\n")}
+                            onChange={(event) =>
+                              updateCompetitor(index, {
+                                ...item,
+                                limitations: event.target.value.split("\n")
+                              })
+                            }
+                            disabled={disabled || approved}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-600">
+                            Alignment with user needs
+                          </label>
+                          <textarea
+                            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                            rows={2}
+                            value={item.alignment_with_user_needs}
+                            onChange={(event) =>
+                              updateCompetitor(index, {
+                                ...item,
+                                alignment_with_user_needs: event.target.value
+                              })
+                            }
+                            disabled={disabled || approved}
+                          />
+                        </div>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                );
+              })}
+            </Accordion>
+            {!approved && (
+              <button
+                type="button"
+                className="mt-3 text-xs text-blue-600 disabled:opacity-60"
+                onClick={addCompetitor}
+                disabled={disabled}
+              >
+                + Competitor
+              </button>
+            )}
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+
+      <Accordion type="multiple" defaultValue={["industry_capability_patterns"]}>
+        <AccordionItem value="industry_capability_patterns" className="border-0">
+          <AccordionTrigger className="py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 hover:no-underline">
+            Industry capability patterns
+          </AccordionTrigger>
+          <AccordionContent className="pt-2">
+            <Accordion
+              type="multiple"
+              value={openPatterns}
+              onValueChange={setOpenPatterns}
+              className="space-y-3"
+            >
+              {safeValue.industry_capability_patterns.map((item, index) => {
+                const itemKey = `industry-pattern-${index}`;
+                return (
+                  <AccordionItem
+                    key={itemKey}
+                    value={itemKey}
+                    className="rounded border border-slate-100 p-2"
+                  >
+                    <div className="grid items-start gap-2 md:grid-cols-[1fr_auto]">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <AccordionTrigger className="flex-none justify-center gap-0 py-0 text-slate-600 hover:no-underline [&>svg]:h-3 [&>svg]:w-3">
+                            <span className="sr-only">Toggle pattern</span>
+                          </AccordionTrigger>
+                          <label className="block text-xs text-gray-600">Pattern name</label>
+                        </div>
+                        <input
+                          className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                          value={item.pattern_name}
+                          onChange={(event) =>
+                            updatePattern(index, {
+                              ...item,
+                              pattern_name: event.target.value
+                            })
+                          }
+                          disabled={disabled || approved}
+                        />
+                      </div>
+                      <div className="flex items-start">
+                        {!approved && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-slate-600 hover:text-slate-700"
+                            onClick={() => removePattern(index)}
+                            disabled={disabled}
+                            aria-label="Remove capability pattern"
+                          >
+                            <Trash2 />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    <AccordionContent className="pt-0">
+                      <div className="mt-2">
+                        <label className="block text-xs text-gray-600">Description</label>
+                        <textarea
+                          className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                          rows={1}
+                          value={item.description}
+                          onChange={(event) =>
+                            updatePattern(index, {
+                              ...item,
+                              description: event.target.value
+                            })
+                          }
+                          disabled={disabled || approved}
+                        />
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                );
+              })}
+            </Accordion>
+            {!approved && (
+              <button
+                type="button"
+                className="mt-3 text-xs text-blue-600 disabled:opacity-60"
+                onClick={addPattern}
+                disabled={disabled}
+              >
+                + Pattern
+              </button>
+            )}
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+
+      <div className="mt-4 flex items-center gap-2">
+        {!approved && (
+          <button
+            type="button"
+            className="inline-flex min-w-[96px] items-center justify-center rounded border border-green-600 px-3 py-2 text-sm font-medium text-green-700 disabled:opacity-60"
+            onClick={onApprove}
+            disabled={disabled || !hasCompetitors || !hasPatterns || isApproving}
+          >
+            {isApproving ? "Approving…" : "Approve"}
+          </button>
+        )}
+        <button
+          type="button"
+          className="inline-flex min-w-[108px] items-center justify-center rounded border border-blue-600 px-3 py-2 text-sm font-medium text-blue-700 disabled:opacity-60"
+          onClick={onRegenerate}
+          disabled={isRegenerating}
+        >
+          {isRegenerating ? "Regenerating…" : "Regenerate"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+type GapsOpportunitiesEditorProps = {
+  title: string;
+  value: GapsOpportunities;
+  onChange: (value: GapsOpportunities) => void;
+  onApprove: () => void;
+  onRegenerate: () => void;
+  onClear: () => void;
+  approved: boolean;
+  disabled: boolean;
+  isApproving: boolean;
+  isRegenerating: boolean;
+  isClearing: boolean;
+  showTitle?: boolean;
+};
+
+const GAP_IMPACT_OPTIONS: GapOpportunity["user_value_potential"][] = [
+  "low",
+  "medium",
+  "high"
+];
+
+function GapsOpportunitiesEditor({
+  title,
+  value,
+  onChange,
+  onApprove,
+  onRegenerate,
+  onClear,
+  approved,
+  disabled,
+  isApproving,
+  isRegenerating,
+  isClearing,
+  showTitle = true
+}: GapsOpportunitiesEditorProps) {
+  const safeValue = normalizeGapsOpportunitiesValue(value);
+  const hasItems =
+    safeValue.gaps_and_opportunities.functional.length > 0 &&
+    safeValue.gaps_and_opportunities.technical.length > 0 &&
+    safeValue.gaps_and_opportunities.business.length > 0;
+  const [openFunctional, setOpenFunctional] = useOpenItems(
+    safeValue.gaps_and_opportunities.functional,
+    "gap-functional"
+  );
+  const [openTechnical, setOpenTechnical] = useOpenItems(
+    safeValue.gaps_and_opportunities.technical,
+    "gap-technical"
+  );
+  const [openBusiness, setOpenBusiness] = useOpenItems(
+    safeValue.gaps_and_opportunities.business,
+    "gap-business"
+  );
+
+  const updateGap = (
+    key: keyof GapsOpportunities["gaps_and_opportunities"],
+    index: number,
+    nextItem: GapOpportunity
+  ) => {
+    const next = safeValue.gaps_and_opportunities[key].slice();
+    next[index] = nextItem;
+    onChange({
+      gaps_and_opportunities: {
+        ...safeValue.gaps_and_opportunities,
+        [key]: next
+      }
+    });
+  };
+
+  const addGap = (key: keyof GapsOpportunities["gaps_and_opportunities"]) => {
+    onChange({
+      gaps_and_opportunities: {
+        ...safeValue.gaps_and_opportunities,
+        [key]: safeValue.gaps_and_opportunities[key].concat([
+          {
+            gap_description: "",
+            affected_user_segments: [""],
+            opportunity_description: "",
+            user_value_potential: "medium",
+            feasibility: "medium"
+          }
+        ])
+      }
+    });
+  };
+
+  const removeGap = (
+    key: keyof GapsOpportunities["gaps_and_opportunities"],
+    index: number
+  ) => {
+    const next = safeValue.gaps_and_opportunities[key].slice();
+    next.splice(index, 1);
+    onChange({
+      gaps_and_opportunities: {
+        ...safeValue.gaps_and_opportunities,
+        [key]: next
+      }
+    });
+  };
+
+  return (
+    <div className="rounded border bg-white p-4">
+      {showTitle && (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-semibold text-gray-800">{title}</p>
+            {approved && <span className="text-xs font-medium text-green-600">Approved</span>}
+          </div>
+          {!approved && (
+            <button
+              type="button"
+              className="rounded border px-3 py-2 text-sm disabled:opacity-60"
+              onClick={onClear}
+              disabled={isClearing}
+            >
+              {isClearing ? "Clearing…" : "Clear block"}
+            </button>
+          )}
+        </div>
+      )}
+
+      {safeValue.gaps_and_opportunities.functional.length === 0 &&
+        safeValue.gaps_and_opportunities.technical.length === 0 &&
+        safeValue.gaps_and_opportunities.business.length === 0 && (
+        <p className="mt-3 text-xs text-gray-500">
+          No gaps yet. Add one to begin.
+        </p>
+      )}
+
+      {([
+        ["Functional", "functional", openFunctional, setOpenFunctional],
+        ["Technical", "technical", openTechnical, setOpenTechnical],
+        ["Business", "business", openBusiness, setOpenBusiness]
+      ] as const).map(([label, key, openItems, setOpenItems]) => (
+        <Accordion key={key} type="multiple" defaultValue={[key]}>
+          <AccordionItem value={key} className="border-0">
+            <AccordionTrigger className="py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 hover:no-underline">
+              {label}
+            </AccordionTrigger>
+            <AccordionContent className="pt-2">
+              <Accordion
+                type="multiple"
+                value={openItems}
+                onValueChange={setOpenItems}
+                className="space-y-3"
+              >
+                {safeValue.gaps_and_opportunities[key].map((item, index) => {
+                  const itemKey = `gap-${key}-${index}`;
+                  return (
+                    <AccordionItem
+                      key={itemKey}
+                      value={itemKey}
+                      className="rounded border border-slate-100 p-2"
+                    >
+                      <div className="grid items-start gap-2 md:grid-cols-[1fr_auto]">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <AccordionTrigger className="flex-none justify-center gap-0 py-0 text-slate-600 hover:no-underline [&>svg]:h-3 [&>svg]:w-3">
+                              <span className="sr-only">Toggle gap</span>
+                            </AccordionTrigger>
+                            <label className="block text-xs text-gray-600">
+                              Gap description
+                            </label>
+                          </div>
+                          <textarea
+                            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                            rows={1}
+                            value={item.gap_description}
+                            onChange={(event) =>
+                              updateGap(key, index, {
+                                ...item,
+                                gap_description: event.target.value
+                              })
+                            }
+                            disabled={disabled || approved}
+                          />
+                        </div>
+                        <div className="flex items-start">
+                          {!approved && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-slate-600 hover:text-slate-700"
+                              onClick={() => removeGap(key, index)}
+                              disabled={disabled}
+                              aria-label="Remove gap"
+                            >
+                              <Trash2 />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                      <AccordionContent className="pt-0">
+                        <div className="mt-2">
+                          <label className="block text-xs text-gray-600">
+                            Affected user segments (one per line)
+                          </label>
+                          <textarea
+                            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                            rows={2}
+                            value={item.affected_user_segments.join("\n")}
+                            onChange={(event) =>
+                              updateGap(key, index, {
+                                ...item,
+                                affected_user_segments: event.target.value.split("\n")
+                              })
+                            }
+                            disabled={disabled || approved}
+                          />
+                        </div>
+                        <div className="mt-2">
+                          <label className="block text-xs text-gray-600">
+                            Opportunity description
+                          </label>
+                          <textarea
+                            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                            rows={1}
+                            value={item.opportunity_description}
+                            onChange={(event) =>
+                              updateGap(key, index, {
+                                ...item,
+                                opportunity_description: event.target.value
+                              })
+                            }
+                            disabled={disabled || approved}
+                          />
+                        </div>
+                        <div className="mt-2 grid gap-2 md:grid-cols-2">
+                          <div>
+                            <label className="block text-xs text-gray-600">
+                              User value potential
+                            </label>
+                            <select
+                              className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                              value={item.user_value_potential}
+                              onChange={(event) =>
+                                updateGap(key, index, {
+                                  ...item,
+                                  user_value_potential:
+                                    event.target.value as GapOpportunity["user_value_potential"]
+                                })
+                              }
+                              disabled={disabled || approved}
+                            >
+                              {GAP_IMPACT_OPTIONS.map((option) => (
+                                <option key={option} value={option}>
+                                  {option}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-600">Feasibility</label>
+                            <select
+                              className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                              value={item.feasibility}
+                              onChange={(event) =>
+                                updateGap(key, index, {
+                                  ...item,
+                                  feasibility: event.target.value as GapOpportunity["feasibility"]
+                                })
+                              }
+                              disabled={disabled || approved}
+                            >
+                              {GAP_IMPACT_OPTIONS.map((option) => (
+                                <option key={option} value={option}>
+                                  {option}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  );
+                })}
+              </Accordion>
+              {!approved && (
+                <button
+                  type="button"
+                  className="mt-3 text-xs text-blue-600 disabled:opacity-60"
+                  onClick={() => addGap(key)}
+                  disabled={disabled}
+                >
+                  + Gap
+                </button>
+              )}
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+      ))}
+
+      <div className="mt-3 flex items-center gap-2">
+        {!approved && (
+          <button
+            type="button"
+            className="inline-flex min-w-[96px] items-center justify-center rounded border border-green-600 px-3 py-2 text-sm font-medium text-green-700 disabled:opacity-60"
+            onClick={onApprove}
+            disabled={disabled || !hasItems || isApproving}
+          >
+            {isApproving ? "Approving…" : "Approve"}
+          </button>
+        )}
+        <button
+          type="button"
+          className="inline-flex min-w-[108px] items-center justify-center rounded border border-blue-600 px-3 py-2 text-sm font-medium text-blue-700 disabled:opacity-60"
+          onClick={onRegenerate}
+          disabled={isRegenerating}
+        >
+          {isRegenerating ? "Regenerating…" : "Regenerate"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+type ValueDriversEditorProps = {
+  title: string;
+  value: ValueDrivers;
+  onChange: (value: ValueDrivers) => void;
+  onApprove: () => void;
+  onRegenerate: () => void;
+  onClear: () => void;
+  approved: boolean;
+  disabled: boolean;
+  isApproving: boolean;
+  isRegenerating: boolean;
+  isClearing: boolean;
+  showTitle?: boolean;
+};
+
+const VALUE_IMPACT_OPTIONS: ValueDriver["user_value_impact"][] = [
+  "low",
+  "medium",
+  "high"
+];
+
+function ValueDriversEditor({
+  title,
+  value,
+  onChange,
+  onApprove,
+  onRegenerate,
+  onClear,
+  approved,
+  disabled,
+  isApproving,
+  isRegenerating,
+  isClearing,
+  showTitle = true
+}: ValueDriversEditorProps) {
+  const safeValue = normalizeValueDriversValue(value);
+  const hasDrivers = safeValue.value_drivers.length > 0;
+  const [openDrivers, setOpenDrivers] = useOpenItems(
+    safeValue.value_drivers,
+    "value-driver"
+  );
+
+  const updateDriver = (index: number, nextItem: ValueDriver) => {
+    const next = safeValue.value_drivers.slice();
+    next[index] = nextItem;
+    onChange({ value_drivers: next });
+  };
+
+  const addDriver = () => {
+    onChange({
+      value_drivers: safeValue.value_drivers.concat([
+        {
+          name: "",
+          user_need_or_pain: "",
+          user_value_impact: "medium",
+          business_value_lever: "",
+          business_value_impact: "medium",
+          priority: "medium"
+        }
+      ])
+    });
+  };
+
+  const removeDriver = (index: number) => {
+    const next = safeValue.value_drivers.slice();
+    next.splice(index, 1);
+    onChange({ value_drivers: next });
+  };
+
+  return (
+    <div className="rounded border bg-white p-4">
+      {showTitle && (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-semibold text-gray-800">{title}</p>
+            {approved && <span className="text-xs font-medium text-green-600">Approved</span>}
+          </div>
+          {!approved && (
+            <button
+              type="button"
+              className="rounded border px-3 py-2 text-sm disabled:opacity-60"
+              onClick={onClear}
+              disabled={isClearing}
+            >
+              {isClearing ? "Clearing…" : "Clear block"}
+            </button>
+          )}
+        </div>
+      )}
+
+      {safeValue.value_drivers.length === 0 && (
+        <p className="mt-3 text-xs text-gray-500">
+          No value drivers yet. Add one to begin.
+        </p>
+      )}
+
+      <Accordion
+        type="multiple"
+        value={openDrivers}
+        onValueChange={setOpenDrivers}
+        className="mt-3 space-y-3"
+      >
+        {safeValue.value_drivers.map((driver, index) => {
+          const itemKey = `value-driver-${index}`;
+          return (
+            <AccordionItem
+              key={itemKey}
+              value={itemKey}
+              className="rounded border border-slate-100 p-2"
+            >
+              <div className="grid items-start gap-2 md:grid-cols-[1fr_auto]">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <AccordionTrigger className="flex-none justify-center gap-0 py-0 text-slate-600 hover:no-underline [&>svg]:h-3 [&>svg]:w-3">
+                      <span className="sr-only">Toggle value driver</span>
+                    </AccordionTrigger>
+                    <label className="block text-xs text-gray-600">Name</label>
+                  </div>
+                  <input
+                    className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                    value={driver.name}
+                    onChange={(event) =>
+                      updateDriver(index, { ...driver, name: event.target.value })
+                    }
+                    disabled={disabled || approved}
+                  />
+                </div>
+                <div className="flex items-start">
+                  {!approved && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-slate-600 hover:text-slate-700"
+                      onClick={() => removeDriver(index)}
+                      disabled={disabled}
+                      aria-label="Remove value driver"
+                    >
+                      <Trash2 />
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <AccordionContent className="pt-0">
+                <div className="mt-2">
+                  <label className="block text-xs text-gray-600">
+                    User need or pain
+                  </label>
+                  <textarea
+                    className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                    rows={1}
+                    value={driver.user_need_or_pain}
+                    onChange={(event) =>
+                      updateDriver(index, {
+                        ...driver,
+                        user_need_or_pain: event.target.value
+                      })
+                    }
+                    disabled={disabled || approved}
+                  />
+                </div>
+                <div className="mt-2 grid gap-2 md:grid-cols-2">
+                  <div>
+                    <label className="block text-xs text-gray-600">
+                      User value impact
+                    </label>
+                    <select
+                      className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                      value={driver.user_value_impact}
+                      onChange={(event) =>
+                        updateDriver(index, {
+                          ...driver,
+                          user_value_impact:
+                            event.target.value as ValueDriver["user_value_impact"]
+                        })
+                      }
+                      disabled={disabled || approved}
+                    >
+                      {VALUE_IMPACT_OPTIONS.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-600">
+                      Business value impact
+                    </label>
+                    <select
+                      className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                      value={driver.business_value_impact}
+                      onChange={(event) =>
+                        updateDriver(index, {
+                          ...driver,
+                          business_value_impact:
+                            event.target.value as ValueDriver["business_value_impact"]
+                        })
+                      }
+                      disabled={disabled || approved}
+                    >
+                      {VALUE_IMPACT_OPTIONS.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="mt-2 grid gap-2 md:grid-cols-2">
+                  <div>
+                    <label className="block text-xs text-gray-600">
+                      Business value lever
+                    </label>
+                    <textarea
+                      className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                      rows={1}
+                      value={driver.business_value_lever}
+                      onChange={(event) =>
+                        updateDriver(index, {
+                          ...driver,
+                          business_value_lever: event.target.value
+                        })
+                      }
+                      disabled={disabled || approved}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-600">Priority</label>
+                    <select
+                      className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                      value={driver.priority}
+                      onChange={(event) =>
+                        updateDriver(index, {
+                          ...driver,
+                          priority: event.target.value as ValueDriver["priority"]
+                        })
+                      }
+                      disabled={disabled || approved}
+                    >
+                      {VALUE_IMPACT_OPTIONS.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          );
+        })}
+      </Accordion>
+
+      {!approved && (
+        <button
+          type="button"
+          className="mt-3 inline-flex items-center rounded border border-slate-300 px-3 py-1 text-xs text-slate-700 disabled:opacity-60"
+          onClick={addDriver}
+          disabled={disabled}
+        >
+          + Driver
+        </button>
+      )}
+
+      <div className="mt-3 flex items-center gap-2">
+        {!approved && (
+          <button
+            type="button"
+            className="inline-flex min-w-[96px] items-center justify-center rounded border border-green-600 px-3 py-2 text-sm font-medium text-green-700 disabled:opacity-60"
+            onClick={onApprove}
+            disabled={disabled || !hasDrivers || isApproving}
+          >
+            {isApproving ? "Approving…" : "Approve"}
+          </button>
+        )}
+        <button
+          type="button"
+          className="inline-flex min-w-[108px] items-center justify-center rounded border border-blue-600 px-3 py-2 text-sm font-medium text-blue-700 disabled:opacity-60"
+          onClick={onRegenerate}
+          disabled={isRegenerating}
+        >
+          {isRegenerating ? "Regenerating…" : "Regenerate"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+type MarketFitHypothesisEditorProps = {
+  title: string;
+  value: MarketFitHypothesis;
+  onChange: (value: MarketFitHypothesis) => void;
+  onApprove: () => void;
+  onRegenerate: () => void;
+  onClear: () => void;
+  approved: boolean;
+  disabled: boolean;
+  isApproving: boolean;
+  isRegenerating: boolean;
+  isClearing: boolean;
+  showTitle?: boolean;
+};
+
+function MarketFitHypothesisEditor({
+  title,
+  value,
+  onChange,
+  onApprove,
+  onRegenerate,
+  onClear,
+  approved,
+  disabled,
+  isApproving,
+  isRegenerating,
+  isClearing,
+  showTitle = true
+}: MarketFitHypothesisEditorProps) {
+  const safeValue = normalizeMarketFitHypothesisValue(value);
+  const hasItems =
+    safeValue.market_fit_hypothesis.desirability.length > 0 &&
+    safeValue.market_fit_hypothesis.viability.length > 0;
+  const [openDesirability, setOpenDesirability] = useOpenItems(
+    safeValue.market_fit_hypothesis.desirability,
+    "hypothesis-desirability"
+  );
+  const [openViability, setOpenViability] = useOpenItems(
+    safeValue.market_fit_hypothesis.viability,
+    "hypothesis-viability"
+  );
+
+  const updateItem = (
+    key: keyof MarketFitHypothesis["market_fit_hypothesis"],
+    index: number,
+    nextItem: MarketFitHypothesisItem
+  ) => {
+    const next = safeValue.market_fit_hypothesis[key].slice();
+    next[index] = nextItem;
+    onChange({
+      market_fit_hypothesis: {
+        ...safeValue.market_fit_hypothesis,
+        [key]: next
+      }
+    });
+  };
+
+  const addItem = (key: keyof MarketFitHypothesis["market_fit_hypothesis"]) => {
+    onChange({
+      market_fit_hypothesis: {
+        ...safeValue.market_fit_hypothesis,
+        [key]: safeValue.market_fit_hypothesis[key].concat([
+          {
+            hypothesis: "",
+            rationale: "",
+            key_risks_or_unknowns: [""]
+          }
+        ])
+      }
+    });
+  };
+
+  const removeItem = (
+    key: keyof MarketFitHypothesis["market_fit_hypothesis"],
+    index: number
+  ) => {
+    const next = safeValue.market_fit_hypothesis[key].slice();
+    next.splice(index, 1);
+    onChange({
+      market_fit_hypothesis: {
+        ...safeValue.market_fit_hypothesis,
+        [key]: next
+      }
+    });
+  };
+
+  return (
+    <div className="rounded border bg-white p-4">
+      {showTitle && (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-semibold text-gray-800">{title}</p>
+            {approved && <span className="text-xs font-medium text-green-600">Approved</span>}
+          </div>
+          {!approved && (
+            <button
+              type="button"
+              className="rounded border px-3 py-2 text-sm disabled:opacity-60"
+              onClick={onClear}
+              disabled={isClearing}
+            >
+              {isClearing ? "Clearing…" : "Clear block"}
+            </button>
+          )}
+        </div>
+      )}
+
+      {safeValue.market_fit_hypothesis.desirability.length === 0 &&
+        safeValue.market_fit_hypothesis.viability.length === 0 && (
+        <p className="mt-3 text-xs text-gray-500">
+          No hypotheses yet. Add one to begin.
+        </p>
+      )}
+
+      {([
+        ["Desirability", "desirability", openDesirability, setOpenDesirability],
+        ["Viability", "viability", openViability, setOpenViability]
+      ] as const).map(([label, key, openItems, setOpenItems]) => (
+        <Accordion key={key} type="multiple" defaultValue={[key]}>
+          <AccordionItem value={key} className="border-0">
+            <AccordionTrigger className="py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 hover:no-underline">
+              {label}
+            </AccordionTrigger>
+            <AccordionContent className="pt-2">
+              <Accordion
+                type="multiple"
+                value={openItems}
+                onValueChange={setOpenItems}
+                className="space-y-3"
+              >
+                {safeValue.market_fit_hypothesis[key].map((item, index) => {
+                  const itemKey = `hypothesis-${key}-${index}`;
+                  return (
+                    <AccordionItem
+                      key={itemKey}
+                      value={itemKey}
+                      className="rounded border border-slate-100 p-2"
+                    >
+                      <div className="grid items-start gap-2 md:grid-cols-[1fr_auto]">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <AccordionTrigger className="flex-none justify-center gap-0 py-0 text-slate-600 hover:no-underline [&>svg]:h-3 [&>svg]:w-3">
+                              <span className="sr-only">Toggle hypothesis</span>
+                            </AccordionTrigger>
+                            <label className="block text-xs text-gray-600">Hypothesis</label>
+                          </div>
+                          <textarea
+                            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                            rows={1}
+                            value={item.hypothesis}
+                            onChange={(event) =>
+                              updateItem(key, index, {
+                                ...item,
+                                hypothesis: event.target.value
+                              })
+                            }
+                            disabled={disabled || approved}
+                          />
+                        </div>
+                        <div className="flex items-start">
+                          {!approved && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-slate-600 hover:text-slate-700"
+                              onClick={() => removeItem(key, index)}
+                              disabled={disabled}
+                              aria-label="Remove hypothesis"
+                            >
+                              <Trash2 />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                      <AccordionContent className="pt-0">
+                        <div className="mt-2">
+                          <label className="block text-xs text-gray-600">Rationale</label>
+                          <textarea
+                            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                            rows={1}
+                            value={item.rationale}
+                            onChange={(event) =>
+                              updateItem(key, index, {
+                                ...item,
+                                rationale: event.target.value
+                              })
+                            }
+                            disabled={disabled || approved}
+                          />
+                        </div>
+                        <div className="mt-2">
+                          <label className="block text-xs text-gray-600">
+                            Key risks or unknowns (one per line)
+                          </label>
+                          <textarea
+                            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                            rows={2}
+                            value={item.key_risks_or_unknowns.join("\n")}
+                            onChange={(event) =>
+                              updateItem(key, index, {
+                                ...item,
+                                key_risks_or_unknowns: event.target.value.split("\n")
+                              })
+                            }
+                            disabled={disabled || approved}
+                          />
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  );
+                })}
+              </Accordion>
+              {!approved && (
+                <button
+                  type="button"
+                  className="mt-3 text-xs text-blue-600 disabled:opacity-60"
+                  onClick={() => addItem(key)}
+                  disabled={disabled}
+                >
+                  + Hypothesis
+                </button>
+              )}
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+      ))}
+
+      <div className="mt-3 flex items-center gap-2">
+        {!approved && (
+          <button
+            type="button"
+            className="inline-flex min-w-[96px] items-center justify-center rounded border border-green-600 px-3 py-2 text-sm font-medium text-green-700 disabled:opacity-60"
+            onClick={onApprove}
+            disabled={disabled || !hasItems || isApproving}
+          >
+            {isApproving ? "Approving…" : "Approve"}
+          </button>
+        )}
+        <button
+          type="button"
+          className="inline-flex min-w-[108px] items-center justify-center rounded border border-blue-600 px-3 py-2 text-sm font-medium text-blue-700 disabled:opacity-60"
+          onClick={onRegenerate}
+          disabled={isRegenerating}
+        >
+          {isRegenerating ? "Regenerating…" : "Regenerate"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+type FeasibilityAssessmentEditorProps = {
+  title: string;
+  value: FeasibilityAssessment;
+  onChange: (value: FeasibilityAssessment) => void;
+  onApprove: () => void;
+  onRegenerate: () => void;
+  onClear: () => void;
+  approved: boolean;
+  disabled: boolean;
+  isApproving: boolean;
+  isRegenerating: boolean;
+  isClearing: boolean;
+  showTitle?: boolean;
+};
+
+const READINESS_OPTIONS: FeasibilityConstraintItem["readiness"][] = [
+  "low",
+  "medium",
+  "high"
+];
+
+function FeasibilityAssessmentEditor({
+  title,
+  value,
+  onChange,
+  onApprove,
+  onRegenerate,
+  onClear,
+  approved,
+  disabled,
+  isApproving,
+  isRegenerating,
+  isClearing,
+  showTitle = true
+}: FeasibilityAssessmentEditorProps) {
+  const safeValue = normalizeFeasibilityAssessmentValue(value);
+  const hasItems =
+    safeValue.feasibility_assessment.business_constraints.length > 0 &&
+    safeValue.feasibility_assessment.user_constraints.length > 0 &&
+    safeValue.feasibility_assessment.technical_concerns.length > 0;
+  const [openBusiness, setOpenBusiness] = useOpenItems(
+    safeValue.feasibility_assessment.business_constraints,
+    "feasibility-business"
+  );
+  const [openUser, setOpenUser] = useOpenItems(
+    safeValue.feasibility_assessment.user_constraints,
+    "feasibility-user"
+  );
+  const [openTechnical, setOpenTechnical] = useOpenItems(
+    safeValue.feasibility_assessment.technical_concerns,
+    "feasibility-technical"
+  );
+
+  const updateItem = (
+    key: keyof FeasibilityAssessment["feasibility_assessment"],
+    index: number,
+    nextItem: FeasibilityConstraintItem
+  ) => {
+    const next = safeValue.feasibility_assessment[key].slice();
+    next[index] = nextItem;
+    onChange({
+      feasibility_assessment: {
+        ...safeValue.feasibility_assessment,
+        [key]: next
+      }
+    });
+  };
+
+  const addItem = (key: keyof FeasibilityAssessment["feasibility_assessment"]) => {
+    onChange({
+      feasibility_assessment: {
+        ...safeValue.feasibility_assessment,
+        [key]: safeValue.feasibility_assessment[key].concat([
+          {
+            name: "",
+            description: "",
+            readiness: "medium"
+          }
+        ])
+      }
+    });
+  };
+
+  const removeItem = (
+    key: keyof FeasibilityAssessment["feasibility_assessment"],
+    index: number
+  ) => {
+    const next = safeValue.feasibility_assessment[key].slice();
+    next.splice(index, 1);
+    onChange({
+      feasibility_assessment: {
+        ...safeValue.feasibility_assessment,
+        [key]: next
+      }
+    });
+  };
+
+  return (
+    <div className="rounded border bg-white p-4">
+      {showTitle && (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-semibold text-gray-800">{title}</p>
+            {approved && <span className="text-xs font-medium text-green-600">Approved</span>}
+          </div>
+          {!approved && (
+            <button
+              type="button"
+              className="rounded border px-3 py-2 text-sm disabled:opacity-60"
+              onClick={onClear}
+              disabled={isClearing}
+            >
+              {isClearing ? "Clearing…" : "Clear block"}
+            </button>
+          )}
+        </div>
+      )}
+
+      {safeValue.feasibility_assessment.business_constraints.length === 0 &&
+        safeValue.feasibility_assessment.user_constraints.length === 0 &&
+        safeValue.feasibility_assessment.technical_concerns.length === 0 && (
+        <p className="mt-3 text-xs text-gray-500">
+          No constraints yet. Add one to begin.
+        </p>
+      )}
+
+      {([
+        ["Business constraints", "business_constraints", openBusiness, setOpenBusiness],
+        ["User constraints", "user_constraints", openUser, setOpenUser],
+        ["Technical concerns", "technical_concerns", openTechnical, setOpenTechnical]
+      ] as const).map(([label, key, openItems, setOpenItems]) => (
+        <Accordion key={key} type="multiple" defaultValue={[key]}>
+          <AccordionItem value={key} className="border-0">
+            <AccordionTrigger className="py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 hover:no-underline">
+              {label}
+            </AccordionTrigger>
+            <AccordionContent className="pt-2">
+              <Accordion
+                type="multiple"
+                value={openItems}
+                onValueChange={setOpenItems}
+                className="space-y-3"
+              >
+                {safeValue.feasibility_assessment[key].map((item, index) => {
+                  const itemKey = `feasibility-${key}-${index}`;
+                  return (
+                    <AccordionItem
+                      key={itemKey}
+                      value={itemKey}
+                      className="rounded border border-slate-100 p-2"
+                    >
+                      <div className="grid items-start gap-2 md:grid-cols-[1fr_auto]">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <AccordionTrigger className="flex-none justify-center gap-0 py-0 text-slate-600 hover:no-underline [&>svg]:h-3 [&>svg]:w-3">
+                              <span className="sr-only">Toggle constraint</span>
+                            </AccordionTrigger>
+                            <label className="block text-xs text-gray-600">Name</label>
+                          </div>
+                          <input
+                            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                            value={item.name}
+                            onChange={(event) =>
+                              updateItem(key, index, { ...item, name: event.target.value })
+                            }
+                            disabled={disabled || approved}
+                          />
+                        </div>
+                        <div className="flex items-start">
+                          {!approved && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-slate-600 hover:text-slate-700"
+                              onClick={() => removeItem(key, index)}
+                              disabled={disabled}
+                              aria-label="Remove constraint"
+                            >
+                              <Trash2 />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                      <AccordionContent className="pt-0">
+                        <div className="mt-2 grid gap-2 md:grid-cols-2">
+                          <div>
+                            <label className="block text-xs text-gray-600">
+                              Description
+                            </label>
+                            <textarea
+                              className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                              rows={1}
+                              value={item.description}
+                              onChange={(event) =>
+                                updateItem(key, index, {
+                                  ...item,
+                                  description: event.target.value
+                                })
+                              }
+                              disabled={disabled || approved}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-600">Readiness</label>
+                            <select
+                              className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                              value={item.readiness}
+                              onChange={(event) =>
+                                updateItem(key, index, {
+                                  ...item,
+                                  readiness: event.target.value as FeasibilityConstraintItem["readiness"]
+                                })
+                              }
+                              disabled={disabled || approved}
+                            >
+                              {READINESS_OPTIONS.map((option) => (
+                                <option key={option} value={option}>
+                                  {option}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  );
+                })}
+              </Accordion>
+              {!approved && (
+                <button
+                  type="button"
+                  className="mt-3 text-xs text-blue-600 disabled:opacity-60"
+                  onClick={() => addItem(key)}
+                  disabled={disabled}
+                >
+                  + Constraint
+                </button>
+              )}
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+      ))}
+
+      <div className="mt-3 flex items-center gap-2">
+        {!approved && (
+          <button
+            type="button"
+            className="inline-flex min-w-[96px] items-center justify-center rounded border border-green-600 px-3 py-2 text-sm font-medium text-green-700 disabled:opacity-60"
+            onClick={onApprove}
+            disabled={disabled || !hasItems || isApproving}
+          >
+            {isApproving ? "Approving…" : "Approve"}
+          </button>
+        )}
+        <button
+          type="button"
+          className="inline-flex min-w-[108px] items-center justify-center rounded border border-blue-600 px-3 py-2 text-sm font-medium text-blue-700 disabled:opacity-60"
+          onClick={onRegenerate}
+          disabled={isRegenerating}
+        >
+          {isRegenerating ? "Regenerating…" : "Regenerate"}
+        </button>
       </div>
     </div>
   );

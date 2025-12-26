@@ -3,14 +3,112 @@
   "type": "object",
   "additionalProperties": false,
   "properties": {
-    "feasibilityAssessment": {
-      "type": "array",
-      "items": {
-        "type": "string",
-        "minLength": 3
+    "feasibility_assessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "business_constraints": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 3
+              },
+              "description": {
+                "type": "string",
+                "minLength": 5
+              },
+              "readiness": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ]
+              }
+            },
+            "required": [
+              "name",
+              "description",
+              "readiness"
+            ]
+          }
+        },
+        "user_constraints": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 3
+              },
+              "description": {
+                "type": "string",
+                "minLength": 5
+              },
+              "readiness": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ]
+              }
+            },
+            "required": [
+              "name",
+              "description",
+              "readiness"
+            ]
+          }
+        },
+        "technical_concerns": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 3
+              },
+              "description": {
+                "type": "string",
+                "minLength": 5
+              },
+              "readiness": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ]
+              }
+            },
+            "required": [
+              "name",
+              "description",
+              "readiness"
+            ]
+          }
+        }
       },
-      "minItems": 1
+      "required": [
+        "business_constraints",
+        "user_constraints",
+        "technical_concerns"
+      ]
     }
   },
-  "required": ["feasibilityAssessment"]
+  "required": [
+    "feasibility_assessment"
+  ]
 }
