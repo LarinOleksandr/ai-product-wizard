@@ -1,0 +1,290 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "market_definition": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "excluded_adjacent_spaces": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0
+        }
+      },
+      "required": [
+        "description",
+        "excluded_adjacent_spaces"
+      ]
+    },
+    "market_size": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "description"
+      ]
+    },
+    "market_maturity": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "classification": {
+          "type": "string",
+          "enum": [
+            "emerging",
+            "fragmented",
+            "consolidating",
+            "mature"
+          ]
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "classification",
+        "rationale"
+      ]
+    },
+    "market_trends": {
+      "type": "array",
+      "minItems": 0,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "time_horizon": {
+            "type": "string",
+            "enum": [
+              "short",
+              "mid",
+              "long"
+            ]
+          },
+          "affected_target_segments": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 0
+          },
+          "basis": {
+            "type": "string",
+            "enum": [
+              "evidence_from_inputs",
+              "domain_generic_assumption"
+            ]
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "time_horizon",
+          "affected_target_segments",
+          "basis",
+          "confidence"
+        ]
+      }
+    },
+    "market_dynamics": {
+      "type": "array",
+      "minItems": 0,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "affected_target_segments": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 0
+          },
+          "basis": {
+            "type": "string",
+            "enum": [
+              "evidence_from_inputs",
+              "domain_generic_assumption"
+            ]
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "affected_target_segments",
+          "basis",
+          "confidence"
+        ]
+      }
+    },
+    "market_forces": {
+      "type": "array",
+      "minItems": 0,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "affected_target_segments": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 0
+          },
+          "basis": {
+            "type": "string",
+            "enum": [
+              "evidence_from_inputs",
+              "domain_generic_assumption"
+            ]
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "affected_target_segments",
+          "basis",
+          "confidence"
+        ]
+      }
+    },
+    "adoption_drivers": {
+      "type": "array",
+      "minItems": 0,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "affected_target_segments": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 0
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "affected_target_segments"
+        ]
+      }
+    },
+    "adoption_barriers": {
+      "type": "array",
+      "minItems": 0,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "affected_target_segments": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 0
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "affected_target_segments"
+        ]
+      }
+    }
+  },
+  "required": [
+    "market_definition",
+    "market_size",
+    "market_maturity",
+    "market_trends",
+    "market_dynamics",
+    "market_forces",
+    "adoption_drivers",
+    "adoption_barriers"
+  ]
+}
