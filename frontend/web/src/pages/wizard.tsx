@@ -884,6 +884,59 @@ export function WizardPage() {
     void refreshLatest(true);
   }, []);
 
+  const downloadBlob = (blob: Blob, filename: string) => {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const exportMarkdown = async () => {
+    if (!latestVersion) {
+      setError("No document available to export.");
+      return;
+    }
+    setError(null);
+    try {
+      const response = await fetch(
+        `${API_BASE}/discovery/export/markdown?version=${latestVersion}`
+      );
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || "Markdown export failed.");
+      }
+      const blob = await response.blob();
+      downloadBlob(blob, `discovery-document-v${latestVersion}.md`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Markdown export failed.");
+    }
+  };
+
+  const exportPdf = async () => {
+    if (!latestVersion) {
+      setError("No document available to export.");
+      return;
+    }
+    setError(null);
+    try {
+      const response = await fetch(
+        `${API_BASE}/discovery/export/pdf?version=${latestVersion}`
+      );
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || "PDF export failed.");
+      }
+      const blob = await response.blob();
+      downloadBlob(blob, `discovery-document-v${latestVersion}.pdf`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "PDF export failed.");
+    }
+  };
+
   function loadSavedInputs() {
     const savedIdea = localStorage.getItem("discoveryWizard.productIdea") || "";
     const savedTarget = localStorage.getItem("discoveryWizard.targetUser") || "";
@@ -1627,14 +1680,32 @@ export function WizardPage() {
               </div>
               <div className="flex flex-col items-end gap-2 text-right text-sm text-gray-600">
                 {!isEmptyDocumentView && (
-                  <button
-                    type="button"
-                    className="rounded border px-3 py-2 text-sm disabled:opacity-60"
-                    onClick={clearDocument}
-                    disabled={!latestVersion || isClearing}
-                  >
-                    {isClearing ? "Clearing…" : "Clear Document"}
-                  </button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      className="rounded border px-3 py-2 text-sm disabled:opacity-60"
+                      onClick={exportMarkdown}
+                      disabled={!latestVersion}
+                    >
+                      Export MD
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded border px-3 py-2 text-sm disabled:opacity-60"
+                      onClick={exportPdf}
+                      disabled={!latestVersion}
+                    >
+                      Export PDF
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded border px-3 py-2 text-sm disabled:opacity-60"
+                      onClick={clearDocument}
+                      disabled={!latestVersion || isClearing}
+                    >
+                      {isClearing ? "Clearing…" : "Clear Document"}
+                    </button>
+                  </div>
                 )}
               </div>
             </div>

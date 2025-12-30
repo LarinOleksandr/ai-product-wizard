@@ -127,6 +127,36 @@ const FIELD_DEFINITIONS = [
   }
 ];
 
+const EXPORT_STRUCTURE = [
+  {
+    title: "Problem Understanding",
+    fields: [
+      { key: "problemUnderstanding.problemStatement", label: "Problem Statement" },
+      { key: "problemUnderstanding.targetUsersSegments", label: "Target Users & Segments" },
+      { key: "problemUnderstanding.userPainPoints", label: "User Pain Points" },
+      { key: "problemUnderstanding.contextConstraints", label: "Context & Constraints" }
+    ]
+  },
+  {
+    title: "Market and Competitor Analysis",
+    fields: [
+      { key: "marketAndCompetitorAnalysis.marketLandscape", label: "Market Landscape" },
+      { key: "marketAndCompetitorAnalysis.competitorInventory", label: "Competitor Inventory" },
+      { key: "marketAndCompetitorAnalysis.competitorCapabilities", label: "Competitor Capabilities" },
+      { key: "marketAndCompetitorAnalysis.gapsOpportunities", label: "Gaps & Opportunities" }
+    ]
+  },
+  {
+    title: "Opportunity Definition",
+    fields: [
+      { key: "opportunityDefinition.opportunityStatement", label: "Opportunity Statement" },
+      { key: "opportunityDefinition.valueDrivers", label: "Value Drivers" },
+      { key: "opportunityDefinition.marketFitHypothesis", label: "Market Fit Hypothesis" },
+      { key: "opportunityDefinition.feasibilityAssessment", label: "Feasibility Assessment" }
+    ]
+  }
+];
+
 const REQUIRED_FIELDS = [
   {
     key: "productIdea",
@@ -935,6 +965,424 @@ function renderTemplate(template, values) {
       ? String(values[key])
       : "";
   });
+}
+
+function escapeMarkdown(text) {
+  if (typeof text !== "string") {
+    return "";
+  }
+  return text.replace(/\r\n/g, "\n").trim();
+}
+
+function formatMarkdownList(items) {
+  if (!Array.isArray(items) || items.length === 0) {
+    return "";
+  }
+  return items.map((item) => `- ${escapeMarkdown(String(item))}`).join("\n");
+}
+
+function renderDiscoveryMarkdown(document) {
+  const parts = ["# Discovery Document"];
+
+  EXPORT_STRUCTURE.forEach((section) => {
+    parts.push(`\n## ${section.title}`);
+    section.fields.forEach((field) => {
+      const value = getNestedValue(document, field.key);
+      if (!value || (typeof value === "string" && !value.trim())) {
+        return;
+      }
+      parts.push(`\n### ${field.label}`);
+      if (typeof value === "string") {
+        parts.push(escapeMarkdown(value));
+        return;
+      }
+      if (field.key === "problemUnderstanding.targetUsersSegments") {
+        const segments = value?.target_segments || [];
+        segments.forEach((segment) => {
+          parts.push(`- Segment: ${escapeMarkdown(segment.segment_name || "")}`);
+          if (segment.business_relevance) {
+            parts.push(`  - Business relevance: ${escapeMarkdown(segment.business_relevance)}`);
+          }
+          if (Array.isArray(segment.user_groups)) {
+            segment.user_groups.forEach((group) => {
+              parts.push(`  - Group: ${escapeMarkdown(group.name || "")}`);
+              const characteristics = formatMarkdownList(group.characteristics || []);
+              if (characteristics) {
+                parts.push("    - Characteristics:");
+                parts.push(
+                  characteristics
+                    .split("\n")
+                    .map((line) => `    ${line}`)
+                    .join("\n")
+                );
+              }
+            });
+          }
+        });
+        return;
+      }
+      if (field.key === "problemUnderstanding.userPainPoints") {
+        const themes = value?.pain_point_themes || [];
+        themes.forEach((theme) => {
+          parts.push(`- Theme: ${escapeMarkdown(theme.theme_name || "")}`);
+          (theme.pain_points || []).forEach((pain) => {
+            parts.push(`  - Pain point: ${escapeMarkdown(pain.name || "")}`);
+            if (pain.description) {
+              parts.push(`    - Description: ${escapeMarkdown(pain.description)}`);
+            }
+            if (Array.isArray(pain.affected_user_groups)) {
+              const groups = formatMarkdownList(pain.affected_user_groups);
+              if (groups) {
+                parts.push(
+                  groups
+                    .split("\n")
+                    .map((line) => `    ${line}`)
+                    .join("\n")
+                );
+              }
+            }
+            parts.push(`    - Severity: ${pain.severity || ""}`);
+            parts.push(`    - Frequency: ${pain.frequency || ""}`);
+            parts.push(`    - Business importance: ${pain.business_importance || ""}`);
+          });
+        });
+        return;
+      }
+      if (field.key === "problemUnderstanding.contextConstraints") {
+        const contextual = value?.contextual_factors || [];
+        if (contextual.length) {
+          parts.push("#### Contextual factors");
+          contextual.forEach((item) => {
+            parts.push(`- ${escapeMarkdown(item.name || "")}`);
+            parts.push(`  - Description: ${escapeMarkdown(item.description || "")}`);
+            parts.push(`  - Impact on user needs: ${escapeMarkdown(item.impact_on_user_needs || "")}`);
+            parts.push(`  - Business implications: ${escapeMarkdown(item.business_implications || "")}`);
+          });
+        }
+        const constraints = value?.constraints || [];
+        if (constraints.length) {
+          parts.push("#### Constraints");
+          constraints.forEach((item) => {
+            parts.push(`- ${escapeMarkdown(item.name || "")}`);
+            parts.push(`  - Description: ${escapeMarkdown(item.description || "")}`);
+            parts.push(`  - Impact on user needs: ${escapeMarkdown(item.impact_on_user_needs || "")}`);
+            parts.push(`  - Business implications: ${escapeMarkdown(item.business_implications || "")}`);
+          });
+        }
+        return;
+      }
+      if (field.key === "marketAndCompetitorAnalysis.marketLandscape") {
+        parts.push(`- Market definition: ${escapeMarkdown(value.market_definition?.description || "")}`);
+        if (Array.isArray(value.market_definition?.excluded_adjacent_spaces)) {
+          const excluded = formatMarkdownList(value.market_definition.excluded_adjacent_spaces);
+          if (excluded) {
+            parts.push("  - Excluded adjacent spaces:");
+            parts.push(
+              excluded
+                .split("\n")
+                .map((line) => `  ${line}`)
+                .join("\n")
+            );
+          }
+        }
+        parts.push(`- Market size: ${escapeMarkdown(value.market_size?.description || "")}`);
+        parts.push(`- Market maturity: ${escapeMarkdown(value.market_maturity?.classification || "")}`);
+        if (value.market_maturity?.rationale) {
+          parts.push(`  - Rationale: ${escapeMarkdown(value.market_maturity.rationale)}`);
+        }
+        const listSections = [
+          ["Market trends", value.market_trends],
+          ["Market dynamics", value.market_dynamics],
+          ["Market forces", value.market_forces],
+          ["Adoption drivers", value.adoption_drivers],
+          ["Adoption barriers", value.adoption_barriers]
+        ];
+        listSections.forEach(([label, items]) => {
+          if (!Array.isArray(items) || items.length === 0) {
+            return;
+          }
+          parts.push(`#### ${label}`);
+          items.forEach((item) => {
+            parts.push(`- ${escapeMarkdown(item.name || "")}`);
+            if (item.description) {
+              parts.push(`  - Description: ${escapeMarkdown(item.description)}`);
+            }
+            if (item.time_horizon) {
+              parts.push(`  - Time horizon: ${item.time_horizon}`);
+            }
+            if (item.affected_target_segments?.length) {
+              const affected = formatMarkdownList(item.affected_target_segments);
+              parts.push(
+                affected
+                  .split("\n")
+                  .map((line) => `  ${line}`)
+                  .join("\n")
+              );
+            }
+            if (item.basis) {
+              parts.push(`  - Basis: ${item.basis}`);
+            }
+            if (item.confidence) {
+              parts.push(`  - Confidence: ${item.confidence}`);
+            }
+          });
+        });
+        return;
+      }
+      if (field.key === "marketAndCompetitorAnalysis.competitorInventory") {
+        (value.competitors || []).forEach((item) => {
+          parts.push(`- ${escapeMarkdown(item.name || "")}`);
+          parts.push(`  - URL: ${escapeMarkdown(item.url || "")}`);
+          parts.push(`  - Category: ${item.category || ""}`);
+          parts.push(`  - Description: ${escapeMarkdown(item.description || "")}`);
+          parts.push(`  - Target audience: ${escapeMarkdown(item.target_audience || "")}`);
+          parts.push(`  - Positioning: ${escapeMarkdown(item.positioning || "")}`);
+        });
+        return;
+      }
+      if (field.key === "marketAndCompetitorAnalysis.competitorCapabilities") {
+        (value.competitor_capabilities || []).forEach((item) => {
+          parts.push(`- ${escapeMarkdown(item.competitor_name || "")}`);
+          const sections = [
+            ["Functional capabilities", item.functional_capabilities],
+            ["Technical capabilities", item.technical_capabilities],
+            ["Business capabilities", item.business_capabilities],
+            ["Strengths", item.strengths],
+            ["Limitations", item.limitations]
+          ];
+          sections.forEach(([label, items]) => {
+            const list = formatMarkdownList(items || []);
+            if (list) {
+              parts.push(`  - ${label}:`);
+              parts.push(
+                list
+                  .split("\n")
+                  .map((line) => `  ${line}`)
+                  .join("\n")
+              );
+            }
+          });
+          if (item.alignment_with_user_needs) {
+            parts.push(`  - Alignment with user needs: ${escapeMarkdown(item.alignment_with_user_needs)}`);
+          }
+        });
+        if (Array.isArray(value.industry_capability_patterns)) {
+          parts.push("#### Industry capability patterns");
+          value.industry_capability_patterns.forEach((item) => {
+            parts.push(`- ${escapeMarkdown(item.pattern_name || "")}`);
+            parts.push(`  - Description: ${escapeMarkdown(item.description || "")}`);
+          });
+        }
+        return;
+      }
+      if (field.key === "marketAndCompetitorAnalysis.gapsOpportunities") {
+        const groups = value.gaps_and_opportunities || {};
+        ["functional", "technical", "business"].forEach((groupKey) => {
+          const items = groups[groupKey] || [];
+          if (!items.length) {
+            return;
+          }
+          parts.push(`#### ${groupKey[0].toUpperCase()}${groupKey.slice(1)}`);
+          items.forEach((item) => {
+            parts.push(`- ${escapeMarkdown(item.gap_description || "")}`);
+            const segments = formatMarkdownList(item.affected_user_segments || []);
+            if (segments) {
+              parts.push(
+                segments
+                  .split("\n")
+                  .map((line) => `  ${line}`)
+                  .join("\n")
+              );
+            }
+            parts.push(`  - Opportunity: ${escapeMarkdown(item.opportunity_description || "")}`);
+            parts.push(`  - User value potential: ${item.user_value_potential || ""}`);
+            parts.push(`  - Feasibility: ${item.feasibility || ""}`);
+          });
+        });
+        return;
+      }
+      if (field.key === "opportunityDefinition.opportunityStatement") {
+        parts.push(escapeMarkdown(value.opportunity_statement || ""));
+        return;
+      }
+      if (field.key === "opportunityDefinition.valueDrivers") {
+        (value.value_drivers || []).forEach((item) => {
+          parts.push(`- ${escapeMarkdown(item.name || "")}`);
+          parts.push(`  - User need or pain: ${escapeMarkdown(item.user_need_or_pain || "")}`);
+          parts.push(`  - User value impact: ${item.user_value_impact || ""}`);
+          parts.push(`  - Business value lever: ${escapeMarkdown(item.business_value_lever || "")}`);
+          parts.push(`  - Business value impact: ${item.business_value_impact || ""}`);
+          parts.push(`  - Priority: ${item.priority || ""}`);
+        });
+        return;
+      }
+      if (field.key === "opportunityDefinition.marketFitHypothesis") {
+        const hypothesis = value.market_fit_hypothesis || {};
+        ["desirability", "viability"].forEach((key) => {
+          const items = hypothesis[key] || [];
+          if (!items.length) {
+            return;
+          }
+          parts.push(`#### ${key[0].toUpperCase()}${key.slice(1)}`);
+          items.forEach((item) => {
+            parts.push(`- ${escapeMarkdown(item.hypothesis || "")}`);
+            parts.push(`  - Rationale: ${escapeMarkdown(item.rationale || "")}`);
+            const risks = formatMarkdownList(item.key_risks_or_unknowns || []);
+            if (risks) {
+              parts.push(
+                risks
+                  .split("\n")
+                  .map((line) => `  ${line}`)
+                  .join("\n")
+              );
+            }
+          });
+        });
+        return;
+      }
+      if (field.key === "opportunityDefinition.feasibilityAssessment") {
+        const assessment = value.feasibility_assessment || {};
+        const groups = [
+          ["Business constraints", assessment.business_constraints],
+          ["User constraints", assessment.user_constraints],
+          ["Technical concerns", assessment.technical_concerns]
+        ];
+        groups.forEach(([label, items]) => {
+          if (!Array.isArray(items) || items.length === 0) {
+            return;
+          }
+          parts.push(`#### ${label}`);
+          items.forEach((item) => {
+            parts.push(`- ${escapeMarkdown(item.name || "")}`);
+            parts.push(`  - Description: ${escapeMarkdown(item.description || "")}`);
+            parts.push(`  - Readiness: ${item.readiness || ""}`);
+          });
+        });
+      }
+    });
+  });
+
+  return parts.join("\n");
+}
+
+function escapeHtml(text) {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function markdownToHtml(markdown) {
+  const lines = markdown.split("\n");
+  const html = [];
+  let inList = false;
+  const closeList = () => {
+    if (inList) {
+      html.push("</ul>");
+      inList = false;
+    }
+  };
+  lines.forEach((line) => {
+    if (!line.trim()) {
+      closeList();
+      return;
+    }
+    if (line.startsWith("#### ")) {
+      closeList();
+      html.push(`<h4>${escapeHtml(line.slice(5).trim())}</h4>`);
+      return;
+    }
+    if (line.startsWith("### ")) {
+      closeList();
+      html.push(`<h3>${escapeHtml(line.slice(4).trim())}</h3>`);
+      return;
+    }
+    if (line.startsWith("## ")) {
+      closeList();
+      html.push(`<h2>${escapeHtml(line.slice(3).trim())}</h2>`);
+      return;
+    }
+    if (line.startsWith("# ")) {
+      closeList();
+      html.push(`<h1>${escapeHtml(line.slice(2).trim())}</h1>`);
+      return;
+    }
+    if (line.startsWith("- ")) {
+      if (!inList) {
+        html.push("<ul>");
+        inList = true;
+      }
+      html.push(`<li>${escapeHtml(line.slice(2).trim())}</li>`);
+      return;
+    }
+    closeList();
+    html.push(`<p>${escapeHtml(line.trim())}</p>`);
+  });
+  closeList();
+  return html.join("\n");
+}
+
+function renderDiscoveryHtml(markdown) {
+  const body = markdownToHtml(markdown);
+  return `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Discovery Document</title>
+    <style>
+      body {
+        font-family: "Inter", "Segoe UI", Arial, sans-serif;
+        color: #0f172a;
+        margin: 40px;
+        line-height: 1.5;
+      }
+      h1 { font-size: 24px; margin-bottom: 16px; }
+      h2 { font-size: 18px; margin-top: 24px; }
+      h3 { font-size: 16px; margin-top: 16px; }
+      h4 { font-size: 14px; margin-top: 12px; text-transform: uppercase; color: #64748b; }
+      ul { margin: 8px 0 12px 20px; }
+      li { margin: 4px 0; }
+      p { margin: 6px 0; }
+    </style>
+  </head>
+  <body>
+    ${body}
+  </body>
+</html>`;
+}
+
+async function getExportRecord(versionParam) {
+  if (versionParam) {
+    const record = await loadDiscoveryRecord(versionParam);
+    if (!record) {
+      throw new Error(`Discovery document v${versionParam} was not found.`);
+    }
+    return record;
+  }
+  const latest = await getLatestRecord();
+  if (!latest) {
+    throw new Error("No discovery document exists yet.");
+  }
+  return latest;
+}
+
+async function renderPdfFromHtml(html) {
+  let playwright;
+  try {
+    playwright = await import("playwright");
+  } catch (error) {
+    throw new Error("Playwright is not installed. Run: npm install playwright && npx playwright install chromium");
+  }
+  const browser = await playwright.chromium.launch();
+  try {
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: "networkidle" });
+    const buffer = await page.pdf({ format: "A4", printBackground: true });
+    await page.close();
+    return buffer;
+  } finally {
+    await browser.close();
+  }
 }
 
 function buildApprovedDocument(document, fieldStatus) {
@@ -2442,6 +2890,36 @@ const server = http.createServer(async (req, res) => {
   }
 
   try {
+    if (req.method === "GET" && req.url?.startsWith("/discovery/export/markdown")) {
+      applyCorsHeaders(res);
+      const parsedUrl = new URL(req.url, "http://127.0.0.1");
+      const versionParam = parsedUrl.searchParams.get("version");
+      const record = await getExportRecord(versionParam);
+      const markdown = renderDiscoveryMarkdown(record.discoveryDocument || {});
+      const filename = `discovery-document-v${record.version}.md`;
+      res.setHeader("Content-Type", "text/markdown; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      res.writeHead(200);
+      res.end(markdown);
+      return;
+    }
+
+    if (req.method === "GET" && req.url?.startsWith("/discovery/export/pdf")) {
+      applyCorsHeaders(res);
+      const parsedUrl = new URL(req.url, "http://127.0.0.1");
+      const versionParam = parsedUrl.searchParams.get("version");
+      const record = await getExportRecord(versionParam);
+      const markdown = renderDiscoveryMarkdown(record.discoveryDocument || {});
+      const html = renderDiscoveryHtml(markdown);
+      const pdfBuffer = await renderPdfFromHtml(html);
+      const filename = `discovery-document-v${record.version}.pdf`;
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      res.writeHead(200);
+      res.end(pdfBuffer);
+      return;
+    }
+
     if (req.method === "POST" && req.url === "/discovery") {
       const body = await parseRequestBody(req);
       const result = await runDiscoveryWorkflow(body);
