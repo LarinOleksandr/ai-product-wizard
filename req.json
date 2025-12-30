@@ -1,0 +1,15 @@
+﻿{
+  "model": "llama3.2-131k",
+  "stream": false,
+  "temperature": 0.2,
+  "prompt": "Generate output strictly from the provided input. Return ONLY JSON that matches the schema.",
+  "format": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["title","id"],
+    "properties": {
+      "title": { "type": "string" },
+      "id": { "type": "integer" }
+    }
+  }
+}

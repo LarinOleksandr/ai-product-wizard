@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Trash2 } from "lucide-react";
 
 import { Button } from "../components/ui/button";
@@ -528,6 +528,17 @@ function normalizeCompetitorCapabilitiesValue(
 function normalizeGapsOpportunitiesValue(
   value?: GapsOpportunities | null
 ): GapsOpportunities {
+  const normalizeGap = (item: Partial<GapOpportunity> | null | undefined): GapOpportunity => ({
+    gap_description: item?.gap_description || "",
+    affected_user_segments: Array.isArray(item?.affected_user_segments)
+      ? item?.affected_user_segments || []
+      : [],
+    opportunity_description: item?.opportunity_description || "",
+    user_value_potential: item?.user_value_potential || "medium",
+    feasibility: item?.feasibility || "medium"
+  });
+  const normalizeGapList = (list: GapOpportunity[] | undefined | null) =>
+    Array.isArray(list) ? list.map((item) => normalizeGap(item)) : [];
   const legacyList = Array.isArray(
     (value as { gaps_and_opportunities?: unknown })?.gaps_and_opportunities
   )
@@ -536,16 +547,10 @@ function normalizeGapsOpportunitiesValue(
   return {
     gaps_and_opportunities: {
       functional: legacyList
-        ? legacyList
-        : Array.isArray(value?.gaps_and_opportunities?.functional)
-          ? value?.gaps_and_opportunities?.functional || []
-          : [],
-      technical: Array.isArray(value?.gaps_and_opportunities?.technical)
-        ? value?.gaps_and_opportunities?.technical || []
-        : [],
-      business: Array.isArray(value?.gaps_and_opportunities?.business)
-        ? value?.gaps_and_opportunities?.business || []
-        : []
+        ? normalizeGapList(legacyList)
+        : normalizeGapList(value?.gaps_and_opportunities?.functional),
+      technical: normalizeGapList(value?.gaps_and_opportunities?.technical),
+      business: normalizeGapList(value?.gaps_and_opportunities?.business)
     }
   };
 }
@@ -662,8 +667,14 @@ function hasFieldValue(field: FieldDefinition, value: unknown): boolean {
     );
   }
   if (field.key === "opportunityDefinition.opportunityStatement") {
-    const statementValue = value as OpportunityStatement;
-    return Boolean(statementValue?.opportunity_statement?.trim());
+    if (typeof value === "string") {
+      return value.trim().length > 0;
+    }
+    if (value && typeof value === "object") {
+      const statement = (value as OpportunityStatement).opportunity_statement;
+      return typeof statement === "string" && statement.trim().length > 0;
+    }
+    return false;
   }
   if (field.key === "opportunityDefinition.valueDrivers") {
     const driversValue = value as ValueDrivers;
@@ -742,8 +753,19 @@ export function WizardPage() {
   const [clearingFieldKey, setClearingFieldKey] = useState<string | null>(null);
   const [confirmClearFieldKey, setConfirmClearFieldKey] = useState<string | null>(null);
   const [confirmClearDocument, setConfirmClearDocument] = useState(false);
+  const [isExportingMarkdown, setIsExportingMarkdown] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [confirmStartMode, setConfirmStartMode] = useState<
+    "first-section" | "entire-document" | null
+  >(null);
   const [loadingLatest, setLoadingLatest] = useState(false);
   const [progressText, setProgressText] = useState("");
+  const [isGeneratingAll, setIsGeneratingAll] = useState(false);
+  const [isGeneratingRandom, setIsGeneratingRandom] = useState(false);
+  const [generateAllAbort, setGenerateAllAbort] = useState<AbortController | null>(null);
+  const generateAllPollRef = useRef<number | null>(null);
+  const [generationCanceled, setGenerationCanceled] = useState(false);
+  const cancelGenerationRef = useRef(false);
   const [openGroups, setOpenGroups] = useState<string[]>(
     Object.keys(groupedFields)
   );
@@ -759,6 +781,18 @@ export function WizardPage() {
         .filter(Boolean),
     [form.notes]
   );
+  const isFullGenerationActive =
+    isGeneratingAll ||
+    (!generationCanceled &&
+      status === "running" &&
+      latestRecord?.changeReason === "Generating entire document");
+  const isStaleGeneration =
+    !isGeneratingAll &&
+    status === "running" &&
+    Boolean(latestRecord?.lastStatusMessage?.startsWith("Generating "));
+  const canRestartAfterCancel =
+    status === "idle" && latestRecord?.changeReason === "Generating entire document";
+  const isBlockingInputs = status === "running" || isGeneratingAll || isGeneratingRandom;
   const currentField = latestRecord?.currentFieldKey
     ? fieldDefinitions.find((field) => field.key === latestRecord.currentFieldKey)
     : undefined;
@@ -896,45 +930,153 @@ export function WizardPage() {
   };
 
   const exportMarkdown = async () => {
-    if (!latestVersion) {
+    const version = latestRecord?.version ?? latestVersion ?? null;
+    if (!version) {
       setError("No document available to export.");
       return;
     }
     setError(null);
+    setIsExportingMarkdown(true);
     try {
-      const response = await fetch(
-        `${API_BASE}/discovery/export/markdown?version=${latestVersion}`
-      );
+      const url = `${API_BASE}/discovery/export/markdown?version=${version}`;
+      const response = await fetch(url);
       if (!response.ok) {
         const text = await response.text();
         throw new Error(text || "Markdown export failed.");
       }
       const blob = await response.blob();
-      downloadBlob(blob, `discovery-document-v${latestVersion}.md`);
+      downloadBlob(blob, `discovery-document-v${version}.md`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Markdown export failed.");
+    } finally {
+      setIsExportingMarkdown(false);
     }
   };
 
   const exportPdf = async () => {
-    if (!latestVersion) {
+    const version = latestRecord?.version ?? latestVersion ?? null;
+    if (!version) {
       setError("No document available to export.");
       return;
     }
     setError(null);
+    setIsExportingPdf(true);
     try {
-      const response = await fetch(
-        `${API_BASE}/discovery/export/pdf?version=${latestVersion}`
-      );
+      const url = `${API_BASE}/discovery/export/pdf?version=${version}`;
+      const response = await fetch(url);
       if (!response.ok) {
         const text = await response.text();
         throw new Error(text || "PDF export failed.");
       }
       const blob = await response.blob();
-      downloadBlob(blob, `discovery-document-v${latestVersion}.pdf`);
+      downloadBlob(blob, `discovery-document-v${version}.pdf`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "PDF export failed.");
+    } finally {
+      setIsExportingPdf(false);
     }
+  };
+
+  const generateEntireDocument = async () => {
+    if (isGeneratingAll) {
+      return;
+    }
+    setStatus("running");
+    setMessage("Generating entire document…");
+    setQuestions([]);
+    setError(null);
+    setIsGeneratingAll(true);
+    setOpenGroups(Object.keys(groupedFields));
+    setOpenFieldsByGroup({});
+    const controller = new AbortController();
+    setGenerateAllAbort(controller);
+    if (generateAllPollRef.current) {
+      window.clearInterval(generateAllPollRef.current);
+    }
+    generateAllPollRef.current = window.setInterval(() => {
+      void refreshLatest();
+    }, 2000);
+
+    const payload = {
+      productIdea: form.productIdea.trim(),
+      targetUser: form.targetUser.trim(),
+      userMessages: notesArray,
+      forceNew: true
+    };
+
+    try {
+      const response = await fetch(`${API_BASE}/discovery/generate-all`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.message || "Generate entire document failed.");
+      }
+      setStatus((data.status as ApiStatus) || "approved");
+      if (data.status === "needs_input") {
+        setQuestions(data.questions || []);
+        setMessage("Please answer the missing inputs.");
+        return;
+      }
+      if ((data.status === "approved" || data.status === "in_progress") && data.record) {
+        setLatestRecord(data.record);
+        setLatestVersion(data.record.version ?? null);
+        setDebugPrompt(data.record.lastPrompt ?? null);
+        setDebugOutput(data.record.lastOutput ?? null);
+        setMessage(
+          withValidationMessage(
+            withSupabaseMessage(
+              data.status === "approved"
+                ? "Full document generated and approved."
+                : "Full document generated. Review and approve.",
+              data.savedToSupabase
+            ),
+            data.validationStatus
+          )
+        );
+        setOpenGroups(Object.keys(groupedFields));
+        setOpenFieldsByGroup({});
+      }
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        setStatus("idle");
+        setMessage("Generation canceled.");
+        return;
+      }
+      setStatus("error");
+      setError(err instanceof Error ? err.message : "Generate entire document failed.");
+    } finally {
+      setIsGeneratingAll(false);
+      setGenerateAllAbort(null);
+      if (generateAllPollRef.current) {
+        window.clearInterval(generateAllPollRef.current);
+        generateAllPollRef.current = null;
+      }
+    }
+  };
+
+  const cancelGenerateAll = () => {
+    if (generateAllAbort) {
+      generateAllAbort.abort();
+    }
+    cancelGenerationRef.current = true;
+    setStatus("idle");
+    setMessage("Generation canceled.");
+    setIsGeneratingAll(false);
+    setGenerateAllAbort(null);
+    setGenerationCanceled(true);
+    window.setTimeout(() => {
+      cancelGenerationRef.current = false;
+      setGenerationCanceled(false);
+    }, 10000);
+    if (generateAllPollRef.current) {
+      window.clearInterval(generateAllPollRef.current);
+      generateAllPollRef.current = null;
+    }
+    void refreshLatest(true);
   };
 
   function loadSavedInputs() {
@@ -1085,6 +1227,9 @@ export function WizardPage() {
 
   useEffect(() => {
     const currentFieldKey = latestRecord?.currentFieldKey;
+    if (latestRecord?.approved || isGeneratingAll) {
+      return;
+    }
     if (!currentFieldKey) {
       return;
     }
@@ -1106,6 +1251,16 @@ export function WizardPage() {
       };
     });
   }, [latestRecord?.currentFieldKey, latestRecord?.discoveryDocument]);
+
+  useEffect(() => {
+    if (
+      latestRecord?.approved &&
+      latestRecord.changeReason === "Generated entire document"
+    ) {
+      setOpenGroups(Object.keys(groupedFields));
+      setOpenFieldsByGroup({});
+    }
+  }, [latestRecord?.approved, latestRecord?.changeReason]);
 
   async function postWithRetry<T>(
     url: string,
@@ -1177,12 +1332,40 @@ export function WizardPage() {
         if (payload.record.targetUser) {
           localStorage.setItem("discoveryWizard.targetUser", payload.record.targetUser);
         }
-        setStatus(payload.status || "in_progress");
-        setMessage(
-          payload.status === "approved"
-            ? "Latest discovery document is approved."
-            : "Latest discovery document is in progress."
-        );
+        const nextStatus =
+          payload.record.changeReason === "Cleared document"
+            ? "idle"
+            : payload.status || "in_progress";
+        if (
+          cancelGenerationRef.current &&
+          payload.record.changeReason === "Generating entire document" &&
+          payload.record.lastStatusMessage?.startsWith("Generating ")
+        ) {
+          setStatus("idle");
+          setMessage("Generation canceled.");
+          return;
+        }
+        const isStale =
+          nextStatus === "in_progress" &&
+          payload.record.lastStatusMessage?.startsWith("Generating ") &&
+          payload.record.changeReason !== "Generating entire document";
+        if (isStale && !isGeneratingAll && !isFullGenerationActive) {
+          setStatus("idle");
+          setMessage("Generation interrupted. Please restart.");
+          return;
+        }
+        setStatus(nextStatus);
+        if (payload.record.lastStatusMessage) {
+          setMessage(payload.record.lastStatusMessage);
+        } else {
+          setMessage(
+            nextStatus === "idle" && payload.record.changeReason === "Cleared document"
+              ? "Document cleared."
+              : nextStatus === "approved"
+                ? "Latest discovery document is approved."
+                : "Latest discovery document is in progress."
+          );
+        }
       }
     } catch (err) {
       setError("Unable to load the latest discovery document.");
@@ -1197,7 +1380,8 @@ export function WizardPage() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setStatus("running");
-    setMessage("Generating discovery document…");
+    const firstFieldLabel = fieldDefinitions[0]?.label || "first section";
+    setMessage(`Generating ${firstFieldLabel}...`);
     setQuestions([]);
     setError(null);
 
@@ -1229,12 +1413,14 @@ export function WizardPage() {
         setLatestVersion(data.record.version ?? null);
         setDebugPrompt(data.record.lastPrompt ?? null);
         setDebugOutput(data.record.lastOutput ?? null);
+        const fallbackMessage =
+          data.resultType === "created"
+            ? "New discovery document started. Approve each field in order."
+            : "Continue approving fields in order.";
         setMessage(
           withValidationMessage(
             withSupabaseMessage(
-              data.resultType === "created"
-                ? "New discovery document started. Approve each field in order."
-                : "Continue approving fields in order.",
+              data.record.lastStatusMessage || fallbackMessage,
               data.savedToSupabase
             ),
             data.validationStatus
@@ -1263,6 +1449,15 @@ export function WizardPage() {
       return;
     }
 
+    const currentIndex = fieldDefinitions.findIndex((field) => field.key === fieldKey);
+    const nextFieldLabel =
+      currentIndex >= 0 && currentIndex + 1 < fieldDefinitions.length
+        ? fieldDefinitions[currentIndex + 1].label
+        : null;
+    setStatus("in_progress");
+    setMessage(
+      nextFieldLabel ? `Generating ${nextFieldLabel}...` : "Finalizing document..."
+    );
     setApprovingFieldKey(fieldKey);
     setError(null);
 
@@ -1293,12 +1488,14 @@ export function WizardPage() {
         setStatus(data.status || "in_progress");
         setDebugPrompt(data.record.lastPrompt ?? null);
         setDebugOutput(data.record.lastOutput ?? null);
+        const fallbackMessage =
+          data.status === "approved"
+            ? "All fields approved. Discovery document is complete."
+            : "Field approved. Next field is ready.";
         setMessage(
           withValidationMessage(
             withSupabaseMessage(
-              data.status === "approved"
-                ? "All fields approved. Discovery document is complete."
-                : "Field approved. Next field is ready.",
+              data.record.lastStatusMessage || fallbackMessage,
               data.savedToSupabase
             ),
             data.validationStatus
@@ -1326,6 +1523,82 @@ export function WizardPage() {
     }
     setConfirmClearDocument(true);
   }
+
+  const handleStartFirstSection = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (
+      generationCanceled &&
+      latestRecord?.changeReason === "Generating entire document"
+    ) {
+      await confirmClearDocumentAction();
+      cancelGenerationRef.current = false;
+      setGenerationCanceled(false);
+    }
+    if (latestRecord?.approved) {
+      setConfirmStartMode("first-section");
+      return;
+    }
+    await handleSubmit(event);
+  };
+
+  const handleGenerateEntireDocument = async () => {
+    if (latestRecord?.approved) {
+      setConfirmStartMode("entire-document");
+      return;
+    }
+    await generateEntireDocument();
+  };
+
+  const handleGenerateRandomInputs = async () => {
+    setError(null);
+    setIsGeneratingRandom(true);
+    try {
+      const response = await fetch(`${API_BASE}/discovery/random-inputs`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          currentProductIdea: form.productIdea.trim()
+        })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.message || "Random generation failed.");
+      }
+      const productIdea = typeof data?.productIdea === "string" ? data.productIdea : "";
+      const targetUser = typeof data?.targetUser === "string" ? data.targetUser : "";
+      if (!productIdea || !targetUser) {
+        throw new Error("Random generation returned incomplete data.");
+      }
+      setForm((prev) => {
+        localStorage.setItem("discoveryWizard.productIdea", productIdea);
+        localStorage.setItem("discoveryWizard.targetUser", targetUser);
+        return {
+          ...prev,
+          productIdea,
+          targetUser
+        };
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Random generation failed.");
+    } finally {
+      setIsGeneratingRandom(false);
+    }
+  };
+
+  const confirmStartNewDocument = async () => {
+    if (!confirmStartMode) {
+      return;
+    }
+    if (confirmStartMode === "first-section") {
+      const syntheticEvent = new Event("submit", { bubbles: true, cancelable: true });
+      await handleSubmit(syntheticEvent as unknown as FormEvent<HTMLFormElement>);
+    } else {
+      await generateEntireDocument();
+    }
+    setConfirmStartMode(null);
+  };
 
   async function regenerateField(fieldKey: string) {
     if (!latestVersion) {
@@ -1394,7 +1667,7 @@ export function WizardPage() {
       }
       if (data.record) {
         setLatestRecord(data.record);
-        setStatus("in_progress");
+        setStatus("idle");
         setDebugPrompt(data.record.lastPrompt ?? null);
         setDebugOutput(data.record.lastOutput ?? null);
         setMessage("Document cleared.");
@@ -1437,6 +1710,10 @@ export function WizardPage() {
       return;
     }
 
+    const currentField = fieldDefinitions.find((field) => field.key === fieldKey);
+    const currentLabel = currentField?.label || "section";
+    setStatus("in_progress");
+    setMessage(`Regenerating ${currentLabel}...`);
     setRegeneratingFieldKey(fieldKey);
     setError(null);
 
@@ -1453,10 +1730,11 @@ export function WizardPage() {
         setStatus("in_progress");
         setDebugPrompt(data.record.lastPrompt ?? null);
         setDebugOutput(data.record.lastOutput ?? null);
+        const fallbackMessage = "Field regenerated. Review and approve.";
         setMessage(
           withValidationMessage(
             withSupabaseMessage(
-              "Field regenerated. Review and approve.",
+              data.record.lastStatusMessage || fallbackMessage,
               data.savedToSupabase
             ),
             data.validationStatus
@@ -1508,6 +1786,33 @@ export function WizardPage() {
                 }}
               >
                 Regenerate
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmStartMode && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
+          <div className="w-full max-w-md rounded-lg border bg-white p-5 shadow-lg">
+            <p className="text-sm font-semibold text-gray-900">Start a new document?</p>
+            <p className="mt-2 text-sm text-gray-600">
+              The current document will be erased. Continue?
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                className="rounded border px-3 py-2 text-sm"
+                onClick={() => setConfirmStartMode(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="rounded border border-red-600 bg-red-50 px-3 py-2 text-sm text-red-700"
+                onClick={confirmStartNewDocument}
+              >
+                Yes, erase
               </button>
             </div>
           </div>
@@ -1575,37 +1880,41 @@ export function WizardPage() {
         </div>
       )}
       <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="flex items-center gap-2 text-xl font-semibold">
-            <img
-              src={discoveryDocumentIcon}
-              alt=""
-              className="h-7 w-7"
-            />
-            Discovery Document Wizard
-          </h1>
-          <p className="text-sm text-gray-600">
-            Enter your idea, then generate the document section by section (recommended) or as a single complete run.
-          </p>
+        <div className="flex items-start gap-3">
+          <img
+            src={discoveryDocumentIcon}
+            alt=""
+            className="h-7 w-7"
+          />
+          <div>
+            <h1 className="text-xl font-semibold">Discovery Document Wizard</h1>
+            <p className="text-sm text-gray-600">
+              Enter your idea, then generate the document section by section (recommended) or as a single complete run.
+            </p>
+          </div>
         </div>
-        <button
-          type="button"
-          className="px-3 py-2 text-sm border rounded-md bg-white hover:bg-gray-50"
-          onClick={refreshLatest}
-          disabled={loadingLatest}
-        >
-          {loadingLatest ? "Loading…" : "Load latest"}
-        </button>
       </div>
 
       <section className="grid gap-6 lg:grid-cols-[1.6fr_0.9fr]">
         <div className="space-y-6">
           <form
             className="space-y-4 rounded-lg border bg-white p-5 shadow-sm"
-            onSubmit={handleSubmit}
+            onSubmit={handleStartFirstSection}
           >
           <div>
-            <label className="block text-sm font-medium text-gray-700">Product idea</label>
+            <div className="flex items-center gap-2">
+              <label className="block text-sm font-medium text-gray-700">
+                Product idea
+              </label>
+              <button
+                type="button"
+                className="rounded border px-2 py-1 text-xs font-medium text-blue-700 disabled:opacity-60"
+                onClick={handleGenerateRandomInputs}
+                disabled={isBlockingInputs || isGeneratingRandom}
+              >
+                {isGeneratingRandom ? "Generating..." : "Generate random"}
+              </button>
+            </div>
             <textarea
               className="mt-1 block w-full rounded border px-3 py-2 text-sm"
               rows={3}
@@ -1619,6 +1928,7 @@ export function WizardPage() {
               }
               placeholder="Example: Agent that drafts the Discovery Document automatically."
               required
+              disabled={isBlockingInputs}
             />
           </div>
 
@@ -1636,6 +1946,7 @@ export function WizardPage() {
               }
               placeholder="Example: SaaS founders who need clear specs."
               required
+              disabled={isBlockingInputs}
             />
           </div>
 
@@ -1647,6 +1958,7 @@ export function WizardPage() {
       value={form.notes}
       onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))}
       placeholder="One note per line."
+      disabled={isBlockingInputs}
     />
   </div>
 
@@ -1656,27 +1968,58 @@ export function WizardPage() {
       className="min-w-[230px] rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
       disabled={
         status === "running" ||
-        (Boolean(latestRecord) && latestRecord?.changeReason !== "Cleared document")
+        isGeneratingAll ||
+        (!isStaleGeneration &&
+          !canRestartAfterCancel &&
+          Boolean(latestRecord) &&
+          !latestRecord.approved &&
+          latestRecord.changeReason !== "Cleared document")
       }
     >
-      {status === "running" ? "Running…" : "Start first section"}
+      Start first section
     </button>
 
     <button
       type="button"
       className="rounded border px-3 py-2 text-sm disabled:opacity-60"
-      disabled
+      onClick={handleGenerateEntireDocument}
+      disabled={
+        status === "running" ||
+        isFullGenerationActive ||
+        (!isStaleGeneration &&
+          !canRestartAfterCancel &&
+          Boolean(latestRecord) &&
+          !latestRecord.approved &&
+          latestRecord.changeReason !== "Cleared document")
+      }
     >
-      Generate Entire Document
+      {isGeneratingAll ? "Generating…" : "Generate Entire Document"}
     </button>
 
+    {isFullGenerationActive && (
+      <button
+        type="button"
+        className="rounded border px-3 py-2 text-sm text-red-600 disabled:opacity-60"
+        onClick={cancelGenerateAll}
+      >
+        Cancel
+      </button>
+    )}
   </div>
           </form>
 
           <section className="rounded-lg border bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between">
-              <div>
+              <div className="flex items-center gap-3 whitespace-nowrap flex-nowrap">
                 <h2 className="text-xl font-semibold">Discovery Document</h2>
+                <span
+                  className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${statusClass}`}
+                >
+                  {statusCopy[status]}
+                </span>
+                {message && (
+                  <span className="text-xs text-gray-600">{message}</span>
+                )}
               </div>
               <div className="flex flex-col items-end gap-2 text-right text-sm text-gray-600">
                 {!isEmptyDocumentView && (
@@ -1685,23 +2028,23 @@ export function WizardPage() {
                       type="button"
                       className="rounded border px-3 py-2 text-sm disabled:opacity-60"
                       onClick={exportMarkdown}
-                      disabled={!latestVersion}
+                      disabled={!latestVersion || isGeneratingAll || isExportingMarkdown}
                     >
-                      Export MD
+                      {isExportingMarkdown ? "Preparing MD…" : "Export MD"}
                     </button>
                     <button
                       type="button"
                       className="rounded border px-3 py-2 text-sm disabled:opacity-60"
                       onClick={exportPdf}
-                      disabled={!latestVersion}
+                      disabled={!latestVersion || isGeneratingAll || isExportingPdf}
                     >
-                      Export PDF
+                      {isExportingPdf ? "Preparing PDF…" : "Export PDF"}
                     </button>
                     <button
                       type="button"
                       className="rounded border px-3 py-2 text-sm disabled:opacity-60"
                       onClick={clearDocument}
-                      disabled={!latestVersion || isClearing}
+                      disabled={!latestVersion || isClearing || isGeneratingAll}
                     >
                       {isClearing ? "Clearing…" : "Clear Document"}
                     </button>
@@ -1816,7 +2159,11 @@ export function WizardPage() {
                             const shouldRender =
                               isApproved || isCurrent || hasFieldValue(field, recordValue);
                             const isEditable =
-                              !!latestRecord && !latestRecord.approved && isCurrent && !isApproved;
+                              !!latestRecord &&
+                              !latestRecord.approved &&
+                              isCurrent &&
+                              !isApproved &&
+                              !isGeneratingAll;
                             const isBlocked = !isEditable;
                             const headerClass = shouldRender
                               ? "text-gray-800"
@@ -1835,10 +2182,10 @@ export function WizardPage() {
                             }
                             return (
                               <AccordionItem key={field.key} value={field.key} className="border-0">
-                                <AccordionTrigger
-                                  className={`py-2 text-sm font-semibold hover:no-underline ${headerClass}`}
-                                >
-                                  <div className="flex w-full items-center justify-between">
+                                <div className="flex items-center justify-between">
+                                  <AccordionTrigger
+                                    className={`flex-1 py-2 text-sm font-semibold hover:no-underline ${headerClass}`}
+                                  >
                                     <div className="flex items-center gap-2">
                                       <span>{field.label}</span>
                                       {isApproved && (
@@ -1847,22 +2194,18 @@ export function WizardPage() {
                                         </span>
                                       )}
                                     </div>
-                                    {!isApproved && isCurrent && (
-                                      <button
-                                        type="button"
-                                        className="rounded border bg-white px-3 py-2 text-sm font-normal text-gray-700 disabled:opacity-60"
-                                        onClick={(event) => {
-                                          event.preventDefault();
-                                          event.stopPropagation();
-                                          clearField(field.key);
-                                        }}
-                                        disabled={clearingFieldKey === field.key}
-                                      >
-                                        {clearingFieldKey === field.key ? "Clearing…" : "Clear block"}
-                                      </button>
-                                    )}
-                                  </div>
-                                </AccordionTrigger>
+                                  </AccordionTrigger>
+                                  {!isApproved && isCurrent && (
+                                    <button
+                                      type="button"
+                                      className="rounded border bg-white px-3 py-2 text-sm font-normal text-gray-700 disabled:opacity-60"
+                                      onClick={() => clearField(field.key)}
+                                      disabled={clearingFieldKey === field.key}
+                                    >
+                                      {clearingFieldKey === field.key ? "Clearing…" : "Clear block"}
+                                    </button>
+                                  )}
+                                </div>
                                 <AccordionContent className="pt-2">
                                   {field.type === "object" ? (
                                     field.key === "problemUnderstanding.targetUsersSegments" ? (
@@ -1888,6 +2231,7 @@ export function WizardPage() {
                                         isApproving={approvingFieldKey === field.key}
                                         isRegenerating={regeneratingFieldKey === field.key}
                                         isClearing={clearingFieldKey === field.key}
+                                        showRegenerate={!isGeneratingAll}
                                       />
                                     ) : field.key ===
                                       "marketAndCompetitorAnalysis.marketLandscape" ? (
@@ -1914,6 +2258,7 @@ export function WizardPage() {
                                         isApproving={approvingFieldKey === field.key}
                                         isRegenerating={regeneratingFieldKey === field.key}
                                         isClearing={clearingFieldKey === field.key}
+                                        showRegenerate={!isGeneratingAll}
                                       />
                                     ) : field.key ===
                                       "marketAndCompetitorAnalysis.competitorInventory" ? (
@@ -1940,6 +2285,7 @@ export function WizardPage() {
                                         isApproving={approvingFieldKey === field.key}
                                         isRegenerating={regeneratingFieldKey === field.key}
                                         isClearing={clearingFieldKey === field.key}
+                                        showRegenerate={!isGeneratingAll}
                                       />
                                     ) : field.key ===
                                       "marketAndCompetitorAnalysis.competitorCapabilities" ? (
@@ -1966,6 +2312,7 @@ export function WizardPage() {
                                         isApproving={approvingFieldKey === field.key}
                                         isRegenerating={regeneratingFieldKey === field.key}
                                         isClearing={clearingFieldKey === field.key}
+                                        showRegenerate={!isGeneratingAll}
                                       />
                                     ) : field.key ===
                                       "marketAndCompetitorAnalysis.gapsOpportunities" ? (
@@ -1992,6 +2339,7 @@ export function WizardPage() {
                                         isApproving={approvingFieldKey === field.key}
                                         isRegenerating={regeneratingFieldKey === field.key}
                                         isClearing={clearingFieldKey === field.key}
+                                        showRegenerate={!isGeneratingAll}
                                       />
                                     ) : field.key ===
                                       "opportunityDefinition.opportunityStatement" ? (
@@ -2022,6 +2370,7 @@ export function WizardPage() {
                                         isApproving={approvingFieldKey === field.key}
                                         isRegenerating={regeneratingFieldKey === field.key}
                                         isClearing={clearingFieldKey === field.key}
+                                        showRegenerate={!isGeneratingAll}
                                       />
                                     ) : field.key === "opportunityDefinition.valueDrivers" ? (
                                       <ValueDriversEditor
@@ -2047,6 +2396,7 @@ export function WizardPage() {
                                         isApproving={approvingFieldKey === field.key}
                                         isRegenerating={regeneratingFieldKey === field.key}
                                         isClearing={clearingFieldKey === field.key}
+                                        showRegenerate={!isGeneratingAll}
                                       />
                                     ) : field.key ===
                                       "opportunityDefinition.marketFitHypothesis" ? (
@@ -2078,6 +2428,7 @@ export function WizardPage() {
                                         isApproving={approvingFieldKey === field.key}
                                         isRegenerating={regeneratingFieldKey === field.key}
                                         isClearing={clearingFieldKey === field.key}
+                                        showRegenerate={!isGeneratingAll}
                                       />
                                     ) : field.key ===
                                       "opportunityDefinition.feasibilityAssessment" ? (
@@ -2110,6 +2461,7 @@ export function WizardPage() {
                                         isApproving={approvingFieldKey === field.key}
                                         isRegenerating={regeneratingFieldKey === field.key}
                                         isClearing={clearingFieldKey === field.key}
+                                        showRegenerate={!isGeneratingAll}
                                       />
                                     ) : field.key === "problemUnderstanding.contextConstraints" ? (
                                       <ContextConstraintsEditor
@@ -2135,6 +2487,7 @@ export function WizardPage() {
                                         isApproving={approvingFieldKey === field.key}
                                         isRegenerating={regeneratingFieldKey === field.key}
                                         isClearing={clearingFieldKey === field.key}
+                                        showRegenerate={!isGeneratingAll}
                                       />
                                     ) : field.key ===
                                       "problemUnderstanding.userPainPoints" ? (
@@ -2160,6 +2513,7 @@ export function WizardPage() {
                                         isApproving={approvingFieldKey === field.key}
                                         isRegenerating={regeneratingFieldKey === field.key}
                                         isClearing={clearingFieldKey === field.key}
+                                        showRegenerate={!isGeneratingAll}
                                       />
                                     ) : null
                                   ) : (
@@ -2186,6 +2540,7 @@ export function WizardPage() {
                                       isApproving={approvingFieldKey === field.key}
                                       isRegenerating={regeneratingFieldKey === field.key}
                                       isClearing={clearingFieldKey === field.key}
+                                        showRegenerate={!isGeneratingAll}
                                     />
                                   )}
                                 </AccordionContent>
@@ -2301,6 +2656,7 @@ type FieldEditorProps = {
   isApproving: boolean;
   isRegenerating: boolean;
   isClearing: boolean;
+  showRegenerate?: boolean;
 };
 
 function FieldEditor({
@@ -2316,7 +2672,8 @@ function FieldEditor({
   isApproving,
   isRegenerating,
   isClearing,
-  showTitle = true
+  showTitle = true,
+  showRegenerate = true
 }: FieldEditorProps & { showTitle?: boolean }) {
   const isEmpty = !value || value.trim().length === 0;
   return (
@@ -2358,14 +2715,16 @@ function FieldEditor({
             {isApproving ? "Approving…" : "Approve"}
           </button>
         )}
-        <button
-          type="button"
-          className="inline-flex min-w-[108px] items-center justify-center rounded border border-blue-600 px-3 py-2 text-sm font-medium text-blue-700 disabled:opacity-60"
-          onClick={onRegenerate}
-          disabled={isRegenerating}
-        >
-          {isRegenerating ? "Regenerating…" : "Regenerate"}
-        </button>
+        {showRegenerate && (
+          <button
+            type="button"
+            className="inline-flex min-w-[108px] items-center justify-center rounded border border-blue-600 px-3 py-2 text-sm font-medium text-blue-700 disabled:opacity-60"
+            onClick={onRegenerate}
+            disabled={isRegenerating}
+          >
+            {isRegenerating ? "Regenerating…" : "Regenerate"}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -2384,6 +2743,7 @@ type TargetSegmentsEditorProps = {
   isRegenerating: boolean;
   isClearing: boolean;
   showTitle?: boolean;
+  showRegenerate?: boolean;
 };
 
 function TargetSegmentsEditor({
@@ -2398,7 +2758,8 @@ function TargetSegmentsEditor({
   isApproving,
   isRegenerating,
   isClearing,
-  showTitle = true
+  showTitle = true,
+  showRegenerate = true
 }: TargetSegmentsEditorProps) {
   const safeSegments = Array.isArray(segments) ? segments : [];
   const hasSegments = safeSegments.length > 0;
@@ -2660,14 +3021,16 @@ function TargetSegmentsEditor({
             {isApproving ? "Approving…" : "Approve"}
           </button>
         )}
-        <button
-          type="button"
-          className="inline-flex min-w-[108px] items-center justify-center rounded border border-blue-600 px-3 py-2 text-sm font-medium text-blue-700 disabled:opacity-60"
-          onClick={onRegenerate}
-          disabled={isRegenerating}
-        >
-          {isRegenerating ? "Regenerating…" : "Regenerate"}
-        </button>
+        {showRegenerate && (
+          <button
+            type="button"
+            className="inline-flex min-w-[108px] items-center justify-center rounded border border-blue-600 px-3 py-2 text-sm font-medium text-blue-700 disabled:opacity-60"
+            onClick={onRegenerate}
+            disabled={isRegenerating}
+          >
+            {isRegenerating ? "Regenerating…" : "Regenerate"}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -2686,6 +3049,7 @@ type PainPointsEditorProps = {
   isRegenerating: boolean;
   isClearing: boolean;
   showTitle?: boolean;
+  showRegenerate?: boolean;
 };
 
 const RATING_OPTIONS: Array<PainPoint["severity"]> = ["low", "medium", "high"];
@@ -2727,7 +3091,8 @@ function PainPointsEditor({
   isApproving,
   isRegenerating,
   isClearing,
-  showTitle = true
+  showTitle = true,
+  showRegenerate = true
 }: PainPointsEditorProps) {
   const hasThemes = themes.length > 0;
   const [openThemes, setOpenThemes] = useState<string[]>([]);
@@ -3128,14 +3493,16 @@ function PainPointsEditor({
             {isApproving ? "Approving…" : "Approve"}
           </button>
         )}
-        <button
-          type="button"
-          className="inline-flex min-w-[108px] items-center justify-center rounded border border-blue-600 px-3 py-2 text-sm font-medium text-blue-700 disabled:opacity-60"
-          onClick={onRegenerate}
-          disabled={isRegenerating}
-        >
-          {isRegenerating ? "Regenerating…" : "Regenerate"}
-        </button>
+        {showRegenerate && (
+          <button
+            type="button"
+            className="inline-flex min-w-[108px] items-center justify-center rounded border border-blue-600 px-3 py-2 text-sm font-medium text-blue-700 disabled:opacity-60"
+            onClick={onRegenerate}
+            disabled={isRegenerating}
+          >
+            {isRegenerating ? "Regenerating…" : "Regenerate"}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -3154,6 +3521,7 @@ type ContextConstraintsEditorProps = {
   isRegenerating: boolean;
   isClearing: boolean;
   showTitle?: boolean;
+  showRegenerate?: boolean;
 };
 
 function ContextConstraintsEditor({
@@ -3168,7 +3536,8 @@ function ContextConstraintsEditor({
   isApproving,
   isRegenerating,
   isClearing,
-  showTitle = true
+  showTitle = true,
+  showRegenerate = true
 }: ContextConstraintsEditorProps) {
   const safeValue: ContextConstraints = {
     contextual_factors: Array.isArray(value?.contextual_factors)
@@ -3364,14 +3733,16 @@ function ContextConstraintsEditor({
             {isApproving ? "Approving…" : "Approve"}
           </button>
         )}
-        <button
-          type="button"
-          className="inline-flex min-w-[108px] items-center justify-center rounded border border-blue-600 px-3 py-2 text-sm font-medium text-blue-700 disabled:opacity-60"
-          onClick={onRegenerate}
-          disabled={isRegenerating}
-        >
-          {isRegenerating ? "Regenerating…" : "Regenerate"}
-        </button>
+        {showRegenerate && (
+          <button
+            type="button"
+            className="inline-flex min-w-[108px] items-center justify-center rounded border border-blue-600 px-3 py-2 text-sm font-medium text-blue-700 disabled:opacity-60"
+            onClick={onRegenerate}
+            disabled={isRegenerating}
+          >
+            {isRegenerating ? "Regenerating…" : "Regenerate"}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -3390,6 +3761,7 @@ type MarketLandscapeEditorProps = {
   isRegenerating: boolean;
   isClearing: boolean;
   showTitle?: boolean;
+  showRegenerate?: boolean;
 };
 
 function MarketLandscapeEditor({
@@ -3404,7 +3776,8 @@ function MarketLandscapeEditor({
   isApproving,
   isRegenerating,
   isClearing,
-  showTitle = true
+  showTitle = true,
+  showRegenerate = true
 }: MarketLandscapeEditorProps) {
   const safeValue = normalizeMarketLandscapeValue(value);
 
@@ -4398,14 +4771,16 @@ function MarketLandscapeEditor({
             {isApproving ? "Approving…" : "Approve"}
           </button>
         )}
-        <button
-          type="button"
-          className="inline-flex min-w-[108px] items-center justify-center rounded border border-blue-600 px-3 py-2 text-sm font-medium text-blue-700 disabled:opacity-60"
-          onClick={onRegenerate}
-          disabled={isRegenerating}
-        >
-          {isRegenerating ? "Regenerating…" : "Regenerate"}
-        </button>
+        {showRegenerate && (
+          <button
+            type="button"
+            className="inline-flex min-w-[108px] items-center justify-center rounded border border-blue-600 px-3 py-2 text-sm font-medium text-blue-700 disabled:opacity-60"
+            onClick={onRegenerate}
+            disabled={isRegenerating}
+          >
+            {isRegenerating ? "Regenerating…" : "Regenerate"}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -4424,6 +4799,7 @@ type CompetitorInventoryEditorProps = {
   isRegenerating: boolean;
   isClearing: boolean;
   showTitle?: boolean;
+  showRegenerate?: boolean;
 };
 
 function CompetitorInventoryEditor({
@@ -4438,7 +4814,8 @@ function CompetitorInventoryEditor({
   isApproving,
   isRegenerating,
   isClearing,
-  showTitle = true
+  showTitle = true,
+  showRegenerate = true
 }: CompetitorInventoryEditorProps) {
   const safeValue = normalizeCompetitorInventoryValue(value);
   const hasCompetitors = safeValue.competitors.length > 0;
@@ -4657,14 +5034,16 @@ function CompetitorInventoryEditor({
             {isApproving ? "Approving…" : "Approve"}
           </button>
         )}
-        <button
-          type="button"
-          className="inline-flex min-w-[108px] items-center justify-center rounded border border-blue-600 px-3 py-2 text-sm font-medium text-blue-700 disabled:opacity-60"
-          onClick={onRegenerate}
-          disabled={isRegenerating}
-        >
-          {isRegenerating ? "Regenerating…" : "Regenerate"}
-        </button>
+        {showRegenerate && (
+          <button
+            type="button"
+            className="inline-flex min-w-[108px] items-center justify-center rounded border border-blue-600 px-3 py-2 text-sm font-medium text-blue-700 disabled:opacity-60"
+            onClick={onRegenerate}
+            disabled={isRegenerating}
+          >
+            {isRegenerating ? "Regenerating…" : "Regenerate"}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -4683,6 +5062,7 @@ type CompetitorCapabilitiesEditorProps = {
   isRegenerating: boolean;
   isClearing: boolean;
   showTitle?: boolean;
+  showRegenerate?: boolean;
 };
 
 function CompetitorCapabilitiesEditor({
@@ -4697,7 +5077,8 @@ function CompetitorCapabilitiesEditor({
   isApproving,
   isRegenerating,
   isClearing,
-  showTitle = true
+  showTitle = true,
+  showRegenerate = true
 }: CompetitorCapabilitiesEditorProps) {
   const safeValue = normalizeCompetitorCapabilitiesValue(value);
   const hasCompetitors = safeValue.competitor_capabilities.length > 0;
@@ -5071,14 +5452,16 @@ function CompetitorCapabilitiesEditor({
             {isApproving ? "Approving…" : "Approve"}
           </button>
         )}
-        <button
-          type="button"
-          className="inline-flex min-w-[108px] items-center justify-center rounded border border-blue-600 px-3 py-2 text-sm font-medium text-blue-700 disabled:opacity-60"
-          onClick={onRegenerate}
-          disabled={isRegenerating}
-        >
-          {isRegenerating ? "Regenerating…" : "Regenerate"}
-        </button>
+        {showRegenerate && (
+          <button
+            type="button"
+            className="inline-flex min-w-[108px] items-center justify-center rounded border border-blue-600 px-3 py-2 text-sm font-medium text-blue-700 disabled:opacity-60"
+            onClick={onRegenerate}
+            disabled={isRegenerating}
+          >
+            {isRegenerating ? "Regenerating…" : "Regenerate"}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -5097,6 +5480,7 @@ type GapsOpportunitiesEditorProps = {
   isRegenerating: boolean;
   isClearing: boolean;
   showTitle?: boolean;
+  showRegenerate?: boolean;
 };
 
 const GAP_IMPACT_OPTIONS: GapOpportunity["user_value_potential"][] = [
@@ -5117,7 +5501,8 @@ function GapsOpportunitiesEditor({
   isApproving,
   isRegenerating,
   isClearing,
-  showTitle = true
+  showTitle = true,
+  showRegenerate = true
 }: GapsOpportunitiesEditorProps) {
   const safeValue = normalizeGapsOpportunitiesValue(value);
   const hasItems =
@@ -5387,14 +5772,16 @@ function GapsOpportunitiesEditor({
             {isApproving ? "Approving…" : "Approve"}
           </button>
         )}
-        <button
-          type="button"
-          className="inline-flex min-w-[108px] items-center justify-center rounded border border-blue-600 px-3 py-2 text-sm font-medium text-blue-700 disabled:opacity-60"
-          onClick={onRegenerate}
-          disabled={isRegenerating}
-        >
-          {isRegenerating ? "Regenerating…" : "Regenerate"}
-        </button>
+        {showRegenerate && (
+          <button
+            type="button"
+            className="inline-flex min-w-[108px] items-center justify-center rounded border border-blue-600 px-3 py-2 text-sm font-medium text-blue-700 disabled:opacity-60"
+            onClick={onRegenerate}
+            disabled={isRegenerating}
+          >
+            {isRegenerating ? "Regenerating…" : "Regenerate"}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -5413,6 +5800,7 @@ type ValueDriversEditorProps = {
   isRegenerating: boolean;
   isClearing: boolean;
   showTitle?: boolean;
+  showRegenerate?: boolean;
 };
 
 const VALUE_IMPACT_OPTIONS: ValueDriver["user_value_impact"][] = [
@@ -5433,7 +5821,8 @@ function ValueDriversEditor({
   isApproving,
   isRegenerating,
   isClearing,
-  showTitle = true
+  showTitle = true,
+  showRegenerate = true
 }: ValueDriversEditorProps) {
   const safeValue = normalizeValueDriversValue(value);
   const hasDrivers = safeValue.value_drivers.length > 0;
@@ -5676,14 +6065,16 @@ function ValueDriversEditor({
             {isApproving ? "Approving…" : "Approve"}
           </button>
         )}
-        <button
-          type="button"
-          className="inline-flex min-w-[108px] items-center justify-center rounded border border-blue-600 px-3 py-2 text-sm font-medium text-blue-700 disabled:opacity-60"
-          onClick={onRegenerate}
-          disabled={isRegenerating}
-        >
-          {isRegenerating ? "Regenerating…" : "Regenerate"}
-        </button>
+        {showRegenerate && (
+          <button
+            type="button"
+            className="inline-flex min-w-[108px] items-center justify-center rounded border border-blue-600 px-3 py-2 text-sm font-medium text-blue-700 disabled:opacity-60"
+            onClick={onRegenerate}
+            disabled={isRegenerating}
+          >
+            {isRegenerating ? "Regenerating…" : "Regenerate"}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -5702,6 +6093,7 @@ type MarketFitHypothesisEditorProps = {
   isRegenerating: boolean;
   isClearing: boolean;
   showTitle?: boolean;
+  showRegenerate?: boolean;
 };
 
 function MarketFitHypothesisEditor({
@@ -5716,7 +6108,8 @@ function MarketFitHypothesisEditor({
   isApproving,
   isRegenerating,
   isClearing,
-  showTitle = true
+  showTitle = true,
+  showRegenerate = true
 }: MarketFitHypothesisEditorProps) {
   const safeValue = normalizeMarketFitHypothesisValue(value);
   const hasItems =
@@ -5928,14 +6321,16 @@ function MarketFitHypothesisEditor({
             {isApproving ? "Approving…" : "Approve"}
           </button>
         )}
-        <button
-          type="button"
-          className="inline-flex min-w-[108px] items-center justify-center rounded border border-blue-600 px-3 py-2 text-sm font-medium text-blue-700 disabled:opacity-60"
-          onClick={onRegenerate}
-          disabled={isRegenerating}
-        >
-          {isRegenerating ? "Regenerating…" : "Regenerate"}
-        </button>
+        {showRegenerate && (
+          <button
+            type="button"
+            className="inline-flex min-w-[108px] items-center justify-center rounded border border-blue-600 px-3 py-2 text-sm font-medium text-blue-700 disabled:opacity-60"
+            onClick={onRegenerate}
+            disabled={isRegenerating}
+          >
+            {isRegenerating ? "Regenerating…" : "Regenerate"}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -5954,6 +6349,7 @@ type FeasibilityAssessmentEditorProps = {
   isRegenerating: boolean;
   isClearing: boolean;
   showTitle?: boolean;
+  showRegenerate?: boolean;
 };
 
 const READINESS_OPTIONS: FeasibilityConstraintItem["readiness"][] = [
@@ -5974,7 +6370,8 @@ function FeasibilityAssessmentEditor({
   isApproving,
   isRegenerating,
   isClearing,
-  showTitle = true
+  showTitle = true,
+  showRegenerate = true
 }: FeasibilityAssessmentEditorProps) {
   const safeValue = normalizeFeasibilityAssessmentValue(value);
   const hasItems =
@@ -6196,14 +6593,16 @@ function FeasibilityAssessmentEditor({
             {isApproving ? "Approving…" : "Approve"}
           </button>
         )}
-        <button
-          type="button"
-          className="inline-flex min-w-[108px] items-center justify-center rounded border border-blue-600 px-3 py-2 text-sm font-medium text-blue-700 disabled:opacity-60"
-          onClick={onRegenerate}
-          disabled={isRegenerating}
-        >
-          {isRegenerating ? "Regenerating…" : "Regenerate"}
-        </button>
+        {showRegenerate && (
+          <button
+            type="button"
+            className="inline-flex min-w-[108px] items-center justify-center rounded border border-blue-600 px-3 py-2 text-sm font-medium text-blue-700 disabled:opacity-60"
+            onClick={onRegenerate}
+            disabled={isRegenerating}
+          >
+            {isRegenerating ? "Regenerating…" : "Regenerate"}
+          </button>
+        )}
       </div>
     </div>
   );

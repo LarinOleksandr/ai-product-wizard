@@ -1,0 +1,14 @@
+{
+  "problemUnderstanding.problemStatement": [],
+  "problemUnderstanding.targetUsersSegments": ["problemStatement"],
+  "problemUnderstanding.userPainPoints": ["problemStatement", "target_segments"],
+  "problemUnderstanding.contextConstraints": ["problemStatement", "target_segments", "pain_point_themes"],
+  "marketAndCompetitorAnalysis.marketLandscape": ["problemStatement", "target_segments", "pain_point_themes", "contextConstraints"],
+  "marketAndCompetitorAnalysis.competitorInventory": ["problemStatement", "target_segments", "pain_point_themes", "contextConstraints", "marketLandscape"],
+  "marketAndCompetitorAnalysis.competitorCapabilities": ["problemStatement", "target_segments", "pain_point_themes", "contextConstraints", "marketLandscape", "competitorInventory"],
+  "marketAndCompetitorAnalysis.gapsOpportunities": ["problemStatement", "target_segments", "pain_point_themes", "contextConstraints", "marketLandscape", "competitorInventory", "competitorCapabilities"],
+  "opportunityDefinition.opportunityStatement": ["problemStatement", "target_segments", "pain_point_themes", "contextConstraints", "marketLandscape", "gaps_and_opportunities"],
+  "opportunityDefinition.valueDrivers": ["problemStatement", "target_segments", "pain_point_themes", "contextConstraints", "marketLandscape", "gaps_and_opportunities", "opportunity_statement"],
+  "opportunityDefinition.marketFitHypothesis": ["problemStatement", "target_segments", "pain_point_themes", "contextConstraints", "opportunity_statement", "value_drivers"],
+  "opportunityDefinition.feasibilityAssessment": ["problemStatement", "target_segments", "pain_point_themes", "contextConstraints", "opportunity_statement", "value_drivers", "market_fit_hypothesis"]
+}

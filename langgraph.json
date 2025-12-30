@@ -1,0 +1,9 @@
+{
+    "dependencies": [
+        "."
+    ],
+    "graphs": {
+        "agent": "./ai/orchestrator/graph.ts:agent"
+    },
+    "env": "./ai/orchestrator/.env"
+}

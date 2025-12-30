@@ -5,7 +5,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 echo "== Dev Down =="
 
-echo "Stopping AI containers..."
+echo "Stopping AI containers (embeddings + orchestrator + flowise)..."
 cd "$REPO_ROOT/infra/docker"
 docker compose -f docker-compose.dev.yml down
 

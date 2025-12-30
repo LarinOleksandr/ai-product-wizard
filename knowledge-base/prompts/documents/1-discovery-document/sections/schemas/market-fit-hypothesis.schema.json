@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "market_fit_hypothesis": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "desirability": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "hypothesis": {
+                "type": "string",
+                "minLength": 3
+              },
+              "rationale": {
+                "type": "string",
+                "minLength": 3
+              },
+              "key_risks_or_unknowns": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "string",
+                  "minLength": 3
+                }
+              }
+            },
+            "required": [
+              "hypothesis",
+              "rationale",
+              "key_risks_or_unknowns"
+            ]
+          }
+        },
+        "viability": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "hypothesis": {
+                "type": "string",
+                "minLength": 3
+              },
+              "rationale": {
+                "type": "string",
+                "minLength": 3
+              },
+              "key_risks_or_unknowns": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "string",
+                  "minLength": 3
+                }
+              }
+            },
+            "required": [
+              "hypothesis",
+              "rationale",
+              "key_risks_or_unknowns"
+            ]
+          }
+        }
+      },
+      "required": [
+        "desirability",
+        "viability"
+      ]
+    }
+  },
+  "required": [
+    "market_fit_hypothesis"
+  ]
+}

@@ -8,14 +8,37 @@ echo "== Dev Status =="
 echo ""
 echo "-- Docker containers (ai) --"
 cd "$REPO_ROOT/infra/docker"
-docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | sed -n '1p;/ai-embeddings-dev\|ai-orchestrator-dev/p' || true
+docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | sed -n '1p;/ai-embeddings-dev\|ai-orchestrator-dev\|flowise/p' || true
 
 echo ""
 echo "-- Ollama --"
-if curl -sS http://localhost:11434/api/tags >/dev/null; then
-  echo "OK: Ollama responds on :11434"
+OLLAMA_URL="${OLLAMA_URL:-}"
+if [ -z "$OLLAMA_URL" ]; then
+  WSL_HOST_IP=""
+  if [ -f /etc/resolv.conf ]; then
+    WSL_HOST_IP="$(awk '/nameserver/ {print $2; exit}' /etc/resolv.conf)"
+  fi
+  if [ -n "$WSL_HOST_IP" ] && printf '%s' "$WSL_HOST_IP" | grep -Eq '^(1\.1\.1\.1|8\.8\.8\.8|9\.9\.9\.9)$'; then
+    WSL_HOST_IP="$(ip route 2>/dev/null | awk '/default/ {print $3; exit}')"
+  fi
+  for candidate in \
+    http://localhost:11434 \
+    http://127.0.0.1:11434 \
+    http://host.docker.internal:11434 \
+    ${WSL_HOST_IP:+http://$WSL_HOST_IP:11434}; do
+    if curl -sS --connect-timeout 1 --max-time 2 "$candidate/api/tags" >/dev/null 2>&1; then
+      OLLAMA_URL="$candidate"
+      break
+    fi
+  done
+fi
+if [ -n "$OLLAMA_URL" ] && curl -sS --connect-timeout 1 --max-time 2 "$OLLAMA_URL/api/tags" >/dev/null 2>&1; then
+  echo "OK: Ollama responds on ${OLLAMA_URL#http://}"
+  if [ -n "$WSL_HOST_IP" ] && [ "$OLLAMA_URL" = "http://$WSL_HOST_IP:11434" ]; then
+    echo "Note: Detected WSL host IP ${WSL_HOST_IP}"
+  fi
 else
-  echo "FAIL: Ollama not responding on :11434"
+  echo "FAIL: Ollama not responding (tried localhost/127.0.0.1/host.docker.internal${WSL_HOST_IP:+/$WSL_HOST_IP})"
 fi
 
 echo ""

@@ -3,10 +3,9 @@ import fs from "fs/promises";
 import fsSync from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { Annotation, StateGraph } from "@langchain/langgraph";
 import { ChatOllama } from "@langchain/ollama";
 import { z } from "zod";
-import fetch from "node-fetch";
+import { agent as discoveryGraph } from "./graph-core.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -40,15 +39,106 @@ const SUPABASE_TABLE =
 const SUPABASE_ENABLED = Boolean(
   SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
 );
-const PROMPTS_DIR = path.join(
-  __dirname,
-  "..",
-  "..",
-  "knowledge-base",
-  "prompts",
-  "product-manager",
-  "discovery-document"
-);
+const PROMPTS_DIR = (() => {
+  const envBase = process.env.KNOWLEDGE_BASE_DIR;
+  if (envBase) {
+    return path.join(
+      envBase,
+      "prompts",
+      "documents",
+      "1-discovery-document"
+    );
+  }
+  const dockerPath = path.join(
+    path.sep,
+    "knowledge-base",
+    "prompts",
+    "documents",
+    "1-discovery-document"
+  );
+  if (fsSync.existsSync(dockerPath)) {
+    return dockerPath;
+  }
+  return path.join(
+    __dirname,
+    "..",
+    "..",
+    "knowledge-base",
+    "prompts",
+    "documents",
+    "1-discovery-document"
+  );
+})();
+const PRODUCT_MANAGER_DIR = (() => {
+  const envBase = process.env.KNOWLEDGE_BASE_DIR;
+  if (envBase) {
+    return path.join(envBase, "prompts", "agents", "pm-product-manager");
+  }
+  const dockerPath = path.join(
+    path.sep,
+    "knowledge-base",
+    "prompts",
+    "agents",
+    "pm-product-manager"
+  );
+  if (fsSync.existsSync(dockerPath)) {
+    return dockerPath;
+  }
+  return path.join(
+    __dirname,
+    "..",
+    "..",
+    "knowledge-base",
+    "prompts",
+    "agents",
+    "pm-product-manager"
+  );
+})();
+const OTHER_PROMPTS_DIR = (() => {
+  const envBase = process.env.KNOWLEDGE_BASE_DIR;
+  if (envBase) {
+    return path.join(
+      envBase,
+      "prompts",
+      "documents",
+      "1-discovery-document",
+      "service"
+    );
+  }
+  const dockerPath = path.join(
+    path.sep,
+    "knowledge-base",
+    "prompts",
+    "documents",
+    "1-discovery-document",
+    "service"
+  );
+  if (fsSync.existsSync(dockerPath)) {
+    return dockerPath;
+  }
+  return path.join(
+    __dirname,
+    "..",
+    "..",
+    "knowledge-base",
+    "prompts",
+    "documents",
+    "1-discovery-document",
+    "service"
+  );
+})();
+const RANDOM_IDEA_DOMAINS = [
+  "Education & learning",
+  "Healthcare & wellbeing",
+  "Finance & personal money",
+  "Climate & environment",
+  "Entertainment & media",
+  "Work & collaboration",
+  "Civic life & public services"
+];
+let lastRandomIdeaDomain = "";
+const recentRandomIdeas = [];
+const MAX_RECENT_RANDOM_IDEAS = 5;
 
 const FIELD_DEFINITIONS = [
   {
@@ -126,6 +216,17 @@ const FIELD_DEFINITIONS = [
     wrapOutputKey: true
   }
 ];
+const FIELD_DISPLAY_KEY_MAP = FIELD_DEFINITIONS.reduce((acc, field) => {
+  const displayKey = field.outputKey || field.key.split(".").pop() || field.key;
+  acc[displayKey] = field.key;
+  return acc;
+}, {});
+const SECTION_INPUTS_PATH = path.join(
+  PROMPTS_DIR,
+  "sections",
+  "section-inputs.json"
+);
+let sectionInputDependencies = null;
 
 const EXPORT_STRUCTURE = [
   {
@@ -157,6 +258,25 @@ const EXPORT_STRUCTURE = [
   }
 ];
 
+const FIELD_LABELS = EXPORT_STRUCTURE.reduce((acc, section) => {
+  section.fields.forEach((field) => {
+    acc[field.key] = field.label;
+  });
+  return acc;
+}, {});
+
+function getFieldLabel(fieldKey) {
+  return FIELD_LABELS[fieldKey] || fieldKey;
+}
+
+function createAbortSignal(req) {
+  let aborted = false;
+  req.on("close", () => {
+    aborted = true;
+  });
+  return () => aborted;
+}
+
 const REQUIRED_FIELDS = [
   {
     key: "productIdea",
@@ -180,14 +300,6 @@ tracingFlags.forEach((flag) => {
     process.env[flag] = "false";
   }
 });
-
-const combineStringArrays = (left, right) => {
-  if (!right) return left;
-  if (Array.isArray(right)) {
-    return left.concat(right.filter(Boolean));
-  }
-  return left.concat([right]);
-};
 
 const applyCorsHeaders = (res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -607,8 +719,9 @@ async function generateFieldValueWithOutput({
   const sectionExamples = "";
   const sectionSchemaJson = promptAssets.sectionSchemaJsonMap?.[field.section];
   const approvedDocument = buildApprovedDocument(currentDocument, fieldStatus);
-  const inputsBlock = `## Inputs (JSON)\n${JSON.stringify(
-    buildIncomingInfo({
+  const promptInputs = `## Inputs (JSON)\n${JSON.stringify(
+    buildIncomingInfoForField({
+      fieldKey: field.key,
       productIdea,
       targetUser,
       userNotes,
@@ -619,7 +732,7 @@ async function generateFieldValueWithOutput({
     2
   )}`;
   const prompt = buildFieldPrompt({
-    inputsBlock,
+    promptInputs,
     approvedDocument,
     systemPrompt: promptAssets.systemPrompt,
     productIdea,
@@ -628,6 +741,7 @@ async function generateFieldValueWithOutput({
     outputRules: promptAssets.outputRules,
     sectionPrompt,
     sectionSchema,
+    sectionSchemaJson,
     sectionExamples,
     finalSchema: promptAssets.finalSchema,
     currentDocument,
@@ -666,7 +780,8 @@ async function generateFieldValueWithOutput({
       try {
         const parsed = normalizeParsedFieldValue(
           field,
-          tryParseDiscoveryResponse(response)
+          tryParseDiscoveryResponse(response),
+          approvedDocument
         );
         if (field.type === "object" && isPlainObject(parsed) && sectionSchemaJson?.type === "object") {
           const candidate = parsed;
@@ -814,11 +929,32 @@ function normalizeRawFieldValue(text, fieldType) {
   return text.trim();
 }
 
-function normalizeParsedFieldValue(field, parsed) {
+function normalizeParsedFieldValue(field, parsed, approvedDocument) {
   if (!isPlainObject(parsed)) {
     return parsed;
   }
   if (field.key === "marketAndCompetitorAnalysis.marketLandscape") {
+    if (Array.isArray(parsed.market_trends)) {
+      parsed.market_trends = parsed.market_trends.map((item) =>
+        item && typeof item === "object" && !item.confidence
+          ? { ...item, confidence: "medium" }
+          : item
+      );
+    }
+    if (Array.isArray(parsed.market_dynamics)) {
+      parsed.market_dynamics = parsed.market_dynamics.map((item) =>
+        item && typeof item === "object" && !item.confidence
+          ? { ...item, confidence: "medium" }
+          : item
+      );
+    }
+    if (Array.isArray(parsed.market_forces)) {
+      parsed.market_forces = parsed.market_forces.map((item) =>
+        item && typeof item === "object" && !item.confidence
+          ? { ...item, confidence: "medium" }
+          : item
+      );
+    }
     if (parsed.market_landscape && !parsed.market_definition) {
       const { market_landscape, ...rest } = parsed;
       return { ...rest, market_definition: market_landscape };
@@ -853,11 +989,77 @@ function normalizeParsedFieldValue(field, parsed) {
     }
   }
   if (field.key === "marketAndCompetitorAnalysis.gapsOpportunities") {
+    const validSegmentNames = (() => {
+      const segments = getNestedValue(
+        approvedDocument,
+        "problemUnderstanding.targetUsersSegments"
+      )?.target_segments;
+      if (!Array.isArray(segments)) {
+        return null;
+      }
+      const names = segments
+        .map((segment) => segment?.segment_name)
+        .filter((name) => typeof name === "string" && name.trim().length > 0);
+      return names.length ? new Set(names) : null;
+    })();
+    const normalizeGap = (item) => {
+      if (!item || typeof item !== "object") {
+        return item;
+      }
+      const gap_description = item.gap_description || item.description || "";
+      const opportunity_description =
+        item.opportunity_description || item.opportunity_area || "";
+      const affected_user_segments = Array.isArray(item.affected_user_segments)
+        ? item.affected_user_segments
+        : [];
+      return {
+        ...item,
+        gap_description,
+        opportunity_description,
+        affected_user_segments
+      };
+    };
+    const filterSegments = (item) => {
+      if (!item || typeof item !== "object") {
+        return item;
+      }
+      if (!validSegmentNames) {
+        return item;
+      }
+      const filtered = (item.affected_user_segments || []).filter((segment) =>
+        validSegmentNames.has(segment)
+      );
+      const normalizedSegments = filtered.length
+        ? filtered
+        : Array.from(validSegmentNames);
+      return {
+        ...item,
+        affected_user_segments: normalizedSegments
+      };
+    };
     if (parsed.gapsOpportunities && parsed.gapsOpportunities.gaps_and_opportunities) {
-      return parsed.gapsOpportunities;
+      const normalized = parsed.gapsOpportunities;
+      ["functional", "technical", "business"].forEach((key) => {
+        if (Array.isArray(normalized.gaps_and_opportunities?.[key])) {
+          normalized.gaps_and_opportunities[key] =
+            normalized.gaps_and_opportunities[key]
+              .map(normalizeGap)
+              .map(filterSegments);
+        }
+      });
+      return normalized;
     }
     if (parsed.gaps_and_opportunities) {
-      return { gaps_and_opportunities: parsed.gaps_and_opportunities };
+      const normalized = { gaps_and_opportunities: parsed.gaps_and_opportunities };
+      ["functional", "technical", "business"].forEach((key) => {
+        if (Array.isArray(normalized.gaps_and_opportunities?.[key])) {
+          normalized.gaps_and_opportunities[key] =
+            normalized.gaps_and_opportunities[key]
+              .map(normalizeGap)
+              .map(filterSegments);
+        }
+      });
+      return normalized;
     }
   }
   if (field.key === "opportunityDefinition.valueDrivers") {
@@ -902,8 +1104,11 @@ async function getDiscoveryPromptAssets() {
     return promptCache;
   }
 
-  const systemPrompt = await readPromptFile("product-manager-system-prompt.md");
+  const systemPrompt = await readProductManagerPromptFile(
+    "product-manager-system-prompt.md"
+  );
   const finalSchema = await readPromptFile("discovery-document-schema.json");
+  const outputRules = await readPromptFile(path.join("sections", "section-output-rules.md"));
 
   const sectionPrompts = [];
   const sectionSchemas = [];
@@ -912,13 +1117,13 @@ async function getDiscoveryPromptAssets() {
   const sectionSchemaJsonMap = {};
   for (const definition of FIELD_DEFINITIONS) {
     const section = definition.section;
-    const promptPath = path.join("sections", `${section}.prompt.md`);
+    const promptPath = path.join("sections", "prompts", `${section}.prompt.md`);
     const promptContent = await readPromptFile(promptPath);
     if (promptContent) {
       sectionPrompts.push(`Section: ${section}\n${promptContent}`);
       sectionPromptMap[section] = promptContent;
     }
-    const schemaPath = path.join("sections", `${section}.schema.json`);
+    const schemaPath = path.join("sections", "schemas", `${section}.schema.json`);
     const schemaContent = await readPromptFile(schemaPath);
     if (schemaContent) {
       sectionSchemas.push(`Section: ${section}\n${schemaContent}`);
@@ -935,7 +1140,7 @@ async function getDiscoveryPromptAssets() {
     systemPrompt:
       systemPrompt ||
       "You are the Discovery Agent. Respond only with JSON that matches the required schema. Do not write prose.",
-    outputRules: "",
+    outputRules: outputRules || "",
     finalSchema: finalSchema || "",
     sectionPrompts,
     sectionSchemas,
@@ -949,6 +1154,32 @@ async function getDiscoveryPromptAssets() {
 async function readPromptFile(relativePath) {
   try {
     const filePath = path.join(PROMPTS_DIR, relativePath);
+    return await fs.readFile(filePath, "utf8");
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      console.warn(`Prompt file missing: ${relativePath}`);
+      return "";
+    }
+    throw error;
+  }
+}
+
+async function readProductManagerPromptFile(relativePath) {
+  try {
+    const filePath = path.join(PRODUCT_MANAGER_DIR, relativePath);
+    return await fs.readFile(filePath, "utf8");
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      console.warn(`Prompt file missing: ${relativePath}`);
+      return "";
+    }
+    throw error;
+  }
+}
+
+async function readOtherPromptFile(relativePath) {
+  try {
+    const filePath = path.join(OTHER_PROMPTS_DIR, relativePath);
     return await fs.readFile(filePath, "utf8");
   } catch (error) {
     if (error.code === "ENOENT") {
@@ -1431,33 +1662,42 @@ function buildIncomingInfo({
   return incomingInfo;
 }
 
-const DiscoveryState = Annotation.Root({
-  productIdea: Annotation(),
-  targetUser: Annotation(),
-  userMessages: Annotation({
-    reducer: combineStringArrays,
-    default: () => []
-  }),
-  currentStage: Annotation(),
-  decisions: Annotation({
-    reducer: combineStringArrays,
-    default: () => []
-  }),
-  openQuestions: Annotation({
-    reducer: combineStringArrays,
-    default: () => []
-  }),
-  pendingQuestions: Annotation({
-    reducer: combineStringArrays,
-    default: () => []
-  }),
-  discoveryDocument: Annotation(),
-  approvalStatus: Annotation(),
-  lastPrompt: Annotation(),
-  lastPromptFieldKey: Annotation(),
-  lastOutput: Annotation(),
-  lastOutputFieldKey: Annotation()
-});
+function buildIncomingInfoForField({
+  fieldKey,
+  productIdea,
+  targetUser,
+  userNotes,
+  currentDocument,
+  fieldStatus
+}) {
+  const approvedDocument = buildApprovedDocument(currentDocument, fieldStatus);
+  const incomingInfo = {
+    productIdea: productIdea || "",
+    targetUser: targetUser || "",
+    userNotes: Array.isArray(userNotes) ? userNotes : []
+  };
+  if (!sectionInputDependencies) {
+    try {
+      const raw = fsSync.readFileSync(SECTION_INPUTS_PATH, "utf8");
+      sectionInputDependencies = JSON.parse(raw);
+    } catch (error) {
+      console.warn("Unable to load section-inputs.json. Using empty dependencies.");
+      sectionInputDependencies = {};
+    }
+  }
+  const dependencies = sectionInputDependencies[fieldKey] || [];
+  dependencies.forEach((displayKey) => {
+    const fieldKeyForDisplay = FIELD_DISPLAY_KEY_MAP[displayKey];
+    if (!fieldKeyForDisplay) {
+      return;
+    }
+    const value = getNestedValue(approvedDocument, fieldKeyForDisplay);
+    if (typeof value !== "undefined") {
+      incomingInfo[displayKey] = value;
+    }
+  });
+  return incomingInfo;
+}
 
 const discoveryDocumentSchema = z
   .object({
@@ -1832,60 +2072,11 @@ const discoveryDocumentSchema = z
   })
   .strict();
 
-const discoveryGraph = buildDiscoveryGraph();
+export const agent = discoveryGraph;
 let chatInstance;
 let promptCache;
 
-function buildDiscoveryGraph() {
-  const builder = new StateGraph(DiscoveryState)
-    .addNode("orchestrator", orchestratorNode)
-    .addNode("discovery_agent", discoveryAgentNode)
-    .addEdge("__start__", "orchestrator")
-    .addConditionalEdges("orchestrator", shouldRunDiscovery, {
-      generate: "discovery_agent",
-      finished: "__end__"
-    })
-    .addEdge("discovery_agent", "__end__");
-
-  return builder.compile();
-}
-
-function shouldRunDiscovery(state) {
-  return state.discoveryDocument ? "finished" : "generate";
-}
-
-async function orchestratorNode(state) {
-  if (!state.productIdea) {
-    throw new Error("Product idea is required before running discovery.");
-  }
-
-  return {
-    currentStage: state.discoveryDocument ? "complete" : "discovery_planning"
-  };
-}
-
-async function discoveryAgentNode(state) {
-  const result = await produceDiscoveryDocument({
-    productIdea: state.productIdea,
-    targetUser: state.targetUser,
-    userMessages: state.userMessages
-  });
-
-  return {
-    discoveryDocument: result.discoveryDocument,
-    targetUser: state.targetUser,
-    decisions: [
-      `Discovery document drafted at ${new Date().toISOString()}`
-    ],
-    lastPrompt: result.lastPrompt,
-    lastPromptFieldKey: result.lastPromptFieldKey,
-    lastOutput: result.lastOutput,
-    lastOutputFieldKey: result.lastOutputFieldKey,
-    lastValidationStatus: result.lastValidationStatus || null
-  };
-}
-
-async function produceDiscoveryDocument({
+export async function produceDiscoveryDocument({
   productIdea,
   targetUser,
   userMessages
@@ -1943,7 +2134,7 @@ function getChatModel() {
 }
 
 function buildFieldPrompt({
-  inputsBlock,
+  promptInputs,
   approvedDocument,
   systemPrompt,
   productIdea,
@@ -1952,6 +2143,7 @@ function buildFieldPrompt({
   outputRules,
   sectionPrompt,
   sectionSchema,
+  sectionSchemaJson,
   sectionExamples,
   finalSchema,
   currentDocument,
@@ -1964,15 +2156,17 @@ function buildFieldPrompt({
   const notesBlock = safeNotes.length
     ? `User notes:\n- ${safeNotes.join("\n- ")}`
     : "User notes: none provided";
-  const schemaBlock = sectionSchema
-    ? `## Section schema\n\n${sectionSchema}`
-    : "Section schema: missing.";
+  const schemaBlock = sectionSchemaJson
+    ? buildSchemaSketch(sectionSchemaJson)
+    : sectionSchema
+      ? buildSchemaSketch(tryParseJsonText(sectionSchema))
+      : "### JSON schema (define output format)\n\nSchema missing.";
   const prompt = [
     systemPrompt || "You are the Discovery Agent.",
-    inputsBlock,
-    "Section prompt:",
+    promptInputs,
     sectionPrompt || "Section prompt missing.",
-    outputRules ? `Output rules:\n${outputRules}` : "",
+    outputRules,
+    schemaBlock
   ]
     .filter(Boolean)
     .join("\n\n");
@@ -2195,6 +2389,223 @@ function extractJsonBlock(text) {
     throw new Error("No JSON object found in response.");
   }
   return text.slice(start, end + 1);
+}
+
+function resolveSchemaRef(schema, rootSchema) {
+  if (!schema || typeof schema.$ref !== "string" || !rootSchema) {
+    return schema;
+  }
+  const ref = schema.$ref;
+  if (!ref.startsWith("#/")) {
+    return schema;
+  }
+  const pathParts = ref.slice(2).split("/");
+  let current = rootSchema;
+  for (const part of pathParts) {
+    if (!current || typeof current !== "object") {
+      return schema;
+    }
+    current = current[part];
+  }
+  return current || schema;
+}
+
+function formatSchemaType(schema, rootSchema) {
+  if (!schema || typeof schema !== "object") {
+    return "unknown";
+  }
+  const resolved = resolveSchemaRef(schema, rootSchema);
+  if (resolved !== schema) {
+    return formatSchemaType(resolved, rootSchema);
+  }
+  if (schema.enum) {
+    return schema.enum.join("|");
+  }
+  if (schema.type === "string") {
+    return "string";
+  }
+  if (schema.type === "array") {
+    const itemType = formatSchemaType(schema.items || {}, rootSchema);
+    return `array<${itemType}>`;
+  }
+  if (schema.type === "object") {
+    const properties = schema.properties || {};
+    const requiredKeys = Array.isArray(schema.required) && schema.required.length
+      ? schema.required
+      : Object.keys(properties);
+    if (!requiredKeys.length) {
+      return "object";
+    }
+    const fields = requiredKeys.map((key) => {
+      const prop = properties[key] || {};
+      const typeLabel = formatSchemaType(prop, rootSchema);
+      return `${key} (${typeLabel})`;
+    });
+    return `object { ${fields.join(", ")} }`;
+  }
+  return "unknown";
+}
+
+function buildSchemaSketch(schemaJson) {
+  if (!schemaJson || typeof schemaJson !== "object") {
+    return "### JSON schema (define output format)\n\nSchema missing.";
+  }
+  const properties = schemaJson.properties || {};
+  const requiredKeys = Array.isArray(schemaJson.required) ? schemaJson.required : [];
+  const lines = [];
+  if (requiredKeys.length) {
+    lines.push(`Required keys: ${requiredKeys.join(", ")}.`);
+  }
+  const keysToDescribe = requiredKeys.length ? requiredKeys : Object.keys(properties);
+  keysToDescribe.forEach((key) => {
+    if (!properties[key]) {
+      return;
+    }
+    lines.push(`${key}: ${formatSchemaType(properties[key], schemaJson)}`);
+  });
+  return [
+    "### JSON schema (define output format)",
+    "",
+    ...lines
+  ].join("\n");
+}
+
+function tryParseJsonText(text) {
+  if (typeof text !== "string") {
+    return null;
+  }
+  const cleaned = text.replace(/```json|```/g, "").trim();
+  if (!cleaned) {
+    return null;
+  }
+  const candidate = cleaned.startsWith("{") ? cleaned : (() => {
+    try {
+      return extractJsonBlock(cleaned);
+    } catch {
+      return "";
+    }
+  })();
+  if (!candidate) {
+    return null;
+  }
+  try {
+    return JSON.parse(candidate);
+  } catch {
+    return null;
+  }
+}
+
+function pickStringValue(payload, keys) {
+  if (!payload) {
+    return "";
+  }
+  if (typeof payload === "string") {
+    return payload.trim();
+  }
+  for (const key of keys) {
+    const value = payload?.[key];
+    if (typeof value === "string") {
+      return value.trim();
+    }
+  }
+  return "";
+}
+
+function isLikelyJsonText(text) {
+  if (!text) {
+    return false;
+  }
+  const trimmed = text.trim();
+  return trimmed.startsWith("{") || trimmed.includes("\"productIdea\"") || trimmed.includes("\"targetUser\"");
+}
+
+function pickNextRandomIdeaDomain() {
+  const candidates = RANDOM_IDEA_DOMAINS.filter((domain) => domain !== lastRandomIdeaDomain);
+  const pool = candidates.length ? candidates : RANDOM_IDEA_DOMAINS;
+  const selection = pool[Math.floor(Math.random() * pool.length)];
+  lastRandomIdeaDomain = selection;
+  return selection;
+}
+
+function recordRecentRandomIdea(productIdea) {
+  if (!productIdea) {
+    return;
+  }
+  recentRandomIdeas.unshift(productIdea);
+  if (recentRandomIdeas.length > MAX_RECENT_RANDOM_IDEAS) {
+    recentRandomIdeas.length = MAX_RECENT_RANDOM_IDEAS;
+  }
+}
+
+async function generateRandomInputs({ currentProductIdea } = {}) {
+  const model = getChatModel();
+  if (!model) {
+    if (process.env.MOCK_DISCOVERY === "true") {
+      return {
+        productIdea: "A random product idea goes here. It is a short, clear concept. It has three sentences.",
+        targetUser: "People who want a quick, randomized product concept."
+      };
+    }
+    throw new Error("Ollama is not available. Start Ollama and retry.");
+  }
+
+  const ideaPrompt = await readOtherPromptFile("random-product-idea.prompt.md");
+  const targetPromptTemplate = await readOtherPromptFile("random-target-user.prompt.md");
+  if (!ideaPrompt || !targetPromptTemplate) {
+    throw new Error("Random prompt files are missing.");
+  }
+
+  const selectedDomain = pickNextRandomIdeaDomain();
+  const ideaPromptText = renderTemplate(ideaPrompt, {
+    currentProductIdea: currentProductIdea || "",
+    selectedDomain,
+    recentProductIdeas: recentRandomIdeas.length
+      ? `- ${recentRandomIdeas.join("\n- ")}`
+      : "None"
+  });
+  const ideaResponse = await model.invoke([{ role: "user", content: ideaPromptText }]);
+  const ideaRaw = extractTextFromResponse(ideaResponse);
+  let ideaPayload;
+  try {
+    ideaPayload = tryParseDiscoveryResponse(ideaResponse);
+  } catch {
+    ideaPayload = tryParseJsonText(ideaRaw);
+  }
+  let productIdea = pickStringValue(ideaPayload, [
+    "productIdea",
+    "product_idea",
+    "idea"
+  ]);
+  if (!productIdea && ideaRaw && !isLikelyJsonText(ideaRaw)) {
+    productIdea = ideaRaw.replace(/```json|```/g, "").trim();
+  }
+  if (!productIdea) {
+    throw new Error("Random product idea response missing productIdea.");
+  }
+  recordRecentRandomIdea(productIdea);
+
+  const targetPrompt = renderTemplate(targetPromptTemplate, { productIdea });
+  const targetResponse = await model.invoke([{ role: "user", content: targetPrompt }]);
+  const targetRaw = extractTextFromResponse(targetResponse);
+  let targetPayload;
+  try {
+    targetPayload = tryParseDiscoveryResponse(targetResponse);
+  } catch {
+    targetPayload = tryParseJsonText(targetRaw);
+  }
+  let targetUser = pickStringValue(targetPayload, [
+    "targetUser",
+    "target_user",
+    "user"
+  ]);
+  if (!targetUser && targetRaw && !isLikelyJsonText(targetRaw)) {
+    targetUser = targetRaw.replace(/```json|```/g, "").trim();
+  }
+  if (!targetUser) {
+    throw new Error("Random target user response missing targetUser.");
+  }
+
+  return { productIdea, targetUser };
 }
 
 function buildFallbackDocument(productIdea, targetUser) {
@@ -2470,6 +2881,7 @@ export async function runDiscoveryWorkflow(input) {
 
   const fieldStatus = buildFieldStatus();
   const firstField = FIELD_DEFINITIONS[0];
+  const firstFieldLabel = firstField ? getFieldLabel(firstField.key) : "First section";
   const record = {
     stage: "discovery",
     timestamp: new Date().toISOString(),
@@ -2492,7 +2904,8 @@ export async function runDiscoveryWorkflow(input) {
     lastPromptFieldKey: finalState.lastPromptFieldKey || null,
     lastOutput: finalState.lastOutput || null,
     lastOutputFieldKey: finalState.lastOutputFieldKey || null,
-    lastValidationStatus: finalState.lastValidationStatus || null
+    lastValidationStatus: finalState.lastValidationStatus || null,
+    lastStatusMessage: `${firstFieldLabel} created. Review and approve.`
   };
 
   const persisted = await persistDiscoveryResult(record);
@@ -2502,6 +2915,146 @@ export async function runDiscoveryWorkflow(input) {
     record: persisted.record,
     savedToSupabase: persisted.savedToSupabase,
     validationStatus: finalState.lastValidationStatus || null
+  };
+}
+
+export async function generateEntireDiscoveryDocument(input, shouldAbort) {
+  const validation = validateUserInput(input || {});
+  if (!validation.valid) {
+    return {
+      status: "needs_input",
+      missingFields: validation.missingFields,
+      questions: validation.questions,
+      timestamp: new Date().toISOString()
+    };
+  }
+
+  const productIdea = (input.productIdea || "").trim();
+  const targetUser = (input.targetUser || "").trim();
+  const userMessages = normalizeUserMessages(input.userMessages);
+  const changeReason = (input.changeReason || "").trim();
+
+  const pendingApproval = input?.forceNew ? null : await checkApprovalGate();
+  if (pendingApproval) {
+    return pendingApproval;
+  }
+
+  const emptyDocument = buildEmptyDocument();
+  const fieldStatus = buildFieldStatus();
+  const currentDocument = emptyDocument;
+  const initialTimestamp = new Date().toISOString();
+  const initialChangeReason = changeReason || "Generating entire document";
+
+  const initialRecord = {
+    stage: "discovery",
+    timestamp: initialTimestamp,
+    productIdea,
+    targetUser,
+    discoveryDocument: currentDocument,
+    decisions: [],
+    openQuestions: [],
+    userMessages,
+    approved: false,
+    approvedAt: null,
+    approvalHistory: [],
+    changeReason: initialChangeReason,
+    changeLog: [],
+    fieldStatus,
+    fieldOrder: FIELD_DEFINITIONS.map((field) => field.key),
+    currentFieldKey: null,
+    fieldApprovalHistory: [],
+    lastPrompt: null,
+    lastPromptFieldKey: null,
+    lastOutput: null,
+    lastOutputFieldKey: null,
+    lastValidationStatus: null,
+    lastStatusMessage: "Starting full document generation."
+  };
+
+  const persisted = await persistDiscoveryResult(initialRecord);
+  let record = persisted.record;
+
+  for (const field of FIELD_DEFINITIONS) {
+    if (shouldAbort?.()) {
+      throw new Error("Generation cancelled.");
+    }
+    const fieldLabel = getFieldLabel(field.key);
+    record = {
+      ...record,
+      lastStatusMessage: `Generating ${fieldLabel}...`
+    };
+    const preUpdate = await updateDiscoveryRecord(
+      record,
+      "generate_all_progress",
+      record.lastStatusMessage
+    );
+    record = preUpdate.record;
+    const { value, prompt, rawText, validationStatus } = await generateFieldValueWithOutput({
+      field,
+      productIdea,
+      targetUser,
+      userNotes: userMessages,
+      currentDocument,
+      fieldStatus
+    });
+    setNestedValue(currentDocument, field.key, value);
+    fieldStatus[field.key] = { approved: true, approvedAt: new Date().toISOString() };
+    const isLastField = field.key === FIELD_DEFINITIONS[FIELD_DEFINITIONS.length - 1].key;
+    const statusMessage = isLastField
+      ? `${fieldLabel} created. Finalizing document...`
+      : `${fieldLabel} created. Starting next section...`;
+    record = {
+      ...record,
+      discoveryDocument: currentDocument,
+      fieldStatus,
+      lastPrompt: prompt,
+      lastPromptFieldKey: field.key,
+      lastOutput: rawText,
+      lastOutputFieldKey: field.key,
+      lastValidationStatus: validationStatus || null,
+      lastStatusMessage: statusMessage
+    };
+    const updated = await updateDiscoveryRecord(
+      record,
+      "generate_all_progress",
+      statusMessage
+    );
+    record = updated.record;
+  }
+
+  const timestamp = new Date().toISOString();
+  const approvedFieldStatus = FIELD_DEFINITIONS.reduce((acc, field) => {
+    acc[field.key] = { approved: true, approvedAt: timestamp };
+    return acc;
+  }, {});
+  const finalChangeReason = changeReason || "Generated entire document";
+  record = {
+    ...record,
+    approved: true,
+    approvedAt: timestamp,
+    approvalHistory: [
+      {
+        timestamp,
+        approver: "system"
+      }
+    ],
+    changeReason: finalChangeReason,
+    fieldStatus: approvedFieldStatus,
+    currentFieldKey: null,
+    lastStatusMessage: "Full document generated and approved."
+  };
+
+  const finalUpdate = await updateDiscoveryRecord(
+    record,
+    "generate_all_complete",
+    record.lastStatusMessage
+  );
+  return {
+    status: "approved",
+    resultType: "updated",
+    record: finalUpdate.record,
+    savedToSupabase: finalUpdate.savedToSupabase,
+    validationStatus: record.lastValidationStatus || null
   };
 }
 
@@ -2760,6 +3313,7 @@ async function approveDiscoveryField({
       fieldStatus
     });
     setNestedValue(record.discoveryDocument, nextField.key, nextValue);
+    record.lastStatusMessage = `${getFieldLabel(nextField.key)} created. Review and approve.`;
     record.lastPrompt = prompt;
     record.lastPromptFieldKey = nextField.key;
     record.lastOutput = rawText;
@@ -2771,12 +3325,13 @@ async function approveDiscoveryField({
     record.currentFieldKey = null;
     record.approved = true;
     record.approvedAt = new Date().toISOString();
+    record.lastStatusMessage = "All fields approved. Discovery document is complete.";
   }
 
   const { record: updatedRecord, savedToSupabase } = await updateDiscoveryRecord(
     record,
     "field_approval",
-    `Approved ${fieldKey}`
+    record.lastStatusMessage || `Approved ${fieldKey}`
   );
 
   return {
@@ -2834,6 +3389,7 @@ async function regenerateDiscoveryField({
     fieldStatus
   });
   setNestedValue(record.discoveryDocument, field.key, nextValue);
+  record.lastStatusMessage = `${getFieldLabel(field.key)} regenerated. Review and approve.`;
   record.lastPrompt = prompt;
   record.lastPromptFieldKey = field.key;
   record.lastOutput = rawText;
@@ -2854,7 +3410,7 @@ async function regenerateDiscoveryField({
   const { record: updatedRecord, savedToSupabase } = await updateDiscoveryRecord(
     record,
     "field_regenerate",
-    `Regenerated ${fieldKey}`
+    record.lastStatusMessage || `Regenerated ${fieldKey}`
   );
 
   return {
@@ -2923,6 +3479,21 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "POST" && req.url === "/discovery") {
       const body = await parseRequestBody(req);
       const result = await runDiscoveryWorkflow(body);
+      sendJson(res, 200, result);
+      return;
+    }
+
+    if (req.method === "POST" && req.url === "/discovery/generate-all") {
+      const body = await parseRequestBody(req);
+      const shouldAbort = createAbortSignal(req);
+      const result = await generateEntireDiscoveryDocument(body, shouldAbort);
+      sendJson(res, 200, result);
+      return;
+    }
+
+    if (req.method === "POST" && req.url === "/discovery/random-inputs") {
+      const body = await parseRequestBody(req);
+      const result = await generateRandomInputs(body);
       sendJson(res, 200, result);
       return;
     }
@@ -3040,10 +3611,11 @@ const server = http.createServer(async (req, res) => {
   });
 });
 
-if (process.env.SKIP_SERVER === "true") {
-  console.log("Server start skipped because SKIP_SERVER=true.");
-} else {
-  server.listen(PORT, "127.0.0.1", () => {
-    console.log(`Agentic orchestrator running on http://127.0.0.1:${PORT}`);
+const isMainModule =
+  process.argv[1] && path.resolve(process.argv[1]) === __filename;
+
+if (!(process.env.SKIP_SERVER === "true" || !isMainModule)) {
+  server.listen(PORT, "0.0.0.0", () => {
+    console.log(`Agentic orchestrator running on http://0.0.0.0:${PORT}`);
   });
 }

@@ -1,1 +1,4 @@
-# pnpm-workspace.yaml
+packages:
+  - "frontend/web"
+onlyBuiltDependencies:
+  - esbuild
