@@ -242,10 +242,11 @@ export function createPromptService({
       if (!fieldKeyForDisplay) {
         return;
       }
-      const value = getNestedValue(approvedDocument, fieldKeyForDisplay);
-      if (typeof value !== "undefined") {
-        incomingInfo[displayKey] = value;
+      let value = getNestedValue(approvedDocument, fieldKeyForDisplay);
+      if (typeof value === "undefined") {
+        value = getNestedValue(currentDocument || {}, fieldKeyForDisplay);
       }
+      incomingInfo[displayKey] = typeof value === "undefined" ? null : value;
     });
     return incomingInfo;
   }

@@ -17,6 +17,16 @@ export function createExportService({
     return items.map((item) => `- ${escapeMarkdown(String(item))}`).join("\n");
   }
 
+  function pushNamedList(parts, label, items) {
+    if (!Array.isArray(items) || !items.length) {
+      return;
+    }
+    parts.push(`- ${label}:`);
+    items.forEach((item) => {
+      parts.push(`  - ${escapeMarkdown(String(item))}`);
+    });
+  }
+
   function renderDiscoveryMarkdown(document) {
     const parts = ["# Discovery Document"];
 
@@ -177,6 +187,169 @@ export function createExportService({
           listSection("Adoption barriers", value.adoption_barriers);
           return;
         }
+        if (field.key === "marketAndCompetitorAnalysis.competitorInventory") {
+          if (Array.isArray(value)) {
+            const list = formatMarkdownList(value);
+            if (list) {
+              parts.push(list);
+            }
+            return;
+          }
+          const competitors = value?.competitors || [];
+          competitors.forEach((competitor) => {
+            parts.push(`- Competitor: ${escapeMarkdown(competitor.name || "")}`);
+            if (competitor.url) {
+              parts.push(`  - URL: ${escapeMarkdown(competitor.url)}`);
+            }
+            if (competitor.category) {
+              parts.push(`  - Category: ${escapeMarkdown(competitor.category)}`);
+            }
+            if (competitor.description) {
+              parts.push(`  - Description: ${escapeMarkdown(competitor.description)}`);
+            }
+            if (competitor.positioning) {
+              parts.push(`  - Positioning: ${escapeMarkdown(competitor.positioning)}`);
+            }
+            if (competitor.target_audience) {
+              parts.push(`  - Target audience: ${escapeMarkdown(competitor.target_audience)}`);
+            }
+          });
+          return;
+        }
+        if (field.key === "marketAndCompetitorAnalysis.competitorCapabilities") {
+          const capabilities = value?.competitor_capabilities || [];
+          capabilities.forEach((capability) => {
+            parts.push(`- Competitor: ${escapeMarkdown(capability.competitor_name || "")}`);
+            pushNamedList(parts, "  Functional capabilities", capability.functional_capabilities);
+            pushNamedList(parts, "  Technical capabilities", capability.technical_capabilities);
+            pushNamedList(parts, "  Business capabilities", capability.business_capabilities);
+            pushNamedList(parts, "  Strengths", capability.strengths);
+            pushNamedList(parts, "  Limitations", capability.limitations);
+            if (capability.alignment_with_user_needs) {
+              parts.push(
+                `  - Alignment with user needs: ${escapeMarkdown(
+                  capability.alignment_with_user_needs
+                )}`
+              );
+            }
+          });
+          const patterns = value?.industry_capability_patterns || [];
+          if (patterns.length) {
+            parts.push("#### Industry capability patterns");
+            patterns.forEach((pattern) => {
+              parts.push(`- Pattern: ${escapeMarkdown(pattern.pattern_name || "")}`);
+              if (pattern.description) {
+                parts.push(`  - Description: ${escapeMarkdown(pattern.description)}`);
+              }
+            });
+          }
+          return;
+        }
+        if (field.key === "marketAndCompetitorAnalysis.gapsOpportunities") {
+          const gaps = value?.gaps_and_opportunities || {};
+          const renderGapList = (label, items) => {
+            if (!Array.isArray(items) || !items.length) {
+              return;
+            }
+            parts.push(`#### ${label}`);
+            items.forEach((item) => {
+              parts.push(`- Gap: ${escapeMarkdown(item.gap_description || "")}`);
+              if (Array.isArray(item.affected_user_segments)) {
+                const segments = item.affected_user_segments.map((segment) => segment).join(", ");
+                if (segments) {
+                  parts.push(`  - Affected user segments: ${escapeMarkdown(segments)}`);
+                }
+              }
+              parts.push(
+                `  - Opportunity: ${escapeMarkdown(item.opportunity_description || "")}`
+              );
+              if (item.user_value_potential) {
+                parts.push(`  - User value potential: ${item.user_value_potential}`);
+              }
+              if (item.feasibility) {
+                parts.push(`  - Feasibility: ${item.feasibility}`);
+              }
+            });
+          };
+          renderGapList("Functional gaps", gaps.functional);
+          renderGapList("Technical gaps", gaps.technical);
+          renderGapList("Business gaps", gaps.business);
+          return;
+        }
+        if (field.key === "opportunityDefinition.opportunityStatement") {
+          if (value.opportunity_statement) {
+            parts.push(escapeMarkdown(value.opportunity_statement));
+          }
+          return;
+        }
+        if (field.key === "opportunityDefinition.valueDrivers") {
+          const drivers = value?.value_drivers || [];
+          drivers.forEach((driver) => {
+            parts.push(`- Driver: ${escapeMarkdown(driver.name || "")}`);
+            if (driver.user_need_or_pain) {
+              parts.push(`  - User need or pain: ${escapeMarkdown(driver.user_need_or_pain)}`);
+            }
+            if (driver.user_value_impact) {
+              parts.push(`  - User value impact: ${driver.user_value_impact}`);
+            }
+            if (driver.business_value_lever) {
+              parts.push(`  - Business value lever: ${escapeMarkdown(driver.business_value_lever)}`);
+            }
+            if (driver.business_value_impact) {
+              parts.push(`  - Business value impact: ${driver.business_value_impact}`);
+            }
+            if (driver.priority) {
+              parts.push(`  - Priority: ${driver.priority}`);
+            }
+          });
+          return;
+        }
+        if (field.key === "opportunityDefinition.marketFitHypothesis") {
+          const hypothesis = value?.market_fit_hypothesis || {};
+          const renderHypothesis = (label, items) => {
+            if (!Array.isArray(items) || !items.length) {
+              return;
+            }
+            parts.push(`#### ${label}`);
+            items.forEach((item) => {
+              parts.push(`- Hypothesis: ${escapeMarkdown(item.hypothesis || "")}`);
+              if (item.rationale) {
+                parts.push(`  - Rationale: ${escapeMarkdown(item.rationale)}`);
+              }
+              if (Array.isArray(item.key_risks_or_unknowns)) {
+                const risks = item.key_risks_or_unknowns.map((risk) => risk).join(", ");
+                if (risks) {
+                  parts.push(`  - Key risks or unknowns: ${escapeMarkdown(risks)}`);
+                }
+              }
+            });
+          };
+          renderHypothesis("Desirability", hypothesis.desirability);
+          renderHypothesis("Viability", hypothesis.viability);
+          return;
+        }
+        if (field.key === "opportunityDefinition.feasibilityAssessment") {
+          const assessment = value?.feasibility_assessment || {};
+          const renderConstraints = (label, items) => {
+            if (!Array.isArray(items) || !items.length) {
+              return;
+            }
+            parts.push(`#### ${label}`);
+            items.forEach((item) => {
+              parts.push(`- Constraint: ${escapeMarkdown(item.name || "")}`);
+              if (item.description) {
+                parts.push(`  - Description: ${escapeMarkdown(item.description)}`);
+              }
+              if (item.readiness) {
+                parts.push(`  - Readiness: ${item.readiness}`);
+              }
+            });
+          };
+          renderConstraints("Business constraints", assessment.business_constraints);
+          renderConstraints("User constraints", assessment.user_constraints);
+          renderConstraints("Technical concerns", assessment.technical_concerns);
+          return;
+        }
         parts.push(JSON.stringify(value, null, 2));
       });
     });
@@ -193,53 +366,84 @@ export function createExportService({
       .replace(/'/g, "&#39;");
   }
 
+  function linkifyHtml(text) {
+    const escaped = escapeHtml(text);
+    return escaped.replace(
+      /(https?:\/\/[^\s)]+)|(www\.[^\s)]+)/g,
+      (match) => {
+        const href = match.startsWith("http") ? match : `https://${match}`;
+        return `<a href="${href}">${match}</a>`;
+      }
+    );
+  }
+
   function markdownToHtml(markdown) {
     const lines = markdown.split("\n");
     const html = [];
-    let inList = false;
-    const closeList = () => {
-      if (inList) {
+    const listStack = [];
+    let inSection = false;
+    const closeListsTo = (depth) => {
+      while (listStack.length > depth) {
         html.push("</ul>");
-        inList = false;
+        listStack.pop();
+      }
+    };
+    const closeAllLists = () => closeListsTo(0);
+    const closeSection = () => {
+      if (inSection) {
+        html.push("</section>");
+        inSection = false;
+      }
+    };
+    const openListTo = (depth) => {
+      while (listStack.length < depth) {
+        html.push("<ul>");
+        listStack.push(true);
       }
     };
     lines.forEach((line) => {
-      if (!line.trim()) {
-        closeList();
+      const trimmed = line.trim();
+      if (!trimmed) {
+        closeAllLists();
         return;
       }
       if (line.startsWith("#### ")) {
-        closeList();
+        closeAllLists();
         html.push(`<h4>${escapeHtml(line.slice(5).trim())}</h4>`);
         return;
       }
       if (line.startsWith("### ")) {
-        closeList();
+        closeAllLists();
         html.push(`<h3>${escapeHtml(line.slice(4).trim())}</h3>`);
         return;
       }
       if (line.startsWith("## ")) {
-        closeList();
+        closeAllLists();
+        closeSection();
+        html.push(`<section class="doc-section">`);
+        inSection = true;
         html.push(`<h2>${escapeHtml(line.slice(3).trim())}</h2>`);
         return;
       }
       if (line.startsWith("# ")) {
-        closeList();
+        closeAllLists();
+        closeSection();
         html.push(`<h1>${escapeHtml(line.slice(2).trim())}</h1>`);
         return;
       }
-      if (line.startsWith("- ")) {
-        if (!inList) {
-          html.push("<ul>");
-          inList = true;
-        }
-        html.push(`<li>${escapeHtml(line.slice(2).trim())}</li>`);
+      if (trimmed.startsWith("- ")) {
+        const indent = line.match(/^\s*/)?.[0].length || 0;
+        const depth = Math.floor(indent / 2) + 1;
+        closeListsTo(depth);
+        openListTo(depth);
+        html.push(`<li>${linkifyHtml(trimmed.slice(2).trim())}</li>`);
         return;
       }
-      closeList();
-      html.push(`<p>${escapeHtml(line.trim())}</p>`);
+      closeAllLists();
+      html.push(`<p>${linkifyHtml(trimmed)}</p>`);
     });
-    closeList();
+    closeAllLists();
+    closeSection();
     return html.join("\n");
   }
 
@@ -251,19 +455,76 @@ export function createExportService({
     <meta charset="utf-8" />
     <title>Discovery Document</title>
     <style>
-      body {
-        font-family: "Inter", "Segoe UI", Arial, sans-serif;
-        color: #0f172a;
-        margin: 40px;
-        line-height: 1.5;
+      :root {
+        --ink: #0f172a;
+        --muted: #64748b;
+        --rule: #e2e8f0;
+        --panel: #f8fafc;
+        --accent: #0f172a;
       }
-      h1 { font-size: 24px; margin-bottom: 16px; }
-      h2 { font-size: 18px; margin-top: 24px; }
-      h3 { font-size: 16px; margin-top: 16px; }
-      h4 { font-size: 14px; margin-top: 12px; text-transform: uppercase; color: #64748b; }
-      ul { margin: 8px 0 12px 20px; }
-      li { margin: 4px 0; }
+      * { box-sizing: border-box; }
+      @page { margin: 12mm; }
+      body {
+        font-family: "Segoe UI", "Inter", Arial, sans-serif;
+        color: var(--ink);
+        margin: 24px 24px;
+        padding: 12px 0;
+        line-height: 1.6;
+        background: #ffffff;
+      }
+      h1 {
+        font-size: 28px;
+        margin: 0 0 12px;
+        letter-spacing: -0.02em;
+      }
+      h2 {
+        font-size: 20px;
+        margin: 28px 0 10px;
+        padding-bottom: 6px;
+        border-bottom: 1px solid var(--rule);
+      }
+      h3 {
+        font-size: 16px;
+        margin: 18px 0 6px;
+        color: var(--accent);
+      }
+      h4 {
+        font-size: 12px;
+        margin: 14px 0 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+      }
       p { margin: 6px 0; }
+      ul { margin: 6px 0 12px 20px; padding: 0; }
+      li { margin: 4px 0; }
+      li ul { margin-top: 4px; }
+      hr { border: 0; border-top: 1px solid var(--rule); margin: 24px 0; }
+      blockquote {
+        margin: 10px 0;
+        padding: 8px 12px;
+        background: var(--panel);
+        border-left: 3px solid var(--rule);
+      }
+      code, pre {
+        font-family: "Consolas", "SFMono-Regular", ui-monospace, monospace;
+        background: var(--panel);
+      }
+      pre {
+        padding: 10px 12px;
+        border-radius: 6px;
+        overflow: auto;
+      }
+      .doc-section {
+        page-break-before: always;
+      }
+      .doc-section:first-of-type {
+        page-break-before: auto;
+      }
+      a {
+        color: #2563eb;
+        text-decoration: underline;
+      }
     </style>
   </head>
   <body>

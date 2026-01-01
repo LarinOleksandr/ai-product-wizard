@@ -779,6 +779,28 @@ export function WizardPage() {
   const [error, setError] = useState<string | null>(null);
   const [debugPrompt, setDebugPrompt] = useState<string | null>(null);
   const [debugOutput, setDebugOutput] = useState<string | null>(null);
+  const [lastLlmError, setLastLlmError] = useState<{
+    message?: string;
+    lastPrompt?: string | null;
+    lastOutput?: string | null;
+    lastOutputFieldKey?: string | null;
+  } | null>(null);
+
+  const captureLlmError = (payload?: any) => {
+    if (!payload || typeof payload !== "object") {
+      return;
+    }
+    if (!payload.message && !payload.lastPrompt && !payload.lastOutput) {
+      return;
+    }
+    setLastLlmError({
+      message: payload.message,
+      lastPrompt: typeof payload.lastPrompt === "string" ? payload.lastPrompt : null,
+      lastOutput: typeof payload.lastOutput === "string" ? payload.lastOutput : null,
+      lastOutputFieldKey:
+        typeof payload.lastOutputFieldKey === "string" ? payload.lastOutputFieldKey : null
+    });
+  };
   const [draftFields, setDraftFields] = useState<
     Record<
       string,
@@ -1281,14 +1303,19 @@ export function WizardPage() {
     }
   }, [isEmptyDocumentView]);
 
-  useEffect(() => {
-    const lastGeneratedKey = latestRecord?.lastOutputFieldKey;
-    if (latestRecord?.approved) {
-      return;
-    }
-    if (!lastGeneratedKey) {
-      return;
-    }
+    useEffect(() => {
+      const lastGeneratedKey = latestRecord?.lastOutputFieldKey;
+      if (
+        latestRecord?.approved ||
+        isFullGenerationActive ||
+        latestRecord?.changeReason === "Generated entire document" ||
+        latestRecord?.changeReason === "Generating entire document"
+      ) {
+        return;
+      }
+      if (!lastGeneratedKey) {
+        return;
+      }
     if (lastAutoOpenedFieldRef.current === lastGeneratedKey) {
       return;
     }
@@ -1341,11 +1368,17 @@ export function WizardPage() {
         },
         body: JSON.stringify(body)
       });
-      const data = await response.json();
-      if (response.ok) {
-        return data as T;
-      }
-      lastError = data;
+        let data: any = null;
+        try {
+          data = await response.json();
+        } catch {
+          data = { message: "Request failed with non-JSON response." };
+        }
+        if (response.ok) {
+          return data as T;
+        }
+        captureLlmError(data);
+        lastError = data;
       const message = data?.message || "Request failed.";
       if (message.includes("LLM output invalid") && attempt === 0) {
         onRetry();
@@ -1487,11 +1520,12 @@ export function WizardPage() {
       if (data.status === "approved") {
         setMessage(withSupabaseMessage("This document is now ready.", data.savedToSupabase));
       }
-    } catch (err) {
-      setStatus("error");
-      if (err?.data?.lastPrompt) {
-        setDebugPrompt(err.data.lastPrompt);
-      }
+      } catch (err) {
+        setStatus("error");
+        captureLlmError(err?.data);
+        if (err?.data?.lastPrompt) {
+          setDebugPrompt(err.data.lastPrompt);
+        }
       if (typeof err?.data?.lastOutput === "string") {
         setDebugOutput(err.data.lastOutput);
       }
@@ -1561,11 +1595,12 @@ export function WizardPage() {
           await executeRegenerate(nextFieldKey, { mode: "generated" });
         }
       }
-    } catch (err) {
-      setStatus("error");
-      if (err?.data?.lastPrompt) {
-        setDebugPrompt(err.data.lastPrompt);
-      }
+      } catch (err) {
+        setStatus("error");
+        captureLlmError(err?.data);
+        if (err?.data?.lastPrompt) {
+          setDebugPrompt(err.data.lastPrompt);
+        }
       if (typeof err?.data?.lastOutput === "string") {
         setDebugOutput(err.data.lastOutput);
       }
@@ -1930,11 +1965,12 @@ export function WizardPage() {
           : `${currentLabel} regenerated and saved. Review and approve.`;
         setMessage(fallbackMessage);
       }
-    } catch (err) {
-      setStatus("error");
-      if (err?.data?.lastPrompt) {
-        setDebugPrompt(err.data.lastPrompt);
-      }
+      } catch (err) {
+        setStatus("error");
+        captureLlmError(err?.data);
+        if (err?.data?.lastPrompt) {
+          setDebugPrompt(err.data.lastPrompt);
+        }
       if (typeof err?.data?.lastOutput === "string") {
         setDebugOutput(err.data.lastOutput);
       }
@@ -2836,6 +2872,47 @@ export function WizardPage() {
               {error}
             </div>
           )}
+          <div className="rounded-md border border-slate-200 bg-white p-3 text-xs text-slate-700">
+            <div className="flex items-center justify-between">
+              <p className="font-semibold">Last LLM error</p>
+              {lastLlmError && (
+                <button
+                  type="button"
+                  className="text-xs text-slate-500 hover:text-slate-700"
+                  onClick={() => setLastLlmError(null)}
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            {!lastLlmError && (
+              <p className="mt-2 text-xs text-slate-500">No errors captured yet.</p>
+            )}
+            {lastLlmError?.message && (
+              <p className="mt-2 text-xs text-slate-600">{lastLlmError.message}</p>
+            )}
+            {lastLlmError?.lastOutputFieldKey && (
+              <p className="mt-2 text-xs text-slate-500">
+                Field: {lastLlmError.lastOutputFieldKey}
+              </p>
+            )}
+            {lastLlmError?.lastPrompt && (
+              <div className="mt-2">
+                <p className="text-xs font-semibold text-slate-600">Last prompt</p>
+                <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap rounded bg-slate-50 p-2 text-xs text-slate-700">
+                  {lastLlmError.lastPrompt}
+                </pre>
+              </div>
+            )}
+            {lastLlmError?.lastOutput && (
+              <div className="mt-2">
+                <p className="text-xs font-semibold text-slate-600">Last output</p>
+                <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap rounded bg-slate-50 p-2 text-xs text-slate-700">
+                  {lastLlmError.lastOutput}
+                </pre>
+              </div>
+            )}
+          </div>
 
           <Accordion type="multiple" className="space-y-2">
             <AccordionItem value="llm-prompt" className="border rounded">

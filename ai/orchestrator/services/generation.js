@@ -36,6 +36,120 @@ function tryParseDiscoveryResponse(response) {
   return parsed || {};
 }
 
+function formatScalarMarkdown(value) {
+  if (value === null || typeof value === "undefined") {
+    return "none";
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed ? trimmed : "none";
+  }
+  return String(value);
+}
+
+function renderObjectMarkdown(value, indent = 0) {
+  const pad = " ".repeat(indent);
+  const entries = Object.entries(value || {});
+  if (entries.length === 0) {
+    return `${pad}none`;
+  }
+  return entries
+    .map(([key, val]) => {
+      if (Array.isArray(val)) {
+        const rendered = renderArrayMarkdown(val, indent + 2);
+        return `${pad}${key}:\n${rendered}`;
+      }
+      if (val && typeof val === "object") {
+        const rendered = renderObjectMarkdown(val, indent + 2);
+        return `${pad}${key}:\n${rendered}`;
+      }
+      return `${pad}${key}: ${formatScalarMarkdown(val)}`;
+    })
+    .join("\n");
+}
+
+function renderArrayMarkdown(value, indent = 0) {
+  const pad = " ".repeat(indent);
+  if (!Array.isArray(value) || value.length === 0) {
+    return `${pad}none`;
+  }
+  return value
+    .map((item) => {
+      if (item && typeof item === "object") {
+        return renderObjectListItem(item, indent);
+      }
+      return `${pad}- ${formatScalarMarkdown(item)}`;
+    })
+    .join("\n");
+}
+
+function renderObjectListItem(value, indent = 0) {
+  const pad = " ".repeat(indent);
+  const childPad = " ".repeat(indent + 2);
+  const entries = Object.entries(value || {});
+  if (!entries.length) {
+    return `${pad}- none`;
+  }
+  const [firstKey, firstVal] = entries[0];
+  const lines = [];
+  if (Array.isArray(firstVal)) {
+    lines.push(`${pad}- ${firstKey}:`);
+    lines.push(renderArrayMarkdown(firstVal, indent + 2));
+  } else if (firstVal && typeof firstVal === "object") {
+    lines.push(`${pad}- ${firstKey}:`);
+    lines.push(renderObjectMarkdown(firstVal, indent + 2));
+  } else {
+    lines.push(`${pad}- ${firstKey}: ${formatScalarMarkdown(firstVal)}`);
+  }
+  entries.slice(1).forEach(([key, val]) => {
+    if (Array.isArray(val)) {
+      lines.push(`${childPad}${key}:`);
+      lines.push(renderArrayMarkdown(val, indent + 2));
+      return;
+    }
+    if (val && typeof val === "object") {
+      lines.push(`${childPad}${key}:`);
+      lines.push(renderObjectMarkdown(val, indent + 2));
+      return;
+    }
+    lines.push(`${childPad}${key}: ${formatScalarMarkdown(val)}`);
+  });
+  return lines.join("\n");
+}
+
+function renderInputsMarkdown(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    if (Array.isArray(value)) {
+      return renderArrayMarkdown(value, 0);
+    }
+    if (value && typeof value === "object") {
+      return renderObjectMarkdown(value, 0);
+    }
+    return `${formatScalarMarkdown(value)}`;
+  }
+  const entries = Object.entries(value);
+  if (!entries.length) {
+    return "none";
+  }
+  return entries
+    .map(([key, val]) => {
+      let rendered;
+      if (Array.isArray(val)) {
+        rendered = renderArrayMarkdown(val, 0);
+      } else if (val && typeof val === "object") {
+        rendered = renderObjectMarkdown(val, 0);
+      } else {
+        rendered = formatScalarMarkdown(val);
+      }
+      if (rendered === "none") {
+        return "";
+      }
+      return [`### ${key}`, rendered].join("\n");
+    })
+    .filter(Boolean)
+    .join("\n\n");
+}
+
 export function createGenerationService({
   promptService,
   validationService,
@@ -201,7 +315,7 @@ export function createGenerationService({
     const sectionExamples = "";
     const sectionSchemaJson = promptAssets.sectionSchemaJsonMap?.[field.section];
     const approvedDocument = buildApprovedDocument(currentDocument, fieldStatus);
-    const promptInputs = `## Inputs (JSON)\n${JSON.stringify(
+    const promptInputs = `## Inputs\n${renderInputsMarkdown(
       promptService.buildIncomingInfoForField({
         fieldKey: field.key,
         productIdea,
@@ -209,9 +323,7 @@ export function createGenerationService({
         userNotes,
         currentDocument,
         fieldStatus
-      }),
-      null,
-      2
+      })
     )}`;
     const prompt = buildFieldPrompt({
       promptInputs,
