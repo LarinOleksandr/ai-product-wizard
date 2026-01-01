@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+﻿import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Trash2 } from "lucide-react";
 
 import { Button } from "../components/ui/button";
@@ -244,7 +244,7 @@ const statusCopy: Record<ApiStatus, string> = {
   running: "Running",
   needs_input: "Waiting for missing answers",
   in_progress: "In progress",
-  approved: "Ready",
+  approved: "Approved",
   error: "Error"
 };
 
@@ -452,30 +452,6 @@ function getNestedValue(document: DiscoveryDocument, key: string) {
   return current;
 }
 
-function setNestedValue(document: DiscoveryDocument, key: string, value: unknown) {
-  const parts = key.split(".");
-  const next: Record<string, unknown> = { ...document };
-  let current: Record<string, unknown> = next;
-  parts.forEach((part, index) => {
-    if (index === parts.length - 1) {
-      current[part] = value;
-      return;
-    }
-    const existing = current[part];
-    const nextNode =
-      existing && typeof existing === "object" && !Array.isArray(existing)
-        ? { ...(existing as Record<string, unknown>) }
-        : {};
-    current[part] = nextNode;
-    current = nextNode;
-  });
-  return next as DiscoveryDocument;
-}
-
-function cloneJson<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T;
-}
-
 function toFieldString(value: unknown, type: "string" | "array") {
   if (type === "array") {
     return Array.isArray(value) ? value.join("\n") : "";
@@ -491,32 +467,6 @@ function fromFieldString(value: string, type: "string" | "array") {
       .filter(Boolean);
   }
   return value.trim();
-}
-
-function buildDocumentFromDrafts(
-  base: DiscoveryDocument,
-  drafts: Record<string, unknown>
-) {
-  let document = cloneJson(base);
-  fieldDefinitions.forEach((field) => {
-    const rawValue = drafts[field.key];
-    if (typeof rawValue === "undefined") {
-      return;
-    }
-    if (field.type === "object") {
-      const outputKey = field.outputKey;
-      if (Array.isArray(rawValue) && outputKey) {
-        document = setNestedValue(document, field.key, { [outputKey]: rawValue });
-      } else {
-        document = setNestedValue(document, field.key, rawValue);
-      }
-      return;
-    }
-    const textValue = typeof rawValue === "string" ? rawValue : "";
-    const parsedValue = fromFieldString(textValue, field.type);
-    document = setNestedValue(document, field.key, parsedValue);
-  });
-  return document;
 }
 
 function getFieldDisplayKey(field: FieldDefinition) {
@@ -798,8 +748,6 @@ export function WizardPage() {
   >({});
   const [approvingFieldKey, setApprovingFieldKey] = useState<string | null>(null);
   const [regeneratingFieldKey, setRegeneratingFieldKey] = useState<string | null>(null);
-  const [autoGeneratingFieldKey, setAutoGeneratingFieldKey] = useState<string | null>(null);
-  const [isSavingDocument, setIsSavingDocument] = useState(false);
   const [confirmRegenerateFieldKey, setConfirmRegenerateFieldKey] = useState<string | null>(null);
   const [isClearing, setIsClearing] = useState(false);
   const [clearingFieldKey, setClearingFieldKey] = useState<string | null>(null);
@@ -818,7 +766,6 @@ export function WizardPage() {
   const generateAllPollRef = useRef<number | null>(null);
   const [generationCanceled, setGenerationCanceled] = useState(false);
   const cancelGenerationRef = useRef(false);
-  const lastAutoOpenedFieldRef = useRef<string | null>(null);
   const [openGroups, setOpenGroups] = useState<string[]>(
     Object.keys(groupedFields)
   );
@@ -834,15 +781,10 @@ export function WizardPage() {
         .filter(Boolean),
     [form.notes]
   );
-  const isDocumentCleared = (record?: DiscoveryRecord | null) =>
-    record?.changeReason === "Cleared document" ||
-    record?.lastStatusMessage === "Document cleared.";
-  const isFullGenerationComplete =
-    latestRecord?.changeReason === "Generated entire document";
   const isFullGenerationActive =
     isGeneratingAll ||
     (!generationCanceled &&
-      (status === "running" || status === "in_progress") &&
+      status === "running" &&
       latestRecord?.changeReason === "Generating entire document");
   const isStaleGeneration =
     !isGeneratingAll &&
@@ -1040,7 +982,7 @@ export function WizardPage() {
       return;
     }
     setStatus("running");
-    setMessage("Generating entire document...");
+    setMessage("Generating entire documentΓÇª");
     setQuestions([]);
     setError(null);
     setIsGeneratingAll(true);
@@ -1088,7 +1030,7 @@ export function WizardPage() {
           withValidationMessage(
             withSupabaseMessage(
               data.status === "approved"
-                ? "Full document generated and ready."
+                ? "Full document generated and approved."
                 : "Full document generated. Review and approve.",
               data.savedToSupabase
             ),
@@ -1266,13 +1208,15 @@ export function WizardPage() {
       ? fieldDefinitions.findIndex((field) => field.key === latestRecord.currentFieldKey)
       : total;
     const stepNumber = currentIndex >= 0 ? Math.min(currentIndex + 1, total) : total;
-    setProgressText(`Step ${stepNumber} of ${total} ready (${approvedCount}/${total}).`);
+    setProgressText(`Step ${stepNumber} of ${total} approved (${approvedCount}/${total}).`);
   }, [latestRecord]);
 
-  const withSupabaseMessage = (text: string) => text;
-  const withValidationMessage = (text: string) => text;
+  const withSupabaseMessage = (text: string, saved?: boolean) =>
+    saved ? `${text} Saved to Supabase.` : text;
+  const withValidationMessage = (text: string, status?: string | null) =>
+    status === "valid" ? `${text} JSON validated.` : text;
   const isEmptyDocumentView =
-    !latestRecord || isDocumentCleared(latestRecord);
+    !latestRecord || latestRecord.changeReason === "Cleared document";
 
   useEffect(() => {
     if (isEmptyDocumentView) {
@@ -1282,25 +1226,14 @@ export function WizardPage() {
   }, [isEmptyDocumentView]);
 
   useEffect(() => {
-    const lastGeneratedKey = latestRecord?.lastOutputFieldKey;
-    if (latestRecord?.approved) {
+    const currentFieldKey = latestRecord?.currentFieldKey;
+    if (latestRecord?.approved || isGeneratingAll) {
       return;
     }
-    if (!lastGeneratedKey) {
+    if (!currentFieldKey) {
       return;
     }
-    if (lastAutoOpenedFieldRef.current === lastGeneratedKey) {
-      return;
-    }
-    const lastField = fieldDefinitions.find((field) => field.key === lastGeneratedKey);
-    if (!lastField) {
-      return;
-    }
-    const currentValue = getNestedValue(latestRecord.discoveryDocument, lastGeneratedKey);
-    if (!hasFieldValue(lastField, currentValue)) {
-      return;
-    }
-    const groupName = fieldGroupMap[lastGeneratedKey];
+    const groupName = fieldGroupMap[currentFieldKey];
     if (!groupName) {
       return;
     }
@@ -1309,23 +1242,25 @@ export function WizardPage() {
     );
     setOpenFieldsByGroup((prev) => {
       const currentOpen = prev[groupName] || [];
-      if (currentOpen.includes(lastGeneratedKey)) {
+      if (currentOpen.includes(currentFieldKey)) {
         return prev;
       }
       return {
         ...prev,
-        [groupName]: currentOpen.concat(lastGeneratedKey)
+        [groupName]: currentOpen.concat(currentFieldKey)
       };
     });
-    lastAutoOpenedFieldRef.current = lastGeneratedKey;
-  }, [latestRecord?.lastOutputFieldKey, latestRecord?.discoveryDocument, latestRecord?.approved]);
+  }, [latestRecord?.currentFieldKey, latestRecord?.discoveryDocument]);
 
   useEffect(() => {
-    if (latestRecord?.changeReason === "Generated entire document") {
+    if (
+      latestRecord?.approved &&
+      latestRecord.changeReason === "Generated entire document"
+    ) {
       setOpenGroups(Object.keys(groupedFields));
       setOpenFieldsByGroup({});
     }
-  }, [latestRecord?.changeReason, groupedFields]);
+  }, [latestRecord?.approved, latestRecord?.changeReason]);
 
   async function postWithRetry<T>(
     url: string,
@@ -1397,9 +1332,10 @@ export function WizardPage() {
         if (payload.record.targetUser) {
           localStorage.setItem("discoveryWizard.targetUser", payload.record.targetUser);
         }
-        const nextStatus = isDocumentCleared(payload.record)
-          ? "idle"
-          : payload.status || "in_progress";
+        const nextStatus =
+          payload.record.changeReason === "Cleared document"
+            ? "idle"
+            : payload.status || "in_progress";
         if (
           cancelGenerationRef.current &&
           payload.record.changeReason === "Generating entire document" &&
@@ -1423,10 +1359,10 @@ export function WizardPage() {
           setMessage(payload.record.lastStatusMessage);
         } else {
           setMessage(
-            nextStatus === "idle" && isDocumentCleared(payload.record)
+            nextStatus === "idle" && payload.record.changeReason === "Cleared document"
               ? "Document cleared."
               : nextStatus === "approved"
-                ? "Latest discovery document is ready."
+                ? "Latest discovery document is approved."
                 : "Latest discovery document is in progress."
           );
         }
@@ -1479,13 +1415,21 @@ export function WizardPage() {
         setDebugOutput(data.record.lastOutput ?? null);
         const fallbackMessage =
           data.resultType === "created"
-            ? `${firstFieldLabel} generated and saved. Review and approve.`
+            ? "New discovery document started. Approve each field in order."
             : "Continue approving fields in order.";
-        setMessage(data.record.lastStatusMessage || fallbackMessage);
+        setMessage(
+          withValidationMessage(
+            withSupabaseMessage(
+              data.record.lastStatusMessage || fallbackMessage,
+              data.savedToSupabase
+            ),
+            data.validationStatus
+          )
+        );
       }
 
       if (data.status === "approved") {
-        setMessage(withSupabaseMessage("This document is now ready.", data.savedToSupabase));
+        setMessage(withSupabaseMessage("This document is now approved.", data.savedToSupabase));
       }
     } catch (err) {
       setStatus("error");
@@ -1512,9 +1456,7 @@ export function WizardPage() {
         : null;
     setStatus("in_progress");
     setMessage(
-      nextFieldLabel
-        ? `Approving and generating ${nextFieldLabel}...`
-        : "Finalizing document..."
+      nextFieldLabel ? `Generating ${nextFieldLabel}...` : "Finalizing document..."
     );
     setApprovingFieldKey(fieldKey);
     setError(null);
@@ -1548,18 +1490,17 @@ export function WizardPage() {
         setDebugOutput(data.record.lastOutput ?? null);
         const fallbackMessage =
           data.status === "approved"
-            ? "All fields ready. Discovery document is complete."
+            ? "All fields approved. Discovery document is complete."
             : "Field approved. Next field is ready.";
-        setMessage(data.record.lastStatusMessage || fallbackMessage);
-        const nextFieldKey = data.record.currentFieldKey;
-        if (
-          data.status !== "approved" &&
-          nextFieldKey &&
-          nextFieldKey !== fieldKey &&
-          !hasGeneratedLaterFieldsForRecord(data.record, nextFieldKey)
-        ) {
-          await executeRegenerate(nextFieldKey, { mode: "generated" });
-        }
+        setMessage(
+          withValidationMessage(
+            withSupabaseMessage(
+              data.record.lastStatusMessage || fallbackMessage,
+              data.savedToSupabase
+            ),
+            data.validationStatus
+          )
+        );
       }
     } catch (err) {
       setStatus("error");
@@ -1575,47 +1516,13 @@ export function WizardPage() {
     }
   }
 
-    async function clearDocument() {
-      if (!latestVersion) {
-        setError("No document to clear.");
-        return;
-      }
-      if (isFullGenerationActive) {
-        cancelGenerateAll();
-      }
-      setConfirmClearDocument(true);
+  async function clearDocument() {
+    if (!latestVersion) {
+      setError("No document to clear.");
+      return;
     }
-
-    async function saveDocument() {
-      if (!latestVersion || !latestRecord) {
-        setError("No document to save.");
-        return;
-      }
-      setIsSavingDocument(true);
-      setError(null);
-      try {
-        const nextDocument = buildDocumentFromDrafts(
-          latestRecord.discoveryDocument || emptyDocument,
-          draftFields
-        );
-        const data = await postWithRetry(
-          `${API_BASE}/discovery/save`,
-          { version: latestVersion, discoveryDocument: nextDocument },
-          () => {
-            setMessage("Error saving document. Retrying...");
-          }
-        );
-        if (data.record) {
-          setLatestRecord(data.record);
-          setStatus(data.status || "in_progress");
-          setMessage("Document saved.");
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Save failed.");
-      } finally {
-        setIsSavingDocument(false);
-      }
-    }
+    setConfirmClearDocument(true);
+  }
 
   const handleStartFirstSection = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -1627,7 +1534,7 @@ export function WizardPage() {
       cancelGenerationRef.current = false;
       setGenerationCanceled(false);
     }
-    if (latestRecord && !isDocumentCleared(latestRecord)) {
+    if (latestRecord?.approved) {
       setConfirmStartMode("first-section");
       return;
     }
@@ -1693,21 +1600,17 @@ export function WizardPage() {
     setConfirmStartMode(null);
   };
 
-    async function regenerateField(fieldKey: string) {
-      if (!latestVersion) {
-        setError("No draft available to regenerate.");
-        return;
-      }
-      const hasLaterGenerated =
-        hasGeneratedLaterFields(fieldKey) || hasGeneratedLaterOutput(fieldKey);
-      if (isFullGenerationActive) {
-        cancelGenerateAll();
-      }
-      if (hasLaterGenerated) {
-        setConfirmRegenerateFieldKey(fieldKey);
-        return;
-      }
-      await executeRegenerate(fieldKey, { mode: "regenerated" });
+  async function regenerateField(fieldKey: string) {
+    if (!latestVersion) {
+      setError("No draft available to regenerate.");
+      return;
+    }
+    const hasLaterGenerated = hasGeneratedLaterFields(fieldKey);
+    if (hasLaterGenerated) {
+      setConfirmRegenerateFieldKey(fieldKey);
+      return;
+    }
+    await executeRegenerate(fieldKey);
   }
 
   async function clearField(fieldKey: string) {
@@ -1776,23 +1679,19 @@ export function WizardPage() {
     }
   }
 
-    function getFieldOrder() {
-      return latestRecord?.fieldOrder?.length
-        ? latestRecord.fieldOrder
-        : fieldDefinitions.map((field) => field.key);
+  function hasGeneratedLaterFields(fieldKey: string) {
+    if (!latestRecord?.fieldOrder?.length) {
+      return false;
     }
-
-    function hasGeneratedLaterFields(fieldKey: string) {
-      const order = getFieldOrder();
-      const index = order.indexOf(fieldKey);
-      if (index < 0) {
-        return false;
+    const index = latestRecord.fieldOrder.indexOf(fieldKey);
+    if (index < 0) {
+      return false;
+    }
+    return latestRecord.fieldOrder.slice(index + 1).some((key) => {
+      const statusInfo = latestRecord?.fieldStatus?.[key];
+      if (statusInfo?.approved) {
+        return true;
       }
-      return order.slice(index + 1).some((key) => {
-        const statusInfo = latestRecord?.fieldStatus?.[key];
-        if (statusInfo?.approved) {
-          return true;
-        }
       const rawValue = draftFields[key];
       if (Array.isArray(rawValue)) {
         return rawValue.length > 0;
@@ -1802,115 +1701,21 @@ export function WizardPage() {
         return field ? hasFieldValue(field, rawValue) : false;
       }
       return typeof rawValue === "string" && rawValue.trim().length > 0;
-      });
-    }
-
-    function hasGeneratedLaterOutput(fieldKey: string) {
-      if (!latestRecord?.lastOutputFieldKey) {
-        return false;
-      }
-      const order = getFieldOrder();
-      const fieldIndex = order.indexOf(fieldKey);
-      const outputIndex = order.indexOf(latestRecord.lastOutputFieldKey);
-      if (fieldIndex < 0 || outputIndex < 0) {
-        return false;
-      }
-      return outputIndex > fieldIndex;
-    }
-
-  function hasGeneratedLaterFieldsForRecord(record: DiscoveryRecord, fieldKey: string) {
-    const order = record.fieldOrder?.length
-      ? record.fieldOrder
-      : fieldDefinitions.map((field) => field.key);
-    const index = order.indexOf(fieldKey);
-    if (index < 0) {
-      return false;
-    }
-    return order.slice(index + 1).some((key) => {
-      const statusInfo = record.fieldStatus?.[key];
-      if (statusInfo?.approved) {
-        return true;
-      }
-      const field = fieldDefinitions.find((item) => item.key === key);
-      if (!field) {
-        return false;
-      }
-      const value = getNestedValue(record.discoveryDocument, key);
-      return hasFieldValue(field, value);
     });
   }
 
-  function collapseLaterFields(fieldKey: string) {
-    const order = latestRecord?.fieldOrder?.length
-      ? latestRecord.fieldOrder
-      : fieldDefinitions.map((field) => field.key);
-    const index = order.indexOf(fieldKey);
-    if (index < 0) {
+  async function executeRegenerate(fieldKey: string) {
+    if (!latestVersion) {
+      setError("No draft available to regenerate.");
       return;
     }
-    const laterKeys = new Set(order.slice(index + 1));
-    if (laterKeys.size === 0) {
-      return;
-    }
-    setOpenFieldsByGroup((prev) => {
-      const next: Record<string, string[]> = {};
-      for (const [group, keys] of Object.entries(prev)) {
-        next[group] = (keys || []).filter((key) => !laterKeys.has(key));
-      }
-      return next;
-    });
-  }
 
-    async function executeRegenerate(
-      fieldKey: string,
-      options?: { mode?: "generated" | "regenerated" }
-    ) {
-      if (!latestVersion) {
-        setError("No draft available to regenerate.");
-        return;
-      }
-
-      if (options?.mode === "generated") {
-        setAutoGeneratingFieldKey(fieldKey);
-      } else if (options?.mode === "regenerated") {
-        collapseLaterFields(fieldKey);
-        const order = getFieldOrder();
-        const index = order.indexOf(fieldKey);
-        if (index >= 0) {
-          setLatestRecord((prev) => {
-            if (!prev) {
-              return prev;
-            }
-            let nextDocument = prev.discoveryDocument;
-            const nextStatus = { ...(prev.fieldStatus || {}) };
-            for (const key of order.slice(index + 1)) {
-              const emptyValue = cloneJson(
-                getNestedValue(emptyDocument, key)
-              );
-              nextDocument = setNestedValue(nextDocument, key, emptyValue);
-              nextStatus[key] = { approved: false, approvedAt: null };
-            }
-            return {
-              ...prev,
-              discoveryDocument: nextDocument,
-              fieldStatus: nextStatus,
-              currentFieldKey: fieldKey,
-              approved: false,
-              approvedAt: null
-            };
-          });
-        }
-      }
-
-      const currentField = fieldDefinitions.find((field) => field.key === fieldKey);
-      const currentLabel = currentField?.label || "section";
-      const isGenerated = options?.mode === "generated";
-      setStatus("in_progress");
-      setMessage(
-        isGenerated ? `Generating ${currentLabel}...` : `Regenerating ${currentLabel}...`
-      );
-      setRegeneratingFieldKey(fieldKey);
-      setError(null);
+    const currentField = fieldDefinitions.find((field) => field.key === fieldKey);
+    const currentLabel = currentField?.label || "section";
+    setStatus("in_progress");
+    setMessage(`Regenerating ${currentLabel}...`);
+    setRegeneratingFieldKey(fieldKey);
+    setError(null);
 
     try {
       const data = await postWithRetry(
@@ -1925,10 +1730,16 @@ export function WizardPage() {
         setStatus("in_progress");
         setDebugPrompt(data.record.lastPrompt ?? null);
         setDebugOutput(data.record.lastOutput ?? null);
-        const fallbackMessage = isGenerated
-          ? `${currentLabel} generated and saved. Review and approve.`
-          : `${currentLabel} regenerated and saved. Review and approve.`;
-        setMessage(fallbackMessage);
+        const fallbackMessage = "Field regenerated. Review and approve.";
+        setMessage(
+          withValidationMessage(
+            withSupabaseMessage(
+              data.record.lastStatusMessage || fallbackMessage,
+              data.savedToSupabase
+            ),
+            data.validationStatus
+          )
+        );
       }
     } catch (err) {
       setStatus("error");
@@ -1941,9 +1752,6 @@ export function WizardPage() {
       setError(err instanceof Error ? err.message : "Regenerate failed.");
     } finally {
       setRegeneratingFieldKey(null);
-      if (options?.mode === "generated") {
-        setAutoGeneratingFieldKey((prev) => (prev === fieldKey ? null : prev));
-      }
     }
   }
 
@@ -1972,11 +1780,11 @@ export function WizardPage() {
                 onClick={() => {
                   const fieldKey = confirmRegenerateFieldKey;
                   setConfirmRegenerateFieldKey(null);
-                    if (fieldKey) {
-                      void executeRegenerate(fieldKey, { mode: "regenerated" });
-                    }
-                  }}
-                >
+                  if (fieldKey) {
+                    void executeRegenerate(fieldKey);
+                  }
+                }}
+              >
                 Regenerate
               </button>
             </div>
@@ -2165,10 +1973,10 @@ export function WizardPage() {
           !canRestartAfterCancel &&
           Boolean(latestRecord) &&
           !latestRecord.approved &&
-          !isDocumentCleared(latestRecord))
+          latestRecord.changeReason !== "Cleared document")
       }
     >
-      Generate First Section
+      Start first section
     </button>
 
     <button
@@ -2182,10 +1990,10 @@ export function WizardPage() {
           !canRestartAfterCancel &&
           Boolean(latestRecord) &&
           !latestRecord.approved &&
-          !isDocumentCleared(latestRecord))
+          latestRecord.changeReason !== "Cleared document")
       }
     >
-      {isGeneratingAll ? "Generating…" : "Generate Entire Document"}
+      {isGeneratingAll ? "GeneratingΓÇª" : "Generate Entire Document"}
     </button>
 
     {isFullGenerationActive && (
@@ -2222,7 +2030,7 @@ export function WizardPage() {
                       onClick={exportMarkdown}
                       disabled={!latestVersion || isGeneratingAll || isExportingMarkdown}
                     >
-                      {isExportingMarkdown ? "Preparing MD…" : "Export MD"}
+                      {isExportingMarkdown ? "Preparing MDΓÇª" : "Export MD"}
                     </button>
                     <button
                       type="button"
@@ -2230,7 +2038,7 @@ export function WizardPage() {
                       onClick={exportPdf}
                       disabled={!latestVersion || isGeneratingAll || isExportingPdf}
                     >
-                      {isExportingPdf ? "Preparing PDF…" : "Export PDF"}
+                      {isExportingPdf ? "Preparing PDFΓÇª" : "Export PDF"}
                     </button>
                     <button
                       type="button"
@@ -2238,7 +2046,7 @@ export function WizardPage() {
                       onClick={clearDocument}
                       disabled={!latestVersion || isClearing || isGeneratingAll}
                     >
-                      {isClearing ? "Clearing…" : "Clear Document"}
+                      {isClearing ? "ClearingΓÇª" : "Clear Document"}
                     </button>
                   </div>
                 )}
@@ -2344,34 +2152,23 @@ export function WizardPage() {
                             const isCurrent = latestRecord?.currentFieldKey
                               ? latestRecord.currentFieldKey === field.key
                               : false;
-                              const isGeneratingCurrent = regeneratingFieldKey === field.key;
-                              const isGeneratingLabel =
-                                isGeneratingCurrent && message.startsWith("Generating ");
-                              const isAutoGeneratingCurrent =
-                                isGeneratingCurrent && autoGeneratingFieldKey === field.key;
                             const recordValue = getNestedValue(
                               latestRecord?.discoveryDocument || emptyDocument,
                               field.key
                             );
-                              const hasValue = hasFieldValue(field, recordValue);
-                              const shouldRender =
-                                isApproved || hasValue || (isCurrent && !isAutoGeneratingCurrent);
-                              const showRegenerate = isFullGenerationActive
-                                ? hasValue && !isGeneratingCurrent
-                                : true;
-                              const isEditable =
-                                !!latestRecord &&
-                                !latestRecord.approved &&
-                                !isApproved &&
-                                !isGeneratingAll &&
-                                !isFullGenerationActive &&
-                                !isGeneratingCurrent &&
-                                (isCurrent || (isFullGenerationComplete && hasValue));
+                            const shouldRender =
+                              isApproved || isCurrent || hasFieldValue(field, recordValue);
+                            const isEditable =
+                              !!latestRecord &&
+                              !latestRecord.approved &&
+                              isCurrent &&
+                              !isApproved &&
+                              !isGeneratingAll;
                             const isBlocked = !isEditable;
                             const headerClass = shouldRender
                               ? "text-gray-800"
                               : "text-gray-400";
-                              if (!shouldRender) {
+                            if (!shouldRender) {
                               return (
                                 <AccordionItem key={field.key} value={field.key} className="border-0">
                                   <AccordionTrigger
@@ -2391,21 +2188,21 @@ export function WizardPage() {
                                   >
                                     <div className="flex items-center gap-2">
                                       <span>{field.label}</span>
-                                        {isApproved && (
-                                          <span className="text-xs font-medium text-green-600">
-                                            Ready
-                                          </span>
-                                        )}
+                                      {isApproved && (
+                                        <span className="text-xs font-medium text-green-600">
+                                          Approved
+                                        </span>
+                                      )}
                                     </div>
                                   </AccordionTrigger>
-                                  {!isApproved && isCurrent && !isGeneratingCurrent && !isFullGenerationActive && (
+                                  {!isApproved && isCurrent && (
                                     <button
                                       type="button"
                                       className="rounded border bg-white px-3 py-2 text-sm font-normal text-gray-700 disabled:opacity-60"
                                       onClick={() => clearField(field.key)}
                                       disabled={clearingFieldKey === field.key}
                                     >
-                                      {clearingFieldKey === field.key ? "Clearing…" : "Clear block"}
+                                      {clearingFieldKey === field.key ? "ClearingΓÇª" : "Clear block"}
                                     </button>
                                   )}
                                 </div>
@@ -2433,10 +2230,8 @@ export function WizardPage() {
                                         disabled={isBlocked}
                                         isApproving={approvingFieldKey === field.key}
                                         isRegenerating={regeneratingFieldKey === field.key}
-                                        regenerateLabel={isGeneratingLabel ? "Generating..." : "Regenerating..."}
                                         isClearing={clearingFieldKey === field.key}
-                                        showRegenerate={showRegenerate}
-                                        hideApprove={isFullGenerationActive}
+                                        showRegenerate={!isGeneratingAll}
                                       />
                                     ) : field.key ===
                                       "marketAndCompetitorAnalysis.marketLandscape" ? (
@@ -2462,10 +2257,8 @@ export function WizardPage() {
                                         disabled={isBlocked}
                                         isApproving={approvingFieldKey === field.key}
                                         isRegenerating={regeneratingFieldKey === field.key}
-                                        regenerateLabel={isGeneratingLabel ? "Generating..." : "Regenerating..."}
                                         isClearing={clearingFieldKey === field.key}
-                                        showRegenerate={showRegenerate}
-                                        hideApprove={isFullGenerationActive}
+                                        showRegenerate={!isGeneratingAll}
                                       />
                                     ) : field.key ===
                                       "marketAndCompetitorAnalysis.competitorInventory" ? (
@@ -2491,10 +2284,8 @@ export function WizardPage() {
                                         disabled={isBlocked}
                                         isApproving={approvingFieldKey === field.key}
                                         isRegenerating={regeneratingFieldKey === field.key}
-                                        regenerateLabel={isGeneratingLabel ? "Generating..." : "Regenerating..."}
                                         isClearing={clearingFieldKey === field.key}
-                                        showRegenerate={showRegenerate}
-                                        hideApprove={isFullGenerationActive}
+                                        showRegenerate={!isGeneratingAll}
                                       />
                                     ) : field.key ===
                                       "marketAndCompetitorAnalysis.competitorCapabilities" ? (
@@ -2520,10 +2311,8 @@ export function WizardPage() {
                                         disabled={isBlocked}
                                         isApproving={approvingFieldKey === field.key}
                                         isRegenerating={regeneratingFieldKey === field.key}
-                                        regenerateLabel={isGeneratingLabel ? "Generating..." : "Regenerating..."}
                                         isClearing={clearingFieldKey === field.key}
-                                        showRegenerate={showRegenerate}
-                                        hideApprove={isFullGenerationActive}
+                                        showRegenerate={!isGeneratingAll}
                                       />
                                     ) : field.key ===
                                       "marketAndCompetitorAnalysis.gapsOpportunities" ? (
@@ -2549,10 +2338,8 @@ export function WizardPage() {
                                         disabled={isBlocked}
                                         isApproving={approvingFieldKey === field.key}
                                         isRegenerating={regeneratingFieldKey === field.key}
-                                        regenerateLabel={isGeneratingLabel ? "Generating..." : "Regenerating..."}
                                         isClearing={clearingFieldKey === field.key}
-                                        showRegenerate={showRegenerate}
-                                        hideApprove={isFullGenerationActive}
+                                        showRegenerate={!isGeneratingAll}
                                       />
                                     ) : field.key ===
                                       "opportunityDefinition.opportunityStatement" ? (
@@ -2582,10 +2369,8 @@ export function WizardPage() {
                                         disabled={isBlocked}
                                         isApproving={approvingFieldKey === field.key}
                                         isRegenerating={regeneratingFieldKey === field.key}
-                                        regenerateLabel={isGeneratingLabel ? "Generating..." : "Regenerating..."}
                                         isClearing={clearingFieldKey === field.key}
-                                        showRegenerate={showRegenerate}
-                                        hideApprove={isFullGenerationActive}
+                                        showRegenerate={!isGeneratingAll}
                                       />
                                     ) : field.key === "opportunityDefinition.valueDrivers" ? (
                                       <ValueDriversEditor
@@ -2610,10 +2395,8 @@ export function WizardPage() {
                                         disabled={isBlocked}
                                         isApproving={approvingFieldKey === field.key}
                                         isRegenerating={regeneratingFieldKey === field.key}
-                                        regenerateLabel={isGeneratingLabel ? "Generating..." : "Regenerating..."}
                                         isClearing={clearingFieldKey === field.key}
-                                        showRegenerate={showRegenerate}
-                                        hideApprove={isFullGenerationActive}
+                                        showRegenerate={!isGeneratingAll}
                                       />
                                     ) : field.key ===
                                       "opportunityDefinition.marketFitHypothesis" ? (
@@ -2644,10 +2427,8 @@ export function WizardPage() {
                                         disabled={isBlocked}
                                         isApproving={approvingFieldKey === field.key}
                                         isRegenerating={regeneratingFieldKey === field.key}
-                                        regenerateLabel={isGeneratingLabel ? "Generating..." : "Regenerating..."}
                                         isClearing={clearingFieldKey === field.key}
-                                        showRegenerate={showRegenerate}
-                                        hideApprove={isFullGenerationActive}
+                                        showRegenerate={!isGeneratingAll}
                                       />
                                     ) : field.key ===
                                       "opportunityDefinition.feasibilityAssessment" ? (
@@ -2679,10 +2460,8 @@ export function WizardPage() {
                                         disabled={isBlocked}
                                         isApproving={approvingFieldKey === field.key}
                                         isRegenerating={regeneratingFieldKey === field.key}
-                                        regenerateLabel={isGeneratingLabel ? "Generating..." : "Regenerating..."}
                                         isClearing={clearingFieldKey === field.key}
-                                        showRegenerate={showRegenerate}
-                                        hideApprove={isFullGenerationActive}
+                                        showRegenerate={!isGeneratingAll}
                                       />
                                     ) : field.key === "problemUnderstanding.contextConstraints" ? (
                                       <ContextConstraintsEditor
@@ -2707,10 +2486,8 @@ export function WizardPage() {
                                         disabled={isBlocked}
                                         isApproving={approvingFieldKey === field.key}
                                         isRegenerating={regeneratingFieldKey === field.key}
-                                        regenerateLabel={isGeneratingLabel ? "Generating..." : "Regenerating..."}
                                         isClearing={clearingFieldKey === field.key}
-                                        showRegenerate={showRegenerate}
-                                        hideApprove={isFullGenerationActive}
+                                        showRegenerate={!isGeneratingAll}
                                       />
                                     ) : field.key ===
                                       "problemUnderstanding.userPainPoints" ? (
@@ -2735,10 +2512,8 @@ export function WizardPage() {
                                         disabled={isBlocked}
                                         isApproving={approvingFieldKey === field.key}
                                         isRegenerating={regeneratingFieldKey === field.key}
-                                        regenerateLabel={isGeneratingLabel ? "Generating..." : "Regenerating..."}
                                         isClearing={clearingFieldKey === field.key}
-                                        showRegenerate={showRegenerate}
-                                        hideApprove={isFullGenerationActive}
+                                        showRegenerate={!isGeneratingAll}
                                       />
                                     ) : null
                                   ) : (
@@ -2764,10 +2539,8 @@ export function WizardPage() {
                                       disabled={isBlocked}
                                       isApproving={approvingFieldKey === field.key}
                                       isRegenerating={regeneratingFieldKey === field.key}
-                                        regenerateLabel={isGeneratingLabel ? "Generating..." : "Regenerating..."}
                                       isClearing={clearingFieldKey === field.key}
-                                        showRegenerate={showRegenerate}
-                                        hideApprove={isFullGenerationActive}
+                                        showRegenerate={!isGeneratingAll}
                                     />
                                   )}
                                 </AccordionContent>
@@ -2779,23 +2552,6 @@ export function WizardPage() {
                     </AccordionItem>
                   </Accordion>
                 ))}
-              </div>
-            )}
-            {!isEmptyDocumentView && (
-              <div className="mt-6 flex justify-end">
-                <button
-                  type="button"
-                  className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
-                  onClick={saveDocument}
-                  disabled={
-                    !latestVersion ||
-                    isSavingDocument ||
-                    isGeneratingAll ||
-                    status === "running"
-                  }
-                >
-                  {isSavingDocument ? "Saving..." : "Save Document"}
-                </button>
               </div>
             )}
           </section>
@@ -2899,10 +2655,8 @@ type FieldEditorProps = {
   disabled: boolean;
   isApproving: boolean;
   isRegenerating: boolean;
-    isClearing: boolean;
+  isClearing: boolean;
   showRegenerate?: boolean;
-    regenerateLabel?: string;
-    hideApprove?: boolean;
 };
 
 function FieldEditor({
@@ -2917,11 +2671,9 @@ function FieldEditor({
   disabled,
   isApproving,
   isRegenerating,
-    isClearing,
+  isClearing,
   showTitle = true,
-  showRegenerate = true,
-    regenerateLabel,
-    hideApprove = false
+  showRegenerate = true
 }: FieldEditorProps & { showTitle?: boolean }) {
   const isEmpty = !value || value.trim().length === 0;
   return (
@@ -2930,7 +2682,7 @@ function FieldEditor({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <p className="text-sm font-semibold text-gray-800">{title}</p>
-            {approved && <span className="text-xs font-medium text-green-600">Ready</span>}
+            {approved && <span className="text-xs font-medium text-green-600">Approved</span>}
           </div>
           {!approved && (
             <button
@@ -2939,7 +2691,7 @@ function FieldEditor({
               onClick={onClear}
               disabled={isClearing}
             >
-              {isClearing ? "Clearing…" : "Clear block"}
+              {isClearing ? "ClearingΓÇª" : "Clear block"}
             </button>
           )}
         </div>
@@ -2953,14 +2705,14 @@ function FieldEditor({
         placeholder={type === "array" ? "One item per line." : "Write the content here."}
       />
       <div className="mt-3 flex items-center gap-2">
-        {!approved && !hideApprove && (
+        {!approved && (
           <button
             type="button"
             className="inline-flex min-w-[96px] items-center justify-center rounded border border-green-600 px-3 py-2 text-sm font-medium text-green-700 disabled:opacity-60"
             onClick={onApprove}
             disabled={disabled || approved || isApproving || isEmpty}
           >
-            {isApproving ? "Approving…" : "Approve and Proceed"}
+            {isApproving ? "ApprovingΓÇª" : "Approve"}
           </button>
         )}
         {showRegenerate && (
@@ -2970,7 +2722,7 @@ function FieldEditor({
             onClick={onRegenerate}
             disabled={isRegenerating}
           >
-            {isRegenerating ? (regenerateLabel ?? "Regenerating...") : "Regenerate"}
+            {isRegenerating ? "RegeneratingΓÇª" : "Regenerate"}
           </button>
         )}
       </div>
@@ -2989,11 +2741,9 @@ type TargetSegmentsEditorProps = {
   disabled: boolean;
   isApproving: boolean;
   isRegenerating: boolean;
-    isClearing: boolean;
+  isClearing: boolean;
   showTitle?: boolean;
   showRegenerate?: boolean;
-    regenerateLabel?: string;
-    hideApprove?: boolean;
 };
 
 function TargetSegmentsEditor({
@@ -3007,11 +2757,9 @@ function TargetSegmentsEditor({
   disabled,
   isApproving,
   isRegenerating,
-    isClearing,
+  isClearing,
   showTitle = true,
-  showRegenerate = true,
-    regenerateLabel,
-    hideApprove = false
+  showRegenerate = true
 }: TargetSegmentsEditorProps) {
   const safeSegments = Array.isArray(segments) ? segments : [];
   const hasSegments = safeSegments.length > 0;
@@ -3080,7 +2828,7 @@ function TargetSegmentsEditor({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <p className="text-sm font-semibold text-gray-800">{title}</p>
-            {approved && <span className="text-xs font-medium text-green-600">Ready</span>}
+            {approved && <span className="text-xs font-medium text-green-600">Approved</span>}
           </div>
           {!approved && (
             <button
@@ -3089,7 +2837,7 @@ function TargetSegmentsEditor({
               onClick={onClear}
               disabled={isClearing}
             >
-              {isClearing ? "Clearing…" : "Clear block"}
+              {isClearing ? "ClearingΓÇª" : "Clear block"}
             </button>
           )}
         </div>
@@ -3153,7 +2901,7 @@ function TargetSegmentsEditor({
                   />
                 </div>
                 <div className="flex items-end">
-                  {!approved && !disabled && (
+                  {!approved && (
                     <Button
                       type="button"
                       variant="ghost"
@@ -3216,7 +2964,7 @@ function TargetSegmentsEditor({
                             />
                           </div>
                           <div className="flex items-start">
-                            {!approved && !disabled && (
+                            {!approved && (
                               <Button
                                 type="button"
                                 variant="ghost"
@@ -3263,14 +3011,14 @@ function TargetSegmentsEditor({
       )}
 
       <div className="mt-3 flex items-center gap-2">
-        {!approved && !hideApprove && (
+        {!approved && (
           <button
             type="button"
             className="inline-flex min-w-[96px] items-center justify-center rounded border border-green-600 px-3 py-2 text-sm font-medium text-green-700 disabled:opacity-60"
             onClick={onApprove}
             disabled={disabled || approved || !hasSegments || isApproving}
           >
-            {isApproving ? "Approving…" : "Approve and Proceed"}
+            {isApproving ? "ApprovingΓÇª" : "Approve"}
           </button>
         )}
         {showRegenerate && (
@@ -3280,7 +3028,7 @@ function TargetSegmentsEditor({
             onClick={onRegenerate}
             disabled={isRegenerating}
           >
-            {isRegenerating ? (regenerateLabel ?? "Regenerating...") : "Regenerate"}
+            {isRegenerating ? "RegeneratingΓÇª" : "Regenerate"}
           </button>
         )}
       </div>
@@ -3299,11 +3047,9 @@ type PainPointsEditorProps = {
   disabled: boolean;
   isApproving: boolean;
   isRegenerating: boolean;
-    isClearing: boolean;
+  isClearing: boolean;
   showTitle?: boolean;
   showRegenerate?: boolean;
-    regenerateLabel?: string;
-    hideApprove?: boolean;
 };
 
 const RATING_OPTIONS: Array<PainPoint["severity"]> = ["low", "medium", "high"];
@@ -3344,11 +3090,9 @@ function PainPointsEditor({
   disabled,
   isApproving,
   isRegenerating,
-    isClearing,
+  isClearing,
   showTitle = true,
-  showRegenerate = true,
-    regenerateLabel,
-    hideApprove = false
+  showRegenerate = true
 }: PainPointsEditorProps) {
   const hasThemes = themes.length > 0;
   const [openThemes, setOpenThemes] = useState<string[]>([]);
@@ -3450,7 +3194,7 @@ function PainPointsEditor({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <p className="text-sm font-semibold text-gray-800">{title}</p>
-            {approved && <span className="text-xs font-medium text-green-600">Ready</span>}
+            {approved && <span className="text-xs font-medium text-green-600">Approved</span>}
           </div>
           {!approved && (
             <button
@@ -3459,7 +3203,7 @@ function PainPointsEditor({
               onClick={onClear}
               disabled={isClearing}
             >
-              {isClearing ? "Clearing…" : "Clear block"}
+              {isClearing ? "ClearingΓÇª" : "Clear block"}
             </button>
           )}
         </div>
@@ -3504,7 +3248,7 @@ function PainPointsEditor({
                   />
                 </div>
                 <div className="flex items-start">
-                  {!approved && !disabled && (
+                  {!approved && (
                     <Button
                       type="button"
                       variant="ghost"
@@ -3565,7 +3309,7 @@ function PainPointsEditor({
                             />
                           </div>
                           <div className="flex items-start">
-                            {!approved && !disabled && (
+                            {!approved && (
                               <Button
                                 type="button"
                                 variant="ghost"
@@ -3739,14 +3483,14 @@ function PainPointsEditor({
       )}
 
       <div className="mt-3 flex items-center gap-2">
-        {!approved && !hideApprove && (
+        {!approved && (
           <button
             type="button"
             className="inline-flex min-w-[96px] items-center justify-center rounded border border-green-600 px-3 py-2 text-sm font-medium text-green-700 disabled:opacity-60"
             onClick={onApprove}
             disabled={disabled || !hasThemes || isApproving}
           >
-            {isApproving ? "Approving…" : "Approve and Proceed"}
+            {isApproving ? "ApprovingΓÇª" : "Approve"}
           </button>
         )}
         {showRegenerate && (
@@ -3756,7 +3500,7 @@ function PainPointsEditor({
             onClick={onRegenerate}
             disabled={isRegenerating}
           >
-            {isRegenerating ? (regenerateLabel ?? "Regenerating...") : "Regenerate"}
+            {isRegenerating ? "RegeneratingΓÇª" : "Regenerate"}
           </button>
         )}
       </div>
@@ -3775,11 +3519,9 @@ type ContextConstraintsEditorProps = {
   disabled: boolean;
   isApproving: boolean;
   isRegenerating: boolean;
-    isClearing: boolean;
+  isClearing: boolean;
   showTitle?: boolean;
   showRegenerate?: boolean;
-    regenerateLabel?: string;
-    hideApprove?: boolean;
 };
 
 function ContextConstraintsEditor({
@@ -3793,11 +3535,9 @@ function ContextConstraintsEditor({
   disabled,
   isApproving,
   isRegenerating,
-    isClearing,
+  isClearing,
   showTitle = true,
-  showRegenerate = true,
-    regenerateLabel,
-    hideApprove = false
+  showRegenerate = true
 }: ContextConstraintsEditorProps) {
   const safeValue: ContextConstraints = {
     contextual_factors: Array.isArray(value?.contextual_factors)
@@ -3964,7 +3704,7 @@ function ContextConstraintsEditor({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <p className="text-sm font-semibold text-gray-800">{title}</p>
-            {approved && <span className="text-xs font-medium text-green-600">Ready</span>}
+            {approved && <span className="text-xs font-medium text-green-600">Approved</span>}
           </div>
           {!approved && (
             <button
@@ -3973,7 +3713,7 @@ function ContextConstraintsEditor({
               onClick={onClear}
               disabled={isClearing}
             >
-              {isClearing ? "Clearing…" : "Clear block"}
+              {isClearing ? "ClearingΓÇª" : "Clear block"}
             </button>
           )}
         </div>
@@ -3983,14 +3723,14 @@ function ContextConstraintsEditor({
       {renderList("Constraints", "constraints")}
 
       <div className="mt-4 flex items-center gap-2">
-        {!approved && !hideApprove && (
+        {!approved && (
           <button
             type="button"
             className="inline-flex min-w-[96px] items-center justify-center rounded border border-green-600 px-3 py-2 text-sm font-medium text-green-700 disabled:opacity-60"
             onClick={onApprove}
             disabled={disabled || isApproving}
           >
-            {isApproving ? "Approving…" : "Approve and Proceed"}
+            {isApproving ? "ApprovingΓÇª" : "Approve"}
           </button>
         )}
         {showRegenerate && (
@@ -4000,7 +3740,7 @@ function ContextConstraintsEditor({
             onClick={onRegenerate}
             disabled={isRegenerating}
           >
-            {isRegenerating ? (regenerateLabel ?? "Regenerating...") : "Regenerate"}
+            {isRegenerating ? "RegeneratingΓÇª" : "Regenerate"}
           </button>
         )}
       </div>
@@ -4019,11 +3759,9 @@ type MarketLandscapeEditorProps = {
   disabled: boolean;
   isApproving: boolean;
   isRegenerating: boolean;
-    isClearing: boolean;
+  isClearing: boolean;
   showTitle?: boolean;
   showRegenerate?: boolean;
-    regenerateLabel?: string;
-    hideApprove?: boolean;
 };
 
 function MarketLandscapeEditor({
@@ -4037,11 +3775,9 @@ function MarketLandscapeEditor({
   disabled,
   isApproving,
   isRegenerating,
-    isClearing,
+  isClearing,
   showTitle = true,
-  showRegenerate = true,
-    regenerateLabel,
-    hideApprove = false
+  showRegenerate = true
 }: MarketLandscapeEditorProps) {
   const safeValue = normalizeMarketLandscapeValue(value);
 
@@ -4227,7 +3963,7 @@ function MarketLandscapeEditor({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <p className="text-sm font-semibold text-gray-800">{title}</p>
-            {approved && <span className="text-xs font-medium text-green-600">Ready</span>}
+            {approved && <span className="text-xs font-medium text-green-600">Approved</span>}
           </div>
           {!approved && (
             <button
@@ -4236,7 +3972,7 @@ function MarketLandscapeEditor({
               onClick={onClear}
               disabled={isClearing}
             >
-              {isClearing ? "Clearing…" : "Clear block"}
+              {isClearing ? "ClearingΓÇª" : "Clear block"}
             </button>
           )}
         </div>
@@ -4391,7 +4127,7 @@ function MarketLandscapeEditor({
                         />
                       </div>
                       <div className="flex items-start">
-                        {!approved && !disabled && (
+                        {!approved && (
                           <Button
                             type="button"
                             variant="ghost"
@@ -4558,7 +4294,7 @@ function MarketLandscapeEditor({
                         />
                       </div>
                       <div className="flex items-start">
-                        {!approved && !disabled && (
+                        {!approved && (
                           <Button
                             type="button"
                             variant="ghost"
@@ -4705,7 +4441,7 @@ function MarketLandscapeEditor({
                         />
                       </div>
                       <div className="flex items-start">
-                        {!approved && !disabled && (
+                        {!approved && (
                           <Button
                             type="button"
                             variant="ghost"
@@ -4852,7 +4588,7 @@ function MarketLandscapeEditor({
                         />
                       </div>
                       <div className="flex items-start">
-                        {!approved && !disabled && (
+                        {!approved && (
                           <Button
                             type="button"
                             variant="ghost"
@@ -4957,7 +4693,7 @@ function MarketLandscapeEditor({
                         />
                       </div>
                       <div className="flex items-start">
-                        {!approved && !disabled && (
+                        {!approved && (
                           <Button
                             type="button"
                             variant="ghost"
@@ -5025,14 +4761,14 @@ function MarketLandscapeEditor({
       </Accordion>
 
       <div className="mt-4 flex items-center gap-2">
-        {!approved && !hideApprove && (
+        {!approved && (
           <button
             type="button"
             className="inline-flex min-w-[96px] items-center justify-center rounded border border-green-600 px-3 py-2 text-sm font-medium text-green-700 disabled:opacity-60"
             onClick={onApprove}
             disabled={disabled || !hasContent || isApproving}
           >
-            {isApproving ? "Approving…" : "Approve and Proceed"}
+            {isApproving ? "ApprovingΓÇª" : "Approve"}
           </button>
         )}
         {showRegenerate && (
@@ -5042,7 +4778,7 @@ function MarketLandscapeEditor({
             onClick={onRegenerate}
             disabled={isRegenerating}
           >
-            {isRegenerating ? (regenerateLabel ?? "Regenerating...") : "Regenerate"}
+            {isRegenerating ? "RegeneratingΓÇª" : "Regenerate"}
           </button>
         )}
       </div>
@@ -5061,11 +4797,9 @@ type CompetitorInventoryEditorProps = {
   disabled: boolean;
   isApproving: boolean;
   isRegenerating: boolean;
-    isClearing: boolean;
+  isClearing: boolean;
   showTitle?: boolean;
   showRegenerate?: boolean;
-    regenerateLabel?: string;
-    hideApprove?: boolean;
 };
 
 function CompetitorInventoryEditor({
@@ -5079,11 +4813,9 @@ function CompetitorInventoryEditor({
   disabled,
   isApproving,
   isRegenerating,
-    isClearing,
+  isClearing,
   showTitle = true,
-  showRegenerate = true,
-    regenerateLabel,
-    hideApprove = false
+  showRegenerate = true
 }: CompetitorInventoryEditorProps) {
   const safeValue = normalizeCompetitorInventoryValue(value);
   const hasCompetitors = safeValue.competitors.length > 0;
@@ -5125,7 +4857,7 @@ function CompetitorInventoryEditor({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <p className="text-sm font-semibold text-gray-800">{title}</p>
-            {approved && <span className="text-xs font-medium text-green-600">Ready</span>}
+            {approved && <span className="text-xs font-medium text-green-600">Approved</span>}
           </div>
           {!approved && (
             <button
@@ -5134,7 +4866,7 @@ function CompetitorInventoryEditor({
               onClick={onClear}
               disabled={isClearing}
             >
-              {isClearing ? "Clearing…" : "Clear block"}
+              {isClearing ? "ClearingΓÇª" : "Clear block"}
             </button>
           )}
         </div>
@@ -5178,7 +4910,7 @@ function CompetitorInventoryEditor({
                   />
                 </div>
                 <div className="flex items-start">
-                  {!approved && !disabled && (
+                  {!approved && (
                     <Button
                       type="button"
                       variant="ghost"
@@ -5292,14 +5024,14 @@ function CompetitorInventoryEditor({
       )}
 
       <div className="mt-3 flex items-center gap-2">
-        {!approved && !hideApprove && (
+        {!approved && (
           <button
             type="button"
             className="inline-flex min-w-[96px] items-center justify-center rounded border border-green-600 px-3 py-2 text-sm font-medium text-green-700 disabled:opacity-60"
             onClick={onApprove}
             disabled={disabled || !hasCompetitors || isApproving}
           >
-            {isApproving ? "Approving…" : "Approve and Proceed"}
+            {isApproving ? "ApprovingΓÇª" : "Approve"}
           </button>
         )}
         {showRegenerate && (
@@ -5309,7 +5041,7 @@ function CompetitorInventoryEditor({
             onClick={onRegenerate}
             disabled={isRegenerating}
           >
-            {isRegenerating ? (regenerateLabel ?? "Regenerating...") : "Regenerate"}
+            {isRegenerating ? "RegeneratingΓÇª" : "Regenerate"}
           </button>
         )}
       </div>
@@ -5328,11 +5060,9 @@ type CompetitorCapabilitiesEditorProps = {
   disabled: boolean;
   isApproving: boolean;
   isRegenerating: boolean;
-    isClearing: boolean;
+  isClearing: boolean;
   showTitle?: boolean;
   showRegenerate?: boolean;
-    regenerateLabel?: string;
-    hideApprove?: boolean;
 };
 
 function CompetitorCapabilitiesEditor({
@@ -5346,11 +5076,9 @@ function CompetitorCapabilitiesEditor({
   disabled,
   isApproving,
   isRegenerating,
-    isClearing,
+  isClearing,
   showTitle = true,
-  showRegenerate = true,
-    regenerateLabel,
-    hideApprove = false
+  showRegenerate = true
 }: CompetitorCapabilitiesEditorProps) {
   const safeValue = normalizeCompetitorCapabilitiesValue(value);
   const hasCompetitors = safeValue.competitor_capabilities.length > 0;
@@ -5423,7 +5151,7 @@ function CompetitorCapabilitiesEditor({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <p className="text-sm font-semibold text-gray-800">{title}</p>
-            {approved && <span className="text-xs font-medium text-green-600">Ready</span>}
+            {approved && <span className="text-xs font-medium text-green-600">Approved</span>}
           </div>
           {!approved && (
             <button
@@ -5432,7 +5160,7 @@ function CompetitorCapabilitiesEditor({
               onClick={onClear}
               disabled={isClearing}
             >
-              {isClearing ? "Clearing…" : "Clear block"}
+              {isClearing ? "ClearingΓÇª" : "Clear block"}
             </button>
           )}
         </div>
@@ -5479,7 +5207,7 @@ function CompetitorCapabilitiesEditor({
                         />
                       </div>
                       <div className="flex items-start">
-                        {!approved && !disabled && (
+                        {!approved && (
                           <Button
                             type="button"
                             variant="ghost"
@@ -5663,7 +5391,7 @@ function CompetitorCapabilitiesEditor({
                         />
                       </div>
                       <div className="flex items-start">
-                        {!approved && !disabled && (
+                        {!approved && (
                           <Button
                             type="button"
                             variant="ghost"
@@ -5714,14 +5442,14 @@ function CompetitorCapabilitiesEditor({
       </Accordion>
 
       <div className="mt-4 flex items-center gap-2">
-        {!approved && !hideApprove && (
+        {!approved && (
           <button
             type="button"
             className="inline-flex min-w-[96px] items-center justify-center rounded border border-green-600 px-3 py-2 text-sm font-medium text-green-700 disabled:opacity-60"
             onClick={onApprove}
             disabled={disabled || !hasCompetitors || !hasPatterns || isApproving}
           >
-            {isApproving ? "Approving…" : "Approve and Proceed"}
+            {isApproving ? "ApprovingΓÇª" : "Approve"}
           </button>
         )}
         {showRegenerate && (
@@ -5731,7 +5459,7 @@ function CompetitorCapabilitiesEditor({
             onClick={onRegenerate}
             disabled={isRegenerating}
           >
-            {isRegenerating ? (regenerateLabel ?? "Regenerating...") : "Regenerate"}
+            {isRegenerating ? "RegeneratingΓÇª" : "Regenerate"}
           </button>
         )}
       </div>
@@ -5750,11 +5478,9 @@ type GapsOpportunitiesEditorProps = {
   disabled: boolean;
   isApproving: boolean;
   isRegenerating: boolean;
-    isClearing: boolean;
+  isClearing: boolean;
   showTitle?: boolean;
   showRegenerate?: boolean;
-    regenerateLabel?: string;
-    hideApprove?: boolean;
 };
 
 const GAP_IMPACT_OPTIONS: GapOpportunity["user_value_potential"][] = [
@@ -5774,11 +5500,9 @@ function GapsOpportunitiesEditor({
   disabled,
   isApproving,
   isRegenerating,
-    isClearing,
+  isClearing,
   showTitle = true,
-  showRegenerate = true,
-    regenerateLabel,
-    hideApprove = false
+  showRegenerate = true
 }: GapsOpportunitiesEditorProps) {
   const safeValue = normalizeGapsOpportunitiesValue(value);
   const hasItems =
@@ -5850,7 +5574,7 @@ function GapsOpportunitiesEditor({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <p className="text-sm font-semibold text-gray-800">{title}</p>
-            {approved && <span className="text-xs font-medium text-green-600">Ready</span>}
+            {approved && <span className="text-xs font-medium text-green-600">Approved</span>}
           </div>
           {!approved && (
             <button
@@ -5859,7 +5583,7 @@ function GapsOpportunitiesEditor({
               onClick={onClear}
               disabled={isClearing}
             >
-              {isClearing ? "Clearing…" : "Clear block"}
+              {isClearing ? "ClearingΓÇª" : "Clear block"}
             </button>
           )}
         </div>
@@ -5922,7 +5646,7 @@ function GapsOpportunitiesEditor({
                           />
                         </div>
                         <div className="flex items-start">
-                          {!approved && !disabled && (
+                          {!approved && (
                             <Button
                               type="button"
                               variant="ghost"
@@ -6038,14 +5762,14 @@ function GapsOpportunitiesEditor({
       ))}
 
       <div className="mt-3 flex items-center gap-2">
-        {!approved && !hideApprove && (
+        {!approved && (
           <button
             type="button"
             className="inline-flex min-w-[96px] items-center justify-center rounded border border-green-600 px-3 py-2 text-sm font-medium text-green-700 disabled:opacity-60"
             onClick={onApprove}
             disabled={disabled || !hasItems || isApproving}
           >
-            {isApproving ? "Approving…" : "Approve and Proceed"}
+            {isApproving ? "ApprovingΓÇª" : "Approve"}
           </button>
         )}
         {showRegenerate && (
@@ -6055,7 +5779,7 @@ function GapsOpportunitiesEditor({
             onClick={onRegenerate}
             disabled={isRegenerating}
           >
-            {isRegenerating ? (regenerateLabel ?? "Regenerating...") : "Regenerate"}
+            {isRegenerating ? "RegeneratingΓÇª" : "Regenerate"}
           </button>
         )}
       </div>
@@ -6074,11 +5798,9 @@ type ValueDriversEditorProps = {
   disabled: boolean;
   isApproving: boolean;
   isRegenerating: boolean;
-    isClearing: boolean;
+  isClearing: boolean;
   showTitle?: boolean;
   showRegenerate?: boolean;
-    regenerateLabel?: string;
-    hideApprove?: boolean;
 };
 
 const VALUE_IMPACT_OPTIONS: ValueDriver["user_value_impact"][] = [
@@ -6098,11 +5820,9 @@ function ValueDriversEditor({
   disabled,
   isApproving,
   isRegenerating,
-    isClearing,
+  isClearing,
   showTitle = true,
-  showRegenerate = true,
-    regenerateLabel,
-    hideApprove = false
+  showRegenerate = true
 }: ValueDriversEditorProps) {
   const safeValue = normalizeValueDriversValue(value);
   const hasDrivers = safeValue.value_drivers.length > 0;
@@ -6144,7 +5864,7 @@ function ValueDriversEditor({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <p className="text-sm font-semibold text-gray-800">{title}</p>
-            {approved && <span className="text-xs font-medium text-green-600">Ready</span>}
+            {approved && <span className="text-xs font-medium text-green-600">Approved</span>}
           </div>
           {!approved && (
             <button
@@ -6153,7 +5873,7 @@ function ValueDriversEditor({
               onClick={onClear}
               disabled={isClearing}
             >
-              {isClearing ? "Clearing…" : "Clear block"}
+              {isClearing ? "ClearingΓÇª" : "Clear block"}
             </button>
           )}
         </div>
@@ -6197,7 +5917,7 @@ function ValueDriversEditor({
                   />
                 </div>
                 <div className="flex items-start">
-                  {!approved && !disabled && (
+                  {!approved && (
                     <Button
                       type="button"
                       variant="ghost"
@@ -6335,14 +6055,14 @@ function ValueDriversEditor({
       )}
 
       <div className="mt-3 flex items-center gap-2">
-        {!approved && !hideApprove && (
+        {!approved && (
           <button
             type="button"
             className="inline-flex min-w-[96px] items-center justify-center rounded border border-green-600 px-3 py-2 text-sm font-medium text-green-700 disabled:opacity-60"
             onClick={onApprove}
             disabled={disabled || !hasDrivers || isApproving}
           >
-            {isApproving ? "Approving…" : "Approve and Proceed"}
+            {isApproving ? "ApprovingΓÇª" : "Approve"}
           </button>
         )}
         {showRegenerate && (
@@ -6352,7 +6072,7 @@ function ValueDriversEditor({
             onClick={onRegenerate}
             disabled={isRegenerating}
           >
-            {isRegenerating ? (regenerateLabel ?? "Regenerating...") : "Regenerate"}
+            {isRegenerating ? "RegeneratingΓÇª" : "Regenerate"}
           </button>
         )}
       </div>
@@ -6371,11 +6091,9 @@ type MarketFitHypothesisEditorProps = {
   disabled: boolean;
   isApproving: boolean;
   isRegenerating: boolean;
-    isClearing: boolean;
+  isClearing: boolean;
   showTitle?: boolean;
   showRegenerate?: boolean;
-    regenerateLabel?: string;
-    hideApprove?: boolean;
 };
 
 function MarketFitHypothesisEditor({
@@ -6389,11 +6107,9 @@ function MarketFitHypothesisEditor({
   disabled,
   isApproving,
   isRegenerating,
-    isClearing,
+  isClearing,
   showTitle = true,
-  showRegenerate = true,
-    regenerateLabel,
-    hideApprove = false
+  showRegenerate = true
 }: MarketFitHypothesisEditorProps) {
   const safeValue = normalizeMarketFitHypothesisValue(value);
   const hasItems =
@@ -6458,7 +6174,7 @@ function MarketFitHypothesisEditor({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <p className="text-sm font-semibold text-gray-800">{title}</p>
-            {approved && <span className="text-xs font-medium text-green-600">Ready</span>}
+            {approved && <span className="text-xs font-medium text-green-600">Approved</span>}
           </div>
           {!approved && (
             <button
@@ -6467,7 +6183,7 @@ function MarketFitHypothesisEditor({
               onClick={onClear}
               disabled={isClearing}
             >
-              {isClearing ? "Clearing…" : "Clear block"}
+              {isClearing ? "ClearingΓÇª" : "Clear block"}
             </button>
           )}
         </div>
@@ -6526,7 +6242,7 @@ function MarketFitHypothesisEditor({
                           />
                         </div>
                         <div className="flex items-start">
-                          {!approved && !disabled && (
+                          {!approved && (
                             <Button
                               type="button"
                               variant="ghost"
@@ -6595,14 +6311,14 @@ function MarketFitHypothesisEditor({
       ))}
 
       <div className="mt-3 flex items-center gap-2">
-        {!approved && !hideApprove && (
+        {!approved && (
           <button
             type="button"
             className="inline-flex min-w-[96px] items-center justify-center rounded border border-green-600 px-3 py-2 text-sm font-medium text-green-700 disabled:opacity-60"
             onClick={onApprove}
             disabled={disabled || !hasItems || isApproving}
           >
-            {isApproving ? "Approving…" : "Approve and Proceed"}
+            {isApproving ? "ApprovingΓÇª" : "Approve"}
           </button>
         )}
         {showRegenerate && (
@@ -6612,7 +6328,7 @@ function MarketFitHypothesisEditor({
             onClick={onRegenerate}
             disabled={isRegenerating}
           >
-            {isRegenerating ? (regenerateLabel ?? "Regenerating...") : "Regenerate"}
+            {isRegenerating ? "RegeneratingΓÇª" : "Regenerate"}
           </button>
         )}
       </div>
@@ -6631,11 +6347,9 @@ type FeasibilityAssessmentEditorProps = {
   disabled: boolean;
   isApproving: boolean;
   isRegenerating: boolean;
-    isClearing: boolean;
+  isClearing: boolean;
   showTitle?: boolean;
   showRegenerate?: boolean;
-    regenerateLabel?: string;
-    hideApprove?: boolean;
 };
 
 const READINESS_OPTIONS: FeasibilityConstraintItem["readiness"][] = [
@@ -6655,11 +6369,9 @@ function FeasibilityAssessmentEditor({
   disabled,
   isApproving,
   isRegenerating,
-    isClearing,
+  isClearing,
   showTitle = true,
-  showRegenerate = true,
-    regenerateLabel,
-    hideApprove = false
+  showRegenerate = true
 }: FeasibilityAssessmentEditorProps) {
   const safeValue = normalizeFeasibilityAssessmentValue(value);
   const hasItems =
@@ -6729,7 +6441,7 @@ function FeasibilityAssessmentEditor({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <p className="text-sm font-semibold text-gray-800">{title}</p>
-            {approved && <span className="text-xs font-medium text-green-600">Ready</span>}
+            {approved && <span className="text-xs font-medium text-green-600">Approved</span>}
           </div>
           {!approved && (
             <button
@@ -6738,7 +6450,7 @@ function FeasibilityAssessmentEditor({
               onClick={onClear}
               disabled={isClearing}
             >
-              {isClearing ? "Clearing…" : "Clear block"}
+              {isClearing ? "ClearingΓÇª" : "Clear block"}
             </button>
           )}
         </div>
@@ -6795,7 +6507,7 @@ function FeasibilityAssessmentEditor({
                           />
                         </div>
                         <div className="flex items-start">
-                          {!approved && !disabled && (
+                          {!approved && (
                             <Button
                               type="button"
                               variant="ghost"
@@ -6871,14 +6583,14 @@ function FeasibilityAssessmentEditor({
       ))}
 
       <div className="mt-3 flex items-center gap-2">
-        {!approved && !hideApprove && (
+        {!approved && (
           <button
             type="button"
             className="inline-flex min-w-[96px] items-center justify-center rounded border border-green-600 px-3 py-2 text-sm font-medium text-green-700 disabled:opacity-60"
             onClick={onApprove}
             disabled={disabled || !hasItems || isApproving}
           >
-            {isApproving ? "Approving…" : "Approve and Proceed"}
+            {isApproving ? "ApprovingΓÇª" : "Approve"}
           </button>
         )}
         {showRegenerate && (
@@ -6888,31 +6600,10 @@ function FeasibilityAssessmentEditor({
             onClick={onRegenerate}
             disabled={isRegenerating}
           >
-            {isRegenerating ? (regenerateLabel ?? "Regenerating...") : "Regenerate"}
+            {isRegenerating ? "RegeneratingΓÇª" : "Regenerate"}
           </button>
         )}
       </div>
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
