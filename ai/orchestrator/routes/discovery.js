@@ -16,7 +16,8 @@ export function createDiscoveryRouter({
   clearDiscoveryField,
   approveDiscoveryVersion,
   clearDiscoveryDocument,
-  getLatestRecord
+  getLatestRecord,
+  getGlossary
 }) {
   return async function handleDiscoveryRoutes(req, res) {
     if (req.method === "GET" && req.url?.startsWith("/discovery/export/markdown")) {
@@ -170,6 +171,15 @@ export function createDiscoveryRouter({
       sendJson(res, 200, {
         status: latest.approved ? "approved" : "in_progress",
         record: latest
+      });
+      return true;
+    }
+
+    if (req.method === "GET" && req.url === "/glossary") {
+      const glossary = await getGlossary();
+      sendJson(res, 200, {
+        status: "ok",
+        glossary
       });
       return true;
     }

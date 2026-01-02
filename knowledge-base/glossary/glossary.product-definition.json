@@ -1,0 +1,285 @@
+{
+    "domains": [
+        {
+            "id": "D2",
+            "name": "Product Definition",
+            "description": "Artifacts and decisions that define the Product’s strategic direction, value promise, market intent, scope boundaries, and the high-level functional structure that will later be elaborated into requirements."
+        }
+    ],
+    "terms": [
+        {
+            "id": "T2.1",
+            "name": "Product Vision",
+            "domain_id": "D2",
+            "definition": "A clear, aspirational description of the future state of the Product that guides strategic decisions by expressing what the Product aims to become.",
+            "description": "Defines the intended future state and long-range ambition, serving as a stable anchor for scope, prioritization, and roadmap decisions without prescribing implementation details.",
+            "relates_to": [
+                "T1.10",
+                "T1.13",
+                "T2.2",
+                "T2.13",
+                "T2.14",
+                "T2.16"
+            ],
+            "produces": "decision"
+        },
+        {
+            "id": "T2.2",
+            "name": "Product Mission",
+            "domain_id": "D2",
+            "definition": "A concise statement describing the core purpose of the Product, including the fundamental problem it solves and the impact it intends to create.",
+            "description": "Clarifies the Product’s purpose in one statement, keeping teams aligned on what the Product exists to achieve and why it matters.",
+            "relates_to": [
+                "T1.1",
+                "T1.10",
+                "T2.1",
+                "T2.4"
+            ],
+            "produces": "decision"
+        },
+        {
+            "id": "T2.3",
+            "name": "Product Positioning",
+            "domain_id": "D2",
+            "definition": "A defined message describing what the Product is, who it is for, and why it matters, used to align communication, branding, and launch messaging.",
+            "description": "Sets a shared, consistent way to describe the Product externally and internally, ensuring messaging aligns with target market intent and differentiation.",
+            "relates_to": [
+                "T2.5",
+                "T2.6",
+                "T2.7",
+                "T2.8",
+                "T2.18"
+            ],
+            "produces": "decision"
+        },
+        {
+            "id": "T2.4",
+            "name": "Value Proposition",
+            "domain_id": "D2",
+            "definition": "A precise description of the unique benefit the Product offers, why it is valuable, and why users should choose it over alternatives.",
+            "description": "States the Product’s core promise and why it wins against alternatives, forming the basis for positioning, prioritization, and launch messaging.",
+            "relates_to": [
+                "T1.12",
+                "T1.9",
+                "T2.3",
+                "T2.5",
+                "T2.6"
+            ],
+            "produces": "decision"
+        },
+        {
+            "id": "T2.5",
+            "name": "Customer Value Mapping",
+            "domain_id": "D2",
+            "definition": "A structured identification of the specific benefits the Product provides to each Target Market or user segment.",
+            "description": "Maps which user segments get which benefits, making value explicit per segment and supporting prioritization and positioning consistency.",
+            "relates_to": [
+                "T2.4",
+                "T2.8",
+                "T2.10",
+                "T2.11"
+            ],
+            "produces": "structure"
+        },
+        {
+            "id": "T2.6",
+            "name": "Differentiators",
+            "domain_id": "D2",
+            "definition": "Specific characteristics or advantages that set the Product apart from competitors or substitute solutions.",
+            "description": "Lists what is meaningfully better or unique, enabling clear competitive messaging and guiding capability and feature prioritization.",
+            "relates_to": [
+                "T1.7",
+                "T1.9",
+                "T2.4",
+                "T2.7"
+            ],
+            "produces": "structure"
+        },
+        {
+            "id": "T2.7",
+            "name": "Competitive Positioning",
+            "domain_id": "D2",
+            "definition": "The defined strategic placement of the Product relative to alternatives, stating how it should compete and what differentiates its Customer Value in the market.",
+            "description": "Defines the chosen competitive stance and the basis for winning, aligning differentiators and value proposition into a coherent competitive strategy.",
+            "relates_to": [
+                "T2.6",
+                "T2.4",
+                "T2.8",
+                "T2.3"
+            ],
+            "produces": "decision"
+        },
+        {
+            "id": "T2.8",
+            "name": "Target Markets",
+            "domain_id": "D2",
+            "definition": "The primary customer segments and audiences the Product is built for, guiding commercial choices, feature prioritization, and positioning.",
+            "description": "Defines which markets and segments are in scope for the Product, constraining commercial decisions and focusing roadmap and backlog priorities.",
+            "relates_to": [
+                "T2.10",
+                "T2.3",
+                "T2.5",
+                "T2.9"
+            ],
+            "produces": "decision"
+        },
+        {
+            "id": "T2.9",
+            "name": "Commercial Model",
+            "domain_id": "D2",
+            "definition": "The structure defining how the Product generates value and revenue, including Target Markets, Revenue Streams, Pricing Strategy, and Monetization.",
+            "description": "Defines how the Product makes money and how usage converts into revenue, providing constraints for scope decisions and roadmap sequencing.",
+            "relates_to": [
+                "T2.8",
+                "T2.10",
+                "T2.11",
+                "T2.18",
+                "T2.19"
+            ],
+            "produces": "structure"
+        },
+        {
+            "id": "T2.10",
+            "name": "Business Goals",
+            "domain_id": "D2",
+            "definition": "Measurable business outcomes the Product is expected to achieve, describing why the Product is being developed from a business perspective.",
+            "description": "Defines the business outcomes that justify investment and guide prioritization, ensuring the Product’s direction remains tied to measurable impact.",
+            "relates_to": [
+                "T2.11",
+                "T2.9",
+                "T2.16",
+                "T2.17"
+            ],
+            "produces": "decision"
+        },
+        {
+            "id": "T2.11",
+            "name": "Success Metrics",
+            "domain_id": "D2",
+            "definition": "Specific measurable indicators used to evaluate whether the Product is achieving desired outcomes.",
+            "description": "Specifies how success will be measured, enabling validation of progress and preventing ambiguous interpretation of outcomes.",
+            "relates_to": [
+                "T2.10",
+                "T2.17",
+                "T2.18"
+            ],
+            "produces": "constraint"
+        },
+        {
+            "id": "T2.12",
+            "name": "Strategic Product Scope",
+            "domain_id": "D2",
+            "definition": "A defined boundary describing what the Product will include and will not include in its strategic direction, preventing uncontrolled expansion.",
+            "description": "Sets explicit scope boundaries to reduce scope creep and to keep roadmap and backlog decisions aligned with the Product’s intended direction.",
+            "relates_to": [
+                "T2.1",
+                "T2.2",
+                "T2.13",
+                "T2.14",
+                "T2.10"
+            ],
+            "produces": "constraint"
+        },
+        {
+            "id": "T2.13",
+            "name": "Capability Areas",
+            "domain_id": "D2",
+            "definition": "High-level functional clusters that represent major abilities of the Product and group related features and requirements into coherent domains.",
+            "description": "Defines the Product’s top-level functional structure used to organize later requirements, experience design, and delivery planning.",
+            "relates_to": [
+                "T2.12",
+                "T2.14",
+                "T2.15",
+                "T2.16"
+            ],
+            "produces": "structure"
+        },
+        {
+            "id": "T2.14",
+            "name": "Epics",
+            "domain_id": "D2",
+            "definition": "Large, high-level functional units that represent substantial product deliverables and contain multiple Features and User Stories.",
+            "description": "Provides a delivery-sized grouping for major outcomes, bridging strategic intent with later feature and story decomposition.",
+            "relates_to": [
+                "T2.13",
+                "T2.12",
+                "T2.15",
+                "T2.16",
+                "T2.19"
+            ],
+            "produces": "structure"
+        },
+        {
+            "id": "T2.15",
+            "name": "Initial Feature Set",
+            "domain_id": "D2",
+            "definition": "An early, non-exhaustive list of high-level functional capabilities planned for the Product, aligned with Strategic Product Scope and Epics before detailed requirements exist.",
+            "description": "Establishes an initial view of what will be built at a high level, enabling early prioritization and alignment before requirements elaboration.",
+            "relates_to": [
+                "T2.12",
+                "T2.14",
+                "T2.13",
+                "T2.19"
+            ],
+            "produces": "structure"
+        },
+        {
+            "id": "T2.16",
+            "name": "High Level Product Roadmap",
+            "domain_id": "D2",
+            "definition": "A time-oriented plan showing the sequence of major Product milestones, Epics, and Capability Areas, providing an overview of when key parts will be delivered.",
+            "description": "Defines sequencing of major outcomes and milestones, aligning strategy with delivery expectations at a high level.",
+            "relates_to": [
+                "T2.13",
+                "T2.14",
+                "T2.17",
+                "T2.18",
+                "T2.10"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T2.17",
+            "name": "Launch Objectives",
+            "domain_id": "D2",
+            "definition": "Defined goals for the initial release of the Product specifying what must be achieved at the moment of launch.",
+            "description": "Specifies what “ready to launch” means in measurable terms for the first release, informing roadmap scope and acceptance focus.",
+            "relates_to": [
+                "T2.10",
+                "T2.11",
+                "T2.16"
+            ],
+            "produces": "constraint"
+        },
+        {
+            "id": "T2.18",
+            "name": "Long Term Direction",
+            "domain_id": "D2",
+            "definition": "A documented perspective of how the Product should evolve over an extended time horizon, defining future orientation and expansion areas.",
+            "description": "Provides a long-horizon evolution view that guides roadmap shaping and prevents short-term decisions from blocking intended growth.",
+            "relates_to": [
+                "T2.1",
+                "T2.12",
+                "T2.16",
+                "T2.11"
+            ],
+            "produces": "decision"
+        },
+        {
+            "id": "T2.19",
+            "name": "Prioritization Foundations",
+            "domain_id": "D2",
+            "definition": "The initial set of rules, factors, and criteria used to establish how early backlog items will be prioritized before formal frameworks are applied.",
+            "description": "Defines how early prioritization decisions are made using value, feasibility, dependencies, and effort considerations, creating consistent ordering logic for the initial backlog.",
+            "relates_to": [
+                "T2.10",
+                "T2.11",
+                "T2.12",
+                "T2.15",
+                "T2.14",
+                "T1.14"
+            ],
+            "produces": "constraint"
+        }
+    ]
+}

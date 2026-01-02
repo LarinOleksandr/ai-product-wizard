@@ -1,0 +1,268 @@
+{
+    "domains": [
+        {
+            "id": "D4",
+            "name": "Experience Design",
+            "description": "Artifacts and specifications that define how users achieve goals through end-to-end tasks, flows, interactions, screen structures, states, and transition rules before visual UI implementation."
+        }
+    ],
+    "terms": [
+        {
+            "id": "T4.1",
+            "name": "User Goals",
+            "domain_id": "D4",
+            "definition": "A structured description of what users aim to achieve when interacting with the Product, providing intent behind User Tasks.",
+            "description": "Defines user intent and desired outcomes that guide task definition, flow structure, and interaction decisions.",
+            "relates_to": [
+                "T4.2",
+                "T4.3"
+            ],
+            "produces": "structure"
+        },
+        {
+            "id": "T4.2",
+            "name": "User Task Inventory",
+            "domain_id": "D4",
+            "definition": "A structured list of all tasks users must be able to perform within the Product, where each task represents a complete user objective.",
+            "description": "Enumerates user objectives the Product must support, creating a coverage baseline for flows, screens, and interaction specifications.",
+            "relates_to": [
+                "T4.1",
+                "T4.3",
+                "T4.14"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T4.3",
+            "name": "User Flow Diagram",
+            "domain_id": "D4",
+            "definition": "A detailed representation of the sequence of steps a user follows to complete a specific User Task, including alternate paths and decision branches.",
+            "description": "Defines end-to-end step sequences and branching needed to complete a task, enabling deterministic navigation and interaction behavior.",
+            "relates_to": [
+                "T4.2",
+                "T4.4",
+                "T4.5",
+                "T4.6",
+                "T4.15"
+            ],
+            "produces": "structure"
+        },
+        {
+            "id": "T4.4",
+            "name": "Alternate Paths",
+            "domain_id": "D4",
+            "definition": "Alternative sequences of user actions or system responses that allow a User Task to be completed differently from the primary path.",
+            "description": "Defines valid variations that still complete the same task objective without entering error or exception handling.",
+            "relates_to": [
+                "T4.3",
+                "T4.5"
+            ],
+            "produces": "structure"
+        },
+        {
+            "id": "T4.5",
+            "name": "Decision Points",
+            "domain_id": "D4",
+            "definition": "Explicit branching moments in a User Flow where different user actions or system conditions lead to different outcomes.",
+            "description": "Marks where flow branches occur and what conditions or actions cause each branch, ensuring full coverage of paths.",
+            "relates_to": [
+                "T4.3",
+                "T4.6"
+            ],
+            "produces": "structure"
+        },
+        {
+            "id": "T4.6",
+            "name": "Trigger and Condition Mapping",
+            "domain_id": "D4",
+            "definition": "A structured representation of triggers and conditions that determine transitions between interactions, states, or screens.",
+            "description": "Defines what event initiates a change and what must be true for the change to occur, enabling deterministic transition logic.",
+            "relates_to": [
+                "T4.5",
+                "T4.7",
+                "T4.15",
+                "T4.16"
+            ],
+            "produces": "structure"
+        },
+        {
+            "id": "T4.7",
+            "name": "Interaction Specification",
+            "domain_id": "D4",
+            "definition": "A structured description of system behavior in response to user actions, including triggers, conditions, states, transitions, and outputs.",
+            "description": "Defines interaction-level behavior as an executable contract, covering what happens after each action under each relevant condition.",
+            "relates_to": [
+                "T4.6",
+                "T4.8",
+                "T4.9",
+                "T4.15",
+                "T4.17"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T4.8",
+            "name": "Screen Structure Map",
+            "domain_id": "D4",
+            "definition": "A layout definition identifying functional regions of each screen without visual styling.",
+            "description": "Defines functional zones and information/action placement at a structural level to support flows and interactions before UI styling.",
+            "relates_to": [
+                "T4.7",
+                "T4.9",
+                "T4.12"
+            ],
+            "produces": "structure"
+        },
+        {
+            "id": "T4.9",
+            "name": "Screen Behavior",
+            "domain_id": "D4",
+            "definition": "A detailed description of how each screen responds to user actions, system conditions, and navigation events at the page level.",
+            "description": "Defines page-level response rules, including what updates, what blocks, and what transitions occur under each condition.",
+            "relates_to": [
+                "T4.7",
+                "T4.8",
+                "T4.10",
+                "T4.15",
+                "T4.16",
+                "T4.17"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T4.10",
+            "name": "Screen Variants",
+            "domain_id": "D4",
+            "definition": "Alternative screen representations that appear under different conditions such as device type, data availability, or user role.",
+            "description": "Defines how a screen changes structure or content under different conditions while preserving the task and flow logic.",
+            "relates_to": [
+                "T4.9",
+                "T4.19",
+                "T4.16"
+            ],
+            "produces": "structure"
+        },
+        {
+            "id": "T4.11",
+            "name": "Low Fidelity Wireframe",
+            "domain_id": "D4",
+            "definition": "A schematic representation of a screen showing placement and hierarchy of elements required to support a User Flow, focusing on structure rather than styling.",
+            "description": "Visualizes screen structure to validate flow support and information hierarchy without committing to visual design choices.",
+            "relates_to": [
+                "T4.8",
+                "T4.3",
+                "T4.9"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T4.12",
+            "name": "Transition Sketches",
+            "domain_id": "D4",
+            "definition": "Simplified visual representations of transitions between screens or states that capture movement or conditional shifts without high-fidelity UI detail.",
+            "description": "Illustrates how users move between screens or states to validate continuity and conditional transitions before UI-level animation decisions.",
+            "relates_to": [
+                "T4.3",
+                "T4.6",
+                "T4.15"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T4.13",
+            "name": "Flow Consistency Review",
+            "domain_id": "D4",
+            "definition": "A structured evaluation ensuring User Flows align with Requirements, Interaction Specifications, and System Logic to detect contradictions or gaps.",
+            "description": "Validates that flows, interactions, and expected behavior do not conflict and that all paths are consistent and implementable.",
+            "relates_to": [
+                "T4.3",
+                "T4.7",
+                "T4.9"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T4.14",
+            "name": "Experience Completeness Review",
+            "domain_id": "D4",
+            "definition": "A holistic assessment verifying that all necessary User Tasks, Flows, Interactions, Screen Structures, and Wireframes have been defined with no missing experience parts.",
+            "description": "Checks coverage across tasks, flows, and screens to ensure no user objective or interaction segment is undefined before UI and build work begins.",
+            "relates_to": [
+                "T4.2",
+                "T4.3",
+                "T4.7",
+                "T4.8",
+                "T4.11"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T4.15",
+            "name": "Screen State Model",
+            "domain_id": "D4",
+            "definition": "A structured definition of allowed screen states and their transitions, including conditions and required UI responses per state.",
+            "description": "Defines states such as loading, empty, error, populated, disabled, and readonly, including allowed transitions to ensure deterministic implementation and testing.",
+            "relates_to": [
+                "T4.6",
+                "T4.7",
+                "T4.9",
+                "T4.18"
+            ],
+            "produces": "structure"
+        },
+        {
+            "id": "T4.16",
+            "name": "Navigation Rules",
+            "domain_id": "D4",
+            "definition": "A set of constraints defining allowed and forbidden navigation transitions between screens and states, including back-navigation and deep-link behavior.",
+            "description": "Defines which transitions are permitted, how back and forward navigation behaves, how direct entry is handled, and what must happen on refresh.",
+            "relates_to": [
+                "T4.3",
+                "T4.6",
+                "T4.9",
+                "T4.20"
+            ],
+            "produces": "constraint"
+        },
+        {
+            "id": "T4.17",
+            "name": "Error and Empty State Definitions",
+            "domain_id": "D4",
+            "definition": "A structured specification of user-visible behavior when data is missing, invalid, unavailable, or when an operation fails.",
+            "description": "Defines how errors and empty results are presented and handled, including recovery actions, messaging intent, and state transitions.",
+            "relates_to": [
+                "T4.15",
+                "T4.7",
+                "T4.9"
+            ],
+            "produces": "structure"
+        },
+        {
+            "id": "T4.18",
+            "name": "Role-Based Experience Rules",
+            "domain_id": "D4",
+            "definition": "Constraints defining how User Tasks, flows, screen behavior, or screen variants change based on user role, permissions, or access level.",
+            "description": "Defines what is visible, actionable, or reachable for each role, ensuring consistent experience behavior aligned with access control intent.",
+            "relates_to": [
+                "T4.2",
+                "T4.3",
+                "T4.10",
+                "T4.16"
+            ],
+            "produces": "constraint"
+        },
+        {
+            "id": "T4.19",
+            "name": "Experience Persistence Rules",
+            "domain_id": "D4",
+            "definition": "Constraints defining what experience state is persisted, restored, or recalculated across refresh, reconnect, restart, or session changes.",
+            "description": "Defines which values and progress are saved and how recovery behaves after interruptions, guiding frontend state management and API expectations.",
+            "relates_to": [
+                "T4.15",
+                "T4.16",
+                "T4.9"
+            ],
+            "produces": "constraint"
+        }
+    ]
+}

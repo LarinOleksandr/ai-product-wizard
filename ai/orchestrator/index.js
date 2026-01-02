@@ -57,6 +57,17 @@ const PROMPTS_ROOT_DIR = (() => {
   }
   return path.join(__dirname, "..", "..", "knowledge-base", "prompts");
 })();
+const GLOSSARY_DIR = (() => {
+  const envBase = process.env.KNOWLEDGE_BASE_DIR;
+  if (envBase) {
+    return path.join(envBase, "glossary");
+  }
+  const dockerPath = path.join(path.sep, "knowledge-base", "glossary");
+  if (fsSync.existsSync(dockerPath)) {
+    return dockerPath;
+  }
+  return path.join(__dirname, "..", "..", "knowledge-base", "glossary");
+})();
 const documentRegistry = createDocumentRegistry({
   promptsRootDir: PROMPTS_ROOT_DIR
 });
@@ -369,6 +380,34 @@ function normalizeUserMessages(messages) {
   return [];
 }
 
+async function loadGlossary() {
+  const entries = await fs.readdir(GLOSSARY_DIR);
+  const jsonFiles = entries.filter(
+    (name) => name.startsWith("glossary.") && name.endsWith(".json")
+  );
+  const glossarySets = await Promise.all(
+    jsonFiles.map(async (file) => {
+      const raw = await fs.readFile(path.join(GLOSSARY_DIR, file), "utf8");
+      return JSON.parse(raw);
+    })
+  );
+  const domains = [];
+  const terms = [];
+  glossarySets.forEach((entry) => {
+    if (Array.isArray(entry.domains)) {
+      domains.push(...entry.domains);
+    }
+    if (Array.isArray(entry.terms)) {
+      terms.push(...entry.terms);
+    }
+  });
+  return {
+    domains,
+    terms,
+    sources: jsonFiles
+  };
+}
+
 const promptService = createPromptService({
   promptsDir: PROMPTS_DIR,
   productManagerDir: PRODUCT_MANAGER_DIR,
@@ -537,7 +576,8 @@ const handleDiscoveryRoutes = createDiscoveryRouter({
     clearDiscoveryField,
     approveDiscoveryVersion,
     clearDiscoveryDocument,
-    getLatestRecord: storageService.getLatestRecord
+    getLatestRecord: storageService.getLatestRecord,
+    getGlossary: loadGlossary
   });
 
 const server = http.createServer(async (req, res) => {

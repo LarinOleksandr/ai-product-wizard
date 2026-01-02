@@ -1,7 +1,16 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Trash2 } from "lucide-react";
+import type { Session } from "@supabase/supabase-js";
 
 import { Button } from "../components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from "../components/ui/dialog";
 import discoveryDocumentIcon from "../assets/discovery-document.png";
 import {
   Accordion,
@@ -9,6 +18,17 @@ import {
   AccordionItem,
   AccordionTrigger
 } from "../components/ui/accordion";
+import { supabase } from "../lib/supabase";
+import {
+  getSession,
+  signInWithEmail,
+  signUpWithEmail,
+  signOut,
+  listProjects,
+  createProject,
+  saveProjectDocument,
+  type Project
+} from "../lib/projects-store";
 
 const API_BASE =
   import.meta.env.VITE_ORCHESTRATOR_URL || "http://localhost:8002";
@@ -773,6 +793,19 @@ export function WizardPage() {
   });
   const [status, setStatus] = useState<ApiStatus>("idle");
   const [message, setMessage] = useState("Provide inputs and run the agent.");
+  const [session, setSession] = useState<Session | null>(null);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<"sign-in" | "sign-up">("sign-in");
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [isAuthWorking, setIsAuthWorking] = useState(false);
+  const [isProjectsLoading, setIsProjectsLoading] = useState(false);
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
+  const [newProjectName, setNewProjectName] = useState("");
+  const [pendingSaveDocument, setPendingSaveDocument] = useState(false);
   const [latestRecord, setLatestRecord] = useState<DiscoveryRecord | null>(null);
   const [latestVersion, setLatestVersion] = useState<number | null>(null);
   const [questions, setQuestions] = useState<string[]>([]);
@@ -873,6 +906,130 @@ export function WizardPage() {
   const canRestartAfterCancel =
     status === "idle" && latestRecord?.changeReason === "Generating entire document";
   const isBlockingInputs = status === "running" || isGeneratingAll || isGeneratingRandom;
+
+  const loadProjects = async () => {
+    setIsProjectsLoading(true);
+    try {
+      const list = await listProjects();
+      setProjects(list);
+      if (!activeProjectId && list.length > 0) {
+        setActiveProjectId(list[0].id);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load projects.");
+    } finally {
+      setIsProjectsLoading(false);
+    }
+  };
+
+  const ensureActiveProject = async (): Promise<Project | null> => {
+    if (!session) {
+      return null;
+    }
+    let currentProjects = projects;
+    if (currentProjects.length === 0) {
+      try {
+        currentProjects = await listProjects();
+        setProjects(currentProjects);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load projects.");
+      }
+    }
+    let selected =
+      currentProjects.find((project) => project.id === activeProjectId) ||
+      currentProjects[0];
+    if (!selected) {
+      const created = await createProject("My first project");
+      setProjects((prev) => [created, ...prev]);
+      setActiveProjectId(created.id);
+      selected = created;
+    } else if (activeProjectId !== selected.id) {
+      setActiveProjectId(selected.id);
+    }
+    return selected;
+  };
+
+  const handleCreateProject = async () => {
+    const name = newProjectName.trim() || "Untitled project";
+    setIsCreatingProject(true);
+    setError(null);
+    try {
+      const created = await createProject(name);
+      setProjects((prev) => [created, ...prev]);
+      setActiveProjectId(created.id);
+      setNewProjectName("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create project.");
+    } finally {
+      setIsCreatingProject(false);
+    }
+  };
+
+  const handleAuthSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const email = authEmail.trim();
+    const password = authPassword;
+    if (!email || !password) {
+      setAuthError("Email and password are required.");
+      return;
+    }
+    setIsAuthWorking(true);
+    setAuthError(null);
+    try {
+      const nextSession =
+        authMode === "sign-in"
+          ? await signInWithEmail(email, password)
+          : await signUpWithEmail(email, password);
+      if (!nextSession) {
+        setAuthError(
+          "Check your email to confirm the account before signing in."
+        );
+        return;
+      }
+      setSession(nextSession);
+      await loadProjects();
+      setIsAuthModalOpen(false);
+      setAuthPassword("");
+      if (pendingSaveDocument) {
+        setPendingSaveDocument(false);
+        await saveDocumentWithProject();
+      }
+    } catch (err) {
+      setAuthError(err instanceof Error ? err.message : "Authentication failed.");
+    } finally {
+      setIsAuthWorking(false);
+    }
+  };
+
+  useEffect(() => {
+    let active = true;
+    getSession()
+      .then((currentSession) => {
+        if (!active) return;
+        setSession(currentSession);
+        if (currentSession) {
+          void loadProjects();
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setSession(null);
+        }
+      });
+    const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession);
+      if (nextSession) {
+        void loadProjects();
+      } else {
+        setProjects([]);
+        setActiveProjectId(null);
+      }
+    });
+    return () => {
+      active = false;
+      data.subscription.unsubscribe();
+    };
+  }, []);
   const currentField = latestRecord?.currentFieldKey
     ? fieldDefinitions.find((field) => field.key === latestRecord.currentFieldKey)
     : undefined;
@@ -1621,7 +1778,7 @@ export function WizardPage() {
       setConfirmClearDocument(true);
     }
 
-    async function saveDocument() {
+    async function saveDocumentWithProject() {
       if (!latestVersion || !latestRecord) {
         setError("No document to save.");
         return;
@@ -1633,6 +1790,13 @@ export function WizardPage() {
           latestRecord.discoveryDocument || emptyDocument,
           draftFields
         );
+        const project = await ensureActiveProject();
+        if (!project) {
+          setIsAuthModalOpen(true);
+          setPendingSaveDocument(true);
+          return;
+        }
+        await saveProjectDocument(project.id, nextDocument, "discovery");
         const data = await postWithRetry(
           `${API_BASE}/discovery/save`,
           { version: latestVersion, discoveryDocument: nextDocument },
@@ -1650,6 +1814,19 @@ export function WizardPage() {
       } finally {
         setIsSavingDocument(false);
       }
+    }
+
+    async function saveDocument() {
+      if (!latestVersion || !latestRecord) {
+        setError("No document to save.");
+        return;
+      }
+      if (!session) {
+        setPendingSaveDocument(true);
+        setIsAuthModalOpen(true);
+        return;
+      }
+      await saveDocumentWithProject();
     }
 
   const handleStartFirstSection = async (event: FormEvent<HTMLFormElement>) => {
@@ -2154,7 +2331,11 @@ export function WizardPage() {
                   return { ...prev, productIdea: nextValue };
                 })
               }
-              placeholder="Example: Agent that drafts the Discovery Document automatically."
+              placeholder={`This product is designed for individuals with chronic pain who live in rural areas, providing a personalized virtual reality therapy program tailored to their specific condition and environment.
+
+The core mechanic involves using AI-powered avatars to simulate real-world environments, allowing users to confront and overcome triggers that exacerbate their pain.
+
+By doing so, users experience a sense of control and empowerment over their wellbeing, leading to improved mental health outcomes.`}
               required
               disabled={isBlockingInputs}
             />
@@ -2838,6 +3019,99 @@ export function WizardPage() {
         </div>
 
         <aside className="space-y-4">
+          {session ? (
+            <div className="rounded-md border border-slate-200 bg-white p-3 text-sm">
+              <div className="flex items-center justify-between">
+                <p className="font-semibold">Projects</p>
+                <button
+                  type="button"
+                  className="text-xs text-slate-500 hover:text-slate-700"
+                  onClick={async () => {
+                    try {
+                      await signOut();
+                    } catch (err) {
+                      setError(err instanceof Error ? err.message : "Sign out failed.");
+                    }
+                  }}
+                >
+                  Sign out
+                </button>
+              </div>
+              {isProjectsLoading ? (
+                <p className="mt-2 text-xs text-slate-500">Loading projects...</p>
+              ) : (
+                <>
+                  {projects.length === 0 ? (
+                    <p className="mt-2 text-xs text-slate-500">No projects yet.</p>
+                  ) : (
+                    <div className="mt-2 space-y-2">
+                      {projects.map((project) => {
+                        const isActive = activeProjectId === project.id;
+                        return (
+                          <button
+                            key={project.id}
+                            type="button"
+                            onClick={() => setActiveProjectId(project.id)}
+                            className={`w-full rounded border px-2 py-2 text-left text-xs ${
+                              isActive
+                                ? "border-blue-500 bg-blue-50"
+                                : "border-slate-200 bg-white"
+                            }`}
+                          >
+                            <div className="text-sm font-medium">
+                              {project.name || "Untitled project"}
+                            </div>
+                            <div className="text-xs text-slate-500">
+                              {project.created_at}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <form
+                    className="mt-3 flex gap-2"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      if (isCreatingProject) return;
+                      void handleCreateProject();
+                    }}
+                  >
+                    <input
+                      className="flex-1 rounded border border-slate-200 px-2 py-1 text-xs"
+                      placeholder="New project name"
+                      value={newProjectName}
+                      onChange={(event) => setNewProjectName(event.target.value)}
+                    />
+                    <button
+                      type="submit"
+                      className="rounded border border-blue-600 px-2 py-1 text-xs font-medium text-blue-700 disabled:opacity-60"
+                      disabled={isCreatingProject}
+                    >
+                      {isCreatingProject ? "Creating..." : "Add"}
+                    </button>
+                  </form>
+                </>
+              )}
+            </div>
+          ) : (
+            <div className="rounded-md border border-slate-200 bg-white p-3 text-sm">
+              <p className="font-semibold">Projects</p>
+              <p className="mt-2 text-xs text-slate-500">
+                Sign in to save documents and manage projects.
+              </p>
+              <button
+                type="button"
+                className="mt-3 rounded border border-blue-600 px-3 py-1 text-xs font-medium text-blue-700"
+                onClick={() => {
+                  setAuthMode("sign-in");
+                  setIsAuthModalOpen(true);
+                }}
+              >
+                Sign in
+              </button>
+            </div>
+          )}
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-700">Status</p>
@@ -2943,6 +3217,87 @@ export function WizardPage() {
           </Accordion>
         </aside>
       </section>
+      <Dialog
+        open={isAuthModalOpen}
+        onOpenChange={(open) => {
+          setIsAuthModalOpen(open);
+          if (!open) {
+            setAuthError(null);
+            setAuthPassword("");
+            setPendingSaveDocument(false);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {authMode === "sign-in" ? "Sign in" : "Create an account"}
+            </DialogTitle>
+            <DialogDescription>
+              {pendingSaveDocument
+                ? "Sign in to save this document and manage projects."
+                : "Sign in to save documents and manage projects."}
+            </DialogDescription>
+          </DialogHeader>
+          <form className="space-y-3" onSubmit={handleAuthSubmit}>
+            <div>
+              <label className="text-xs font-medium text-slate-600">Email</label>
+              <input
+                type="email"
+                className="mt-1 w-full rounded border border-slate-200 px-3 py-2 text-sm"
+                value={authEmail}
+                onChange={(event) => setAuthEmail(event.target.value)}
+                placeholder="you@example.com"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-slate-600">Password</label>
+              <input
+                type="password"
+                className="mt-1 w-full rounded border border-slate-200 px-3 py-2 text-sm"
+                value={authPassword}
+                onChange={(event) => setAuthPassword(event.target.value)}
+                placeholder="********"
+              />
+            </div>
+            {authError && <p className="text-xs text-red-600">{authError}</p>}
+            <DialogFooter className="gap-2 sm:gap-0">
+              <button
+                type="button"
+                className="rounded border px-3 py-2 text-sm"
+                onClick={() => setIsAuthModalOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
+                disabled={isAuthWorking}
+              >
+                {isAuthWorking
+                  ? authMode === "sign-in"
+                    ? "Signing in..."
+                    : "Creating account..."
+                  : authMode === "sign-in"
+                    ? "Sign in"
+                    : "Create account"}
+              </button>
+            </DialogFooter>
+          </form>
+          <div className="pt-2 text-xs text-slate-500">
+            {authMode === "sign-in" ? "No account yet?" : "Already have an account?"}{" "}
+            <button
+              type="button"
+              className="font-medium text-blue-600"
+              onClick={() =>
+                setAuthMode((prev) => (prev === "sign-in" ? "sign-up" : "sign-in"))
+              }
+            >
+              {authMode === "sign-in" ? "Create one" : "Sign in"}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,0 +1,258 @@
+{
+    "domains": [
+        {
+            "id": "D5",
+            "name": "User Interface Design",
+            "description": "Artifacts and specifications that define the visual, interactive, structural, and accessibility rules used to render the Product’s experience consistently and deterministically in code."
+        }
+    ],
+    "terms": [
+        {
+            "id": "T5.1",
+            "name": "User Interface",
+            "domain_id": "D5",
+            "definition": "The visual and interactive layer through which users view information and perform actions in the Product.",
+            "description": "Represents the concrete manifestation of experience design decisions, combining layout, components, styling, and interaction behavior.",
+            "relates_to": [
+                "T5.2",
+                "T5.4",
+                "T5.18"
+            ],
+            "produces": "structure"
+        },
+        {
+            "id": "T5.2",
+            "name": "Design System",
+            "domain_id": "D5",
+            "definition": "A structured set of rules, tokens, and reusable UI artifacts governing visual and interactive behavior across the Product.",
+            "description": "Provides a single source of truth for UI consistency, enabling scalable implementation and preventing design and code divergence.",
+            "relates_to": [
+                "T5.3",
+                "T5.6",
+                "T5.7",
+                "T5.8",
+                "T5.9"
+            ],
+            "produces": "structure"
+        },
+        {
+            "id": "T5.3",
+            "name": "Design System Foundation",
+            "domain_id": "D5",
+            "definition": "The base design rules and primitives used across the User Interface, including color, typography, spacing, layout grid, elevation, and interaction states.",
+            "description": "Defines the foundational visual language that all components and layouts must adhere to.",
+            "relates_to": [
+                "T5.4",
+                "T5.5",
+                "T5.6"
+            ],
+            "produces": "structure"
+        },
+        {
+            "id": "T5.4",
+            "name": "Design Tokens",
+            "domain_id": "D5",
+            "definition": "Atomic, named values representing visual properties such as color, spacing, typography, radii, elevation, and motion.",
+            "description": "Provides implementation-ready primitives that can be directly consumed by code to ensure visual consistency and themeability.",
+            "relates_to": [
+                "T5.3",
+                "T5.5",
+                "T5.13"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T5.5",
+            "name": "Theme Modes",
+            "domain_id": "D5",
+            "definition": "Defined visual themes such as light, dark, or high-contrast modes implemented through token sets.",
+            "description": "Defines how the interface adapts visually under different user or system preferences while preserving structural consistency.",
+            "relates_to": [
+                "T5.4",
+                "T5.13"
+            ],
+            "produces": "structure"
+        },
+        {
+            "id": "T5.6",
+            "name": "UI Component",
+            "domain_id": "D5",
+            "definition": "A reusable, self-contained UI element with defined structure, behavior, and purpose.",
+            "description": "Acts as a building block used to assemble screens and layouts, enabling reuse and predictable behavior.",
+            "relates_to": [
+                "T5.7",
+                "T5.8",
+                "T5.9",
+                "T5.10"
+            ],
+            "produces": "structure"
+        },
+        {
+            "id": "T5.7",
+            "name": "UI Component Interface Specification",
+            "domain_id": "D5",
+            "definition": "A detailed specification defining a UI Component’s structure, props, configurable options, and usage rules.",
+            "description": "Defines how a component is consumed in code, including required and optional properties and constraints.",
+            "relates_to": [
+                "T5.6",
+                "T5.11"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T5.8",
+            "name": "UI Component Interaction Specification",
+            "domain_id": "D5",
+            "definition": "A structured definition of how a UI Component responds to user actions, system events, and state changes.",
+            "description": "Specifies interaction behavior such as hover, focus, loading, disabled, and error responses at the component level.",
+            "relates_to": [
+                "T5.6",
+                "T5.12"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T5.9",
+            "name": "UI Component Architecture",
+            "domain_id": "D5",
+            "definition": "A structured model of UI Components, their relationships, dependencies, and composition patterns.",
+            "description": "Defines how components are organized and combined to form higher-level UI structures.",
+            "relates_to": [
+                "T5.6",
+                "T5.10"
+            ],
+            "produces": "structure"
+        },
+        {
+            "id": "T5.10",
+            "name": "UI Component Inventory",
+            "domain_id": "D5",
+            "definition": "A structured list of all UI Components used in the Product, including purpose and usage scope.",
+            "description": "Provides a complete overview of available components to prevent duplication and uncontrolled growth.",
+            "relates_to": [
+                "T5.6",
+                "T5.9"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T5.11",
+            "name": "Component Props Contract",
+            "domain_id": "D5",
+            "definition": "A formal definition of supported component properties, their types, defaults, and constraints.",
+            "description": "Ensures predictable component usage and strong typing, preventing ad-hoc or invalid configurations.",
+            "relates_to": [
+                "T5.7"
+            ],
+            "produces": "constraint"
+        },
+        {
+            "id": "T5.12",
+            "name": "Component State Model",
+            "domain_id": "D5",
+            "definition": "A definition of all valid internal and visual states a UI Component can assume and the transitions between them.",
+            "description": "Enumerates component states such as default, hover, focus, loading, disabled, and error to support consistent behavior.",
+            "relates_to": [
+                "T5.8"
+            ],
+            "produces": "structure"
+        },
+        {
+            "id": "T5.13",
+            "name": "Component Variants Matrix",
+            "domain_id": "D5",
+            "definition": "A structured enumeration of supported component variants such as size, tone, density, or style.",
+            "description": "Prevents uncontrolled variant creation by explicitly listing allowed variations and their intent.",
+            "relates_to": [
+                "T5.6",
+                "T5.4"
+            ],
+            "produces": "constraint"
+        },
+        {
+            "id": "T5.14",
+            "name": "Accessibility Rules",
+            "domain_id": "D5",
+            "definition": "A set of enforceable rules defining accessibility requirements such as ARIA usage, keyboard support, focus order, and contrast.",
+            "description": "Ensures the UI is usable by people with disabilities and compliant with accessibility standards.",
+            "relates_to": [
+                "T5.6",
+                "T5.12"
+            ],
+            "produces": "constraint"
+        },
+        {
+            "id": "T5.15",
+            "name": "Responsive Breakpoints and Layout Rules",
+            "domain_id": "D5",
+            "definition": "Defined viewport breakpoints and layout adaptation rules used to render the UI across devices.",
+            "description": "Specifies how layouts and components adapt to different screen sizes to ensure consistent usability.",
+            "relates_to": [
+                "T5.16",
+                "T5.18"
+            ],
+            "produces": "constraint"
+        },
+        {
+            "id": "T5.16",
+            "name": "UI Layout Pattern",
+            "domain_id": "D5",
+            "definition": "A reusable structural template defining the arrangement and hierarchy of UI sections on a screen.",
+            "description": "Defines common layout compositions used to assemble screens consistently and efficiently.",
+            "relates_to": [
+                "T5.15",
+                "T5.18"
+            ],
+            "produces": "structure"
+        },
+        {
+            "id": "T5.17",
+            "name": "Content Guidelines",
+            "domain_id": "D5",
+            "definition": "Rules governing text length, formatting, truncation, localization, and content fallback behavior in the UI.",
+            "description": "Prevents layout breakage and inconsistent copy by defining content constraints and formatting rules.",
+            "relates_to": [
+                "T5.6",
+                "T5.18"
+            ],
+            "produces": "constraint"
+        },
+        {
+            "id": "T5.18",
+            "name": "Screen UI Composition Specification",
+            "domain_id": "D5",
+            "definition": "A mapping that defines how screens are assembled from layout patterns and UI components.",
+            "description": "Bridges experience-level screen structures with concrete component and layout usage for implementation.",
+            "relates_to": [
+                "T5.16",
+                "T5.6",
+                "T5.1"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T5.19",
+            "name": "UI Motion Rules",
+            "domain_id": "D5",
+            "definition": "Defined rules for animations and transitions, including duration, easing, and reduced-motion handling.",
+            "description": "Ensures motion is consistent, accessible, and does not interfere with usability or performance.",
+            "relates_to": [
+                "T5.12",
+                "T5.14"
+            ],
+            "produces": "constraint"
+        },
+        {
+            "id": "T5.20",
+            "name": "Component-to-Code Mapping",
+            "domain_id": "D5",
+            "definition": "A mapping between UI Components and their concrete code implementations, modules, and dependencies.",
+            "description": "Enables coding agents to locate, reuse, and validate component implementations deterministically.",
+            "relates_to": [
+                "T5.6",
+                "T5.10"
+            ],
+            "produces": "artifact"
+        }
+    ]
+}

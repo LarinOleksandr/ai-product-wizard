@@ -1,0 +1,647 @@
+{
+    "domains": [
+        {
+            "id": "D6",
+            "name": "Technical Architecture",
+            "description": "Artifacts and specifications that define how the Product is built and operated, including system structure, data and AI architecture, APIs and integrations, security, infrastructure, operational tooling, and validation before implementation."
+        }
+    ],
+    "terms": [
+        {
+            "id": "T6.1",
+            "name": "System",
+            "domain_id": "D6",
+            "definition": "The complete set of software and infrastructure components that collectively deliver the Product’s functionality.",
+            "description": "Defines the full boundary of what is being built and operated, including runtime services, data stores, integrations, and infrastructure resources.",
+            "relates_to": [
+                "T6.2",
+                "T6.3",
+                "T6.4",
+                "T6.28"
+            ],
+            "produces": "structure"
+        },
+        {
+            "id": "T6.2",
+            "name": "System Architecture",
+            "domain_id": "D6",
+            "definition": "A structured description of how all elements of the System are organized and interact, including client, server, database, integration, and infrastructure layers.",
+            "description": "Defines the high-level blueprint of components and interactions to reduce complexity and enable consistent implementation decisions.",
+            "relates_to": [
+                "T6.3",
+                "T6.4",
+                "T6.28",
+                "T6.37",
+                "T6.38"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T6.3",
+            "name": "Architecture Layers",
+            "domain_id": "D6",
+            "definition": "A structured definition of distinct levels within the System Architecture, each responsible for a specific type of functionality.",
+            "description": "Defines boundaries and responsibilities per layer to control coupling and clarify where logic, data access, and integrations belong.",
+            "relates_to": [
+                "T6.2",
+                "T6.4"
+            ],
+            "produces": "structure"
+        },
+        {
+            "id": "T6.4",
+            "name": "System Components",
+            "domain_id": "D6",
+            "definition": "Distinct functional modules or subsystems that collectively form the System, such as services, gateways, or processing units.",
+            "description": "Defines what the system is composed of and how responsibilities are split for scalability, maintainability, and ownership clarity.",
+            "relates_to": [
+                "T6.2",
+                "T6.3",
+                "T6.17",
+                "T6.20",
+                "T6.28",
+                "T6.31"
+            ],
+            "produces": "structure"
+        },
+        {
+            "id": "T6.5",
+            "name": "Technology Stack",
+            "domain_id": "D6",
+            "definition": "The set of technologies selected to build and operate the System, including frameworks, libraries, platforms, and tools.",
+            "description": "Defines the concrete implementation toolkit to standardize development, deployment, and operation across the product lifecycle.",
+            "relates_to": [
+                "T6.6",
+                "T6.33"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T6.6",
+            "name": "Technology Rationale",
+            "domain_id": "D6",
+            "definition": "A documented justification for selecting specific technologies in terms of scalability, maintainability, performance, team capability, and viability.",
+            "description": "Explains why each major technology choice is appropriate, enabling review, long-term maintainability, and replacement decisions.",
+            "relates_to": [
+                "T6.5",
+                "T6.2",
+                "T6.36"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T6.7",
+            "name": "Data Model",
+            "domain_id": "D6",
+            "definition": "A conceptual description of all entities, their attributes, and relationships used within the System.",
+            "description": "Defines what data exists and how it relates conceptually, enabling consistent interpretation across APIs, storage, and business logic.",
+            "relates_to": [
+                "T6.8",
+                "T6.9",
+                "T6.10",
+                "T6.17"
+            ],
+            "produces": "structure"
+        },
+        {
+            "id": "T6.8",
+            "name": "Logical Data Model",
+            "domain_id": "D6",
+            "definition": "A detailed representation of data entities and relationships independent of physical database implementation.",
+            "description": "Defines entity structure and cardinality with business semantics to bridge conceptual modeling and physical schema design.",
+            "relates_to": [
+                "T6.7",
+                "T6.10"
+            ],
+            "produces": "structure"
+        },
+        {
+            "id": "T6.9",
+            "name": "Entity Definitions",
+            "domain_id": "D6",
+            "definition": "Clear descriptions of all entities in the Data Model, including purpose, meaning, and role in the system.",
+            "description": "Clarifies how each entity should be interpreted and used to prevent inconsistent implementation and ambiguous API semantics.",
+            "relates_to": [
+                "T6.7",
+                "T6.8"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T6.10",
+            "name": "Database Schema",
+            "domain_id": "D6",
+            "definition": "An implementation-level structure of the database including tables, columns, keys, data types, constraints, and indexes.",
+            "description": "Defines how data is physically stored and validated to support performance, integrity, and predictable query behavior.",
+            "relates_to": [
+                "T6.8",
+                "T6.11",
+                "T6.12"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T6.11",
+            "name": "Keys and Constraints",
+            "domain_id": "D6",
+            "definition": "Rules governing data integrity within the Database Schema, including primary keys, foreign keys, uniqueness, and validations.",
+            "description": "Enforces correctness and relational structure so invalid states are prevented at the storage layer.",
+            "relates_to": [
+                "T6.10",
+                "T6.24",
+                "T6.14"
+            ],
+            "produces": "constraint"
+        },
+        {
+            "id": "T6.12",
+            "name": "Indexing Strategy",
+            "domain_id": "D6",
+            "definition": "A structured approach defining database indexes required to optimize query performance and scalability.",
+            "description": "Defines which access patterns must be fast and how indexes support them while controlling write overhead.",
+            "relates_to": [
+                "T6.10",
+                "T6.26",
+                "T6.27"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T6.13",
+            "name": "Data Architecture Overview",
+            "domain_id": "D6",
+            "definition": "A structured description of data domains, system-of-records, ownership, and major storage/processing locations across the System.",
+            "description": "Defines how data is partitioned by domain and where authoritative sources live to prevent duplication and conflicting truth.",
+            "relates_to": [
+                "T6.7",
+                "T6.14",
+                "T6.16",
+                "T6.15"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T6.14",
+            "name": "Data Flow and Lineage",
+            "domain_id": "D6",
+            "definition": "A mapping of how data moves through sources, transformations, storage, and consumers, including origin and downstream dependencies.",
+            "description": "Shows where data comes from, how it changes, and where it is used to support debugging, impact analysis, and governance.",
+            "relates_to": [
+                "T6.13",
+                "T6.17",
+                "T6.23",
+                "T6.16"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T6.15",
+            "name": "Data Quality Rules",
+            "domain_id": "D6",
+            "definition": "Defined validation and monitoring rules ensuring data correctness, completeness, consistency, and anomaly detection.",
+            "description": "Specifies which data properties must hold true and how violations are detected and handled.",
+            "relates_to": [
+                "T6.11",
+                "T6.14",
+                "T6.32"
+            ],
+            "produces": "constraint"
+        },
+        {
+            "id": "T6.16",
+            "name": "Data Governance and Access Model",
+            "domain_id": "D6",
+            "definition": "A structured definition of data classification, access policies, audit requirements, and ownership responsibilities.",
+            "description": "Defines who can access which data and under what rules, including PII handling and auditability expectations.",
+            "relates_to": [
+                "T6.24",
+                "T6.25",
+                "T6.29",
+                "T6.11"
+            ],
+            "produces": "constraint"
+        },
+        {
+            "id": "T6.17",
+            "name": "Data Lifecycle Rules",
+            "domain_id": "D6",
+            "definition": "Constraints defining retention, archival, deletion, and disposal behavior for each data domain, including PII handling requirements.",
+            "description": "Defines how long data is stored, how it is removed, and how lifecycle actions are verified and audited.",
+            "relates_to": [
+                "T6.16",
+                "T6.10",
+                "T6.34",
+                "T6.25"
+            ],
+            "produces": "constraint"
+        },
+        {
+            "id": "T6.18",
+            "name": "Backup and Recovery Strategy",
+            "domain_id": "D6",
+            "definition": "A plan defining backup frequency, retention, restore procedures, and recovery objectives such as RPO and RTO.",
+            "description": "Defines how the system recovers from data loss or corruption, including restore testing and operational responsibilities.",
+            "relates_to": [
+                "T6.28",
+                "T6.17",
+                "T6.27"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T6.19",
+            "name": "API Architecture",
+            "domain_id": "D6",
+            "definition": "The structured design of application programming interfaces, including endpoint inventory, request/response structures, authentication rules, and error standards.",
+            "description": "Defines how system capabilities are exposed and consumed, enabling consistent integration between frontend, backend, and external systems.",
+            "relates_to": [
+                "T6.20",
+                "T6.21",
+                "T6.22",
+                "T6.25",
+                "T6.26"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T6.20",
+            "name": "API Structures",
+            "domain_id": "D6",
+            "definition": "Defined input and output formats for API endpoints, including fields, data types, validation rules, and object shapes.",
+            "description": "Defines exact contracts to eliminate ambiguity, enable type-safe clients, and support automated validation.",
+            "relates_to": [
+                "T6.19",
+                "T6.7",
+                "T6.11"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T6.21",
+            "name": "API Error Handling",
+            "domain_id": "D6",
+            "definition": "A standardized system for representing and communicating API errors, including error codes, response formats, and messaging rules.",
+            "description": "Defines predictable failure responses to simplify debugging, retries, user messaging, and client-side handling.",
+            "relates_to": [
+                "T6.19",
+                "T6.23",
+                "T6.32"
+            ],
+            "produces": "constraint"
+        },
+        {
+            "id": "T6.22",
+            "name": "Integration Specification",
+            "domain_id": "D6",
+            "definition": "A detailed description of how the System interacts with external systems and services, including protocols, auth methods, data formats, and failure behavior.",
+            "description": "Defines integration contracts and operational expectations to reduce surprises during implementation and operation.",
+            "relates_to": [
+                "T6.23",
+                "T6.24",
+                "T6.26",
+                "T6.21"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T6.23",
+            "name": "Data Exchange Structures",
+            "domain_id": "D6",
+            "definition": "Schemas and formats used for sending and receiving data between the System and external systems, including encoding and field contracts.",
+            "description": "Defines what data is exchanged and how it is structured to support compatibility, validation, and evolution.",
+            "relates_to": [
+                "T6.22",
+                "T6.20",
+                "T6.14"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T6.24",
+            "name": "Integration Failure Behavior",
+            "domain_id": "D6",
+            "definition": "A documented definition of system behavior when an external integration fails, including retries, fallbacks, messaging, logging, and compensation.",
+            "description": "Defines how failures are detected and handled to preserve user experience and system integrity under external instability.",
+            "relates_to": [
+                "T6.22",
+                "T6.26",
+                "T6.32",
+                "T6.21"
+            ],
+            "produces": "constraint"
+        },
+        {
+            "id": "T6.25",
+            "name": "Resilience Patterns",
+            "domain_id": "D6",
+            "definition": "Standardized reliability patterns such as timeouts, retries, circuit breakers, idempotency, and backoff rules applied across APIs and integrations.",
+            "description": "Defines common reliability rules so services behave consistently under failure and load.",
+            "relates_to": [
+                "T6.24",
+                "T6.26",
+                "T6.21",
+                "T6.27"
+            ],
+            "produces": "constraint"
+        },
+        {
+            "id": "T6.26",
+            "name": "Performance Requirement",
+            "domain_id": "D6",
+            "definition": "A quantitative expectation describing system behavior under load, such as response time, throughput, scalability, and resource usage.",
+            "description": "Defines measurable performance targets that drive architecture decisions, capacity planning, and test criteria.",
+            "relates_to": [
+                "T6.27",
+                "T6.12",
+                "T6.19",
+                "T6.31"
+            ],
+            "produces": "constraint"
+        },
+        {
+            "id": "T6.27",
+            "name": "Scalability and Reliability Requirement",
+            "domain_id": "D6",
+            "definition": "A technical constraint defining how infrastructure supports increased load, ensures availability, recovers from failures, and maintains predictable performance.",
+            "description": "Defines availability and recovery expectations that drive infrastructure topology, resilience patterns, and monitoring thresholds.",
+            "relates_to": [
+                "T6.28",
+                "T6.25",
+                "T6.32",
+                "T6.18"
+            ],
+            "produces": "constraint"
+        },
+        {
+            "id": "T6.28",
+            "name": "Infrastructure Specification",
+            "domain_id": "D6",
+            "definition": "A description of all infrastructure components and resources required to operate the Product, including compute, storage, networks, and infrastructure services.",
+            "description": "Defines runtime topology and resource choices needed for stable operation, scalability, and cost control.",
+            "relates_to": [
+                "T6.30",
+                "T6.27",
+                "T6.32",
+                "T6.33",
+                "T6.18"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T6.29",
+            "name": "Environment Configuration Specification",
+            "domain_id": "D6",
+            "definition": "A document describing all environments, their purposes, infrastructure settings, access rules, and configuration variables.",
+            "description": "Defines how dev/test/stage/prod differ and how configuration is managed to prevent environment drift and release surprises.",
+            "relates_to": [
+                "T6.28",
+                "T6.30",
+                "T6.33"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T6.30",
+            "name": "Secrets and Configuration Management Specification",
+            "domain_id": "D6",
+            "definition": "A structured definition of how secrets and environment variables are stored, secured, rotated, and consumed by the System.",
+            "description": "Defines secure handling and rotation of sensitive values to prevent leaks and support reliable deployments.",
+            "relates_to": [
+                "T6.29",
+                "T6.25",
+                "T6.32",
+                "T6.24"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T6.31",
+            "name": "Operational Monitoring Plan",
+            "domain_id": "D6",
+            "definition": "A structured definition of metrics, logs, traces, and alerts required to ensure stable operation and detect incidents.",
+            "description": "Defines what is observed, how it is measured, and what triggers alerts to support reliability and rapid incident response.",
+            "relates_to": [
+                "T6.32",
+                "T6.27",
+                "T6.35",
+                "T6.34"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T6.32",
+            "name": "Operational Logging Strategy",
+            "domain_id": "D6",
+            "definition": "A structured definition of log events, formats, correlation identifiers, storage, retention, and access rules across the System.",
+            "description": "Defines logging that enables debugging, auditability, and incident investigation across components and integrations.",
+            "relates_to": [
+                "T6.31",
+                "T6.21",
+                "T6.24",
+                "T6.35",
+                "T6.16"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T6.33",
+            "name": "Deployment Pipeline Specification",
+            "domain_id": "D6",
+            "definition": "A detailed description of steps, tools, and automation used to build, test, and deploy system artifacts, including triggers, stages, and validations.",
+            "description": "Defines how code becomes a running system, including quality gates and environment promotions for repeatable releases.",
+            "relates_to": [
+                "T6.29",
+                "T6.27",
+                "T6.31",
+                "T6.36"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T6.34",
+            "name": "Information Security Architecture",
+            "domain_id": "D6",
+            "definition": "A structured security model describing trust boundaries, attack surfaces, and security controls mapped across system layers and components.",
+            "description": "Defines how protection is achieved end-to-end, including boundary assumptions, control placement, and responsibility split across services and infrastructure.",
+            "relates_to": [
+                "T6.35",
+                "T6.36",
+                "T6.37",
+                "T6.30",
+                "T6.16"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T6.35",
+            "name": "Security Requirement",
+            "domain_id": "D6",
+            "definition": "A technical control or rule designed to protect the System from unauthorized access, breaches, vulnerabilities, and misuse.",
+            "description": "Defines enforceable security expectations such as encryption, access control, auditability, and safe defaults.",
+            "relates_to": [
+                "T6.34",
+                "T6.36",
+                "T6.30",
+                "T6.31"
+            ],
+            "produces": "constraint"
+        },
+        {
+            "id": "T6.36",
+            "name": "AuthN/AuthZ Architecture",
+            "domain_id": "D6",
+            "definition": "A structured definition of authentication and authorization mechanisms across layers, including identity sources, token/session handling, and permission enforcement points.",
+            "description": "Defines how identity is verified and how access is enforced consistently across APIs, UI actions, and data access paths.",
+            "relates_to": [
+                "T6.34",
+                "T6.35",
+                "T6.19",
+                "T6.16"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T6.37",
+            "name": "Technical Risk",
+            "domain_id": "D6",
+            "definition": "A potential issue related to feasibility, scalability, reliability, security, or integration that could impact the System, along with mitigation strategy.",
+            "description": "Captures risks that may block implementation or stability, including mitigations and validation actions to reduce uncertainty.",
+            "relates_to": [
+                "T6.2",
+                "T6.24",
+                "T6.27",
+                "T6.34",
+                "T6.44"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T6.38",
+            "name": "Architecture Consistency Review",
+            "domain_id": "D6",
+            "definition": "A structured evaluation ensuring the Technical Architecture aligns with requirements, user flows, and UI architecture without contradictions.",
+            "description": "Validates that architectural decisions support expected behavior and do not conflict with established product specifications.",
+            "relates_to": [
+                "T6.2",
+                "T6.19",
+                "T6.13",
+                "T6.34"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T6.39",
+            "name": "Architecture Completeness Review",
+            "domain_id": "D6",
+            "definition": "A final assessment confirming all necessary architectural elements have been defined with no gaps before implementation begins.",
+            "description": "Checks coverage of components, data, APIs, integrations, infrastructure, security, and operational plans to avoid late discovery of missing work.",
+            "relates_to": [
+                "T6.2",
+                "T6.28",
+                "T6.31",
+                "T6.34",
+                "T6.41"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T6.40",
+            "name": "AI System Architecture",
+            "domain_id": "D6",
+            "definition": "A structured description of AI runtime components and interactions, including model execution, orchestration, tool calls, retrieval, and output handling.",
+            "description": "Defines how AI capabilities are executed end-to-end, including boundaries, dependencies, and failure handling for reliable operation.",
+            "relates_to": [
+                "T6.4",
+                "T6.41",
+                "T6.42",
+                "T6.43",
+                "T6.44",
+                "T6.45"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T6.41",
+            "name": "Model Strategy",
+            "domain_id": "D6",
+            "definition": "A structured plan for model selection, routing, fallback behavior, cost/latency targets, and model lifecycle management.",
+            "description": "Defines which models are used for which tasks and how the system maintains reliability under model failures or performance constraints.",
+            "relates_to": [
+                "T6.40",
+                "T6.26",
+                "T6.27"
+            ],
+            "produces": "constraint"
+        },
+        {
+            "id": "T6.42",
+            "name": "Prompt and Output Contracts",
+            "domain_id": "D6",
+            "definition": "A set of standardized prompt templates and strict output schemas defining required structure, validation rules, and error handling for AI outputs.",
+            "description": "Defines how prompts are formed and how outputs are validated to ensure determinism and safe downstream processing.",
+            "relates_to": [
+                "T6.40",
+                "T6.19",
+                "T6.45"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T6.43",
+            "name": "Retrieval Architecture",
+            "domain_id": "D6",
+            "definition": "A structured design for retrieval-augmented generation, including sources, chunking, embeddings, indexing, query strategy, and citation rules.",
+            "description": "Defines how the system grounds AI responses in stored knowledge and how retrieved context is selected and validated.",
+            "relates_to": [
+                "T6.13",
+                "T6.14",
+                "T6.15",
+                "T6.40"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T6.44",
+            "name": "Tooling Interface Specification",
+            "domain_id": "D6",
+            "definition": "A structured definition of callable tools, permissions, input/output schemas, side effects, retries, and observability requirements for AI tool use.",
+            "description": "Defines how AI interacts with external capabilities deterministically, including safety constraints and failure behaviors.",
+            "relates_to": [
+                "T6.40",
+                "T6.25",
+                "T6.32",
+                "T6.35"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T6.45",
+            "name": "AI Quality and Evaluation Plan",
+            "domain_id": "D6",
+            "definition": "A structured plan defining evaluation datasets, regression tests, metrics, human review gates, and monitoring for AI behavior quality.",
+            "description": "Defines how AI behavior is validated before release and monitored over time to prevent regressions and quality drift.",
+            "relates_to": [
+                "T6.40",
+                "T6.41",
+                "T6.31",
+                "T6.37"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T6.46",
+            "name": "AI Safety Controls",
+            "domain_id": "D6",
+            "definition": "Enforceable controls for AI behavior including policy enforcement points, redaction, prompt injection defenses, rate limits, and safe tool use constraints.",
+            "description": "Defines how unsafe outputs and actions are prevented or mitigated, including enforcement placement and observability for violations.",
+            "relates_to": [
+                "T6.40",
+                "T6.34",
+                "T6.44",
+                "T6.30",
+                "T6.31"
+            ],
+            "produces": "constraint"
+        }
+    ]
+}

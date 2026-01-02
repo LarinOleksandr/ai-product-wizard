@@ -1,0 +1,463 @@
+{
+    "domains": [
+        {
+            "id": "D8",
+            "name": "Quality Assurance",
+            "description": "Artifacts and rules that define how functional, non-functional, and AI-specific quality is validated, including test strategies, execution evidence, defect handling, coverage, and release readiness."
+        }
+    ],
+    "terms": [
+        {
+            "id": "T8.1",
+            "name": "Test Strategy",
+            "domain_id": "D8",
+            "definition": "A high-level document defining testing scope, testing types, testing levels, test coverage goals, and overall quality approach for the Product.",
+            "description": "Defines the overall quality approach and the testing categories required to establish confidence before release.",
+            "relates_to": [
+                "T8.3",
+                "T8.4",
+                "T8.2",
+                "T8.12",
+                "T8.18"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T8.2",
+            "name": "Test Plan",
+            "domain_id": "D8",
+            "definition": "A document describing how testing will be executed, including activities, timelines, environments, resources, and responsibilities.",
+            "description": "Defines the operational plan for testing execution, including who does what, where tests run, and how results are recorded.",
+            "relates_to": [
+                "T8.1",
+                "T8.5",
+                "T8.6",
+                "T8.10",
+                "T8.11",
+                "T8.18"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T8.3",
+            "name": "Testing Scope",
+            "domain_id": "D8",
+            "definition": "A definition of the boundaries of testing, specifying what will be tested and what will not be tested.",
+            "description": "Constrains test effort to agreed coverage boundaries and prevents ambiguous expectations about what is validated.",
+            "relates_to": [
+                "T8.1",
+                "T8.12",
+                "T8.18"
+            ],
+            "produces": "constraint"
+        },
+        {
+            "id": "T8.4",
+            "name": "Testing Levels",
+            "domain_id": "D8",
+            "definition": "The structured layers of testing applied to the system, such as unit, integration, system, and acceptance testing.",
+            "description": "Defines where tests run in the architecture and what each level is responsible for validating.",
+            "relates_to": [
+                "T8.19",
+                "T8.20",
+                "T8.21",
+                "T8.22",
+                "T8.23"
+            ],
+            "produces": "structure"
+        },
+        {
+            "id": "T8.5",
+            "name": "Test Environment",
+            "domain_id": "D8",
+            "definition": "A controlled technical environment configured specifically for executing tests, including infrastructure, data, configurations, integrations, and versioning.",
+            "description": "Defines the runtime context in which tests execute to ensure repeatability and valid results.",
+            "relates_to": [
+                "T8.2",
+                "T8.8",
+                "T8.9",
+                "T8.10"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T8.6",
+            "name": "Roles and Responsibilities (Test Context)",
+            "domain_id": "D8",
+            "definition": "A section in the Test Plan defining which roles are responsible for planning, executing, validating, and reporting testing activities.",
+            "description": "Defines accountability for test design, execution, verification, and reporting to prevent coverage gaps.",
+            "relates_to": [
+                "T8.2",
+                "T8.17",
+                "T8.18"
+            ],
+            "produces": "structure"
+        },
+        {
+            "id": "T8.7",
+            "name": "Test Case",
+            "domain_id": "D8",
+            "definition": "A structured description of a specific test scenario including inputs, actions, expected results, and validation steps.",
+            "description": "Defines a repeatable test procedure with expected outcomes to validate behavior systematically.",
+            "relates_to": [
+                "T8.11",
+                "T8.10",
+                "T8.12",
+                "T8.16"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T8.8",
+            "name": "Test Data Set",
+            "domain_id": "D8",
+            "definition": "A predefined collection of data values used to execute Test Cases consistently and reliably.",
+            "description": "Defines the data used to run tests so outcomes are comparable across runs and environments.",
+            "relates_to": [
+                "T8.7",
+                "T8.9",
+                "T8.5"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T8.9",
+            "name": "Data Conditioning",
+            "domain_id": "D8",
+            "definition": "The process of preparing, adjusting, or transforming test data to ensure it supports specific testing scenarios.",
+            "description": "Defines how test data is created and modified to meet scenario preconditions and boundary cases.",
+            "relates_to": [
+                "T8.8",
+                "T8.7",
+                "T8.5"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T8.10",
+            "name": "Test Cycle",
+            "domain_id": "D8",
+            "definition": "A coordinated execution of a group of Test Cases intended to validate a defined portion of system behavior.",
+            "description": "Defines an execution batch used to validate a scope slice and to produce consolidated results.",
+            "relates_to": [
+                "T8.7",
+                "T8.11",
+                "T8.2"
+            ],
+            "produces": "structure"
+        },
+        {
+            "id": "T8.11",
+            "name": "Execution Results",
+            "domain_id": "D8",
+            "definition": "A structured record of outcomes of executed test cases, including pass/fail status, observations, and evidence.",
+            "description": "Records what happened during execution, including evidence needed for release readiness decisions.",
+            "relates_to": [
+                "T8.10",
+                "T8.7",
+                "T8.17",
+                "T8.18"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T8.12",
+            "name": "Test Coverage Matrix",
+            "domain_id": "D8",
+            "definition": "A structured mapping showing relationships between requirements, user stories, workflows, and test cases to ensure coverage.",
+            "description": "Defines coverage traceability to ensure every required behavior has validation and to identify gaps.",
+            "relates_to": [
+                "T8.7",
+                "T8.3",
+                "T8.18",
+                "T8.13"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T8.13",
+            "name": "Interaction Coverage",
+            "domain_id": "D8",
+            "definition": "A validation ensuring that interaction-level behaviors defined in interaction specifications, user flows, and screen structures are fully tested.",
+            "description": "Ensures UI and interaction behaviors are not omitted from testing and are validated against defined interaction rules.",
+            "relates_to": [
+                "T8.12",
+                "T8.7",
+                "T8.1"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T8.14",
+            "name": "Defect Report",
+            "domain_id": "D8",
+            "definition": "A structured record of an identified defect including description, reproduction steps, expected behavior, actual behavior, severity, and impact.",
+            "description": "Captures actionable defect information required for triage, fixing, and verification.",
+            "relates_to": [
+                "T8.15",
+                "T8.16",
+                "T8.11"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T8.15",
+            "name": "Defect Severity and Priority Rules",
+            "domain_id": "D8",
+            "definition": "A standardized classification system used to categorize defects by impact (severity) and urgency (priority).",
+            "description": "Defines consistent triage rules so defects are handled objectively and aligned with release risk.",
+            "relates_to": [
+                "T8.14",
+                "T8.16",
+                "T8.18"
+            ],
+            "produces": "constraint"
+        },
+        {
+            "id": "T8.16",
+            "name": "Defect Lifecycle",
+            "domain_id": "D8",
+            "definition": "A defined sequence of stages a defect passes through, such as New, Assigned, In Progress, Fixed, Verified, and Closed.",
+            "description": "Defines the workflow for defect handling to ensure visibility, accountability, and closure control.",
+            "relates_to": [
+                "T8.14",
+                "T8.15"
+            ],
+            "produces": "structure"
+        },
+        {
+            "id": "T8.17",
+            "name": "Test Summary Report",
+            "domain_id": "D8",
+            "definition": "A consolidated document describing outcomes of testing activities, including coverage, pass/fail, defects, and readiness indicators.",
+            "description": "Summarizes testing outcomes into decision-ready status for stakeholders and release gates.",
+            "relates_to": [
+                "T8.11",
+                "T8.12",
+                "T8.18",
+                "T8.14"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T8.18",
+            "name": "Release Readiness",
+            "domain_id": "D8",
+            "definition": "A structured evaluation confirming the system meets required quality criteria to be released, considering results, defect status, performance, and completeness of testing.",
+            "description": "Defines the final go/no-go criteria based on evidence, coverage, and unresolved risk.",
+            "relates_to": [
+                "T8.17",
+                "T8.11",
+                "T8.12",
+                "T8.15",
+                "T8.25",
+                "T8.26",
+                "T8.27"
+            ],
+            "produces": "decision"
+        },
+        {
+            "id": "T8.19",
+            "name": "Unit Testing Strategy",
+            "domain_id": "D8",
+            "definition": "A testing strategy defining scope, ownership, tooling, and criteria for validating isolated functions or modules.",
+            "description": "Defines how small code units are validated quickly and deterministically to prevent low-level regressions.",
+            "relates_to": [
+                "T8.4",
+                "T8.1",
+                "T8.2"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T8.20",
+            "name": "Integration Testing Strategy",
+            "domain_id": "D8",
+            "definition": "A testing strategy defining validation of interactions between modules, services, databases, and external integrations.",
+            "description": "Defines how component boundaries are tested together to detect contract mismatches and integration failures.",
+            "relates_to": [
+                "T8.4",
+                "T8.1",
+                "T8.5",
+                "T8.2"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T8.21",
+            "name": "Smoke Testing Strategy",
+            "domain_id": "D8",
+            "definition": "A testing strategy defining minimal critical checks that confirm a build is deployable and the system is fundamentally operational.",
+            "description": "Defines fast, high-signal checks used after builds or deployments to quickly detect critical breakages.",
+            "relates_to": [
+                "T8.4",
+                "T8.2",
+                "T8.18"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T8.22",
+            "name": "System Testing Strategy",
+            "domain_id": "D8",
+            "definition": "A testing strategy defining end-to-end validation of system behavior in an environment representative of production.",
+            "description": "Defines how end-to-end functionality is validated across UI, APIs, data, and integrations as a single system.",
+            "relates_to": [
+                "T8.4",
+                "T8.2",
+                "T8.5",
+                "T8.12"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T8.23",
+            "name": "Regression Testing Strategy",
+            "domain_id": "D8",
+            "definition": "A testing strategy defining how previously validated behavior is re-verified after changes to prevent regressions.",
+            "description": "Defines the repeatable regression suite and selection rules so changes do not reintroduce known defects.",
+            "relates_to": [
+                "T8.4",
+                "T8.2",
+                "T8.18"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T8.24",
+            "name": "Security Testing Strategy",
+            "domain_id": "D8",
+            "definition": "A testing strategy defining how security controls are validated, including authentication/authorization behavior, vulnerability checks, and secrets exposure prevention.",
+            "description": "Defines how security risks are tested and validated to reduce the chance of unauthorized access, data leakage, or insecure defaults.",
+            "relates_to": [
+                "T8.1",
+                "T8.2",
+                "T8.5",
+                "T8.18"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T8.25",
+            "name": "Performance and Load Testing",
+            "domain_id": "D8",
+            "definition": "A testing approach validating system performance under expected and extreme loads, including latency, throughput, and resource behavior.",
+            "description": "Defines how load, stress, and soak tests are executed and how results are assessed against performance targets.",
+            "relates_to": [
+                "T8.1",
+                "T8.2",
+                "T8.5",
+                "T8.18"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T8.26",
+            "name": "Stability and Resilience Testing",
+            "domain_id": "D8",
+            "definition": "A testing approach validating long-running stability and failure recovery behavior, including retries, timeouts, and degradation under faults.",
+            "description": "Defines how reliability is tested through long runs and fault scenarios to validate recovery and controlled failure behavior.",
+            "relates_to": [
+                "T8.1",
+                "T8.2",
+                "T8.5",
+                "T8.18"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T8.27",
+            "name": "AI Evaluation Strategy",
+            "domain_id": "D8",
+            "definition": "A structured approach defining how AI outputs are evaluated using test sets, scoring methods, thresholds, and human review gates.",
+            "description": "Defines how AI behavior is judged for quality and safety without relying on exact text matching, enabling repeatable evaluation decisions.",
+            "relates_to": [
+                "T8.28",
+                "T8.29",
+                "T8.30",
+                "T8.33",
+                "T8.18"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T8.28",
+            "name": "AI Test Scenarios",
+            "domain_id": "D8",
+            "definition": "Structured evaluation scenarios for AI behavior including inputs, context, constraints, and expected characteristics validated by criteria and metrics.",
+            "description": "Defines representative prompts and contexts with expected properties such as correctness, completeness, grounding, and safe behavior.",
+            "relates_to": [
+                "T8.27",
+                "T8.7",
+                "T8.12"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T8.29",
+            "name": "AI Regression Testing",
+            "domain_id": "D8",
+            "definition": "A repeatable validation process ensuring changes to models, prompts, retrieval, or tools do not degrade previously validated AI behavior.",
+            "description": "Defines regression suites and comparison rules so AI quality does not drift when the system changes.",
+            "relates_to": [
+                "T8.27",
+                "T8.28",
+                "T8.18"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T8.30",
+            "name": "Agent Execution Testing",
+            "domain_id": "D8",
+            "definition": "A testing approach validating multi-step agent workflows including branching, retries, tool calls, failure handling, and final artifact correctness.",
+            "description": "Defines how agent runs are validated end-to-end so orchestration and tool use remain reliable and deterministic.",
+            "relates_to": [
+                "T8.27",
+                "T8.31",
+                "T8.11"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T8.31",
+            "name": "Tool Invocation Validation",
+            "domain_id": "D8",
+            "definition": "Validation ensuring tools are called with correct inputs, permissions, expected side effects, and compliant outputs under defined constraints.",
+            "description": "Defines how tool usage is verified to prevent unsafe actions, incorrect parameters, or inconsistent results.",
+            "relates_to": [
+                "T8.30",
+                "T8.24",
+                "T8.32"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T8.32",
+            "name": "AI Observability Requirements",
+            "domain_id": "D8",
+            "definition": "A set of required logging and monitoring signals for AI execution including prompt versions, model selection, retrieval traces, tool calls, latency, cost, errors, and safety events.",
+            "description": "Defines which AI signals must be captured so behavior can be audited, debugged, and monitored in production.",
+            "relates_to": [
+                "T8.27",
+                "T8.30",
+                "T8.33",
+                "T8.18"
+            ],
+            "produces": "constraint"
+        },
+        {
+            "id": "T8.33",
+            "name": "AI Quality Metrics",
+            "domain_id": "D8",
+            "definition": "Defined measurable indicators used to evaluate AI behavior quality such as task success rate, groundedness rate, refusal rate, and error rate.",
+            "description": "Defines how AI quality is quantified for evaluation, regression detection, and operational monitoring over time.",
+            "relates_to": [
+                "T8.27",
+                "T8.32",
+                "T8.18"
+            ],
+            "produces": "constraint"
+        }
+    ]
+}

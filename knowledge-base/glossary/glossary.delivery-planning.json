@@ -1,0 +1,262 @@
+{
+    "domains": [
+        {
+            "id": "D7",
+            "name": "Delivery Planning",
+            "description": "how work is organized, sequenced, coordinated, and validated for predictable delivery, including dependencies, risks, and alignment with the prioritized backlog."
+        }
+    ],
+    "terms": [
+        {
+            "id": "T7.1",
+            "name": "Phase",
+            "domain_id": "D7",
+            "definition": "The highest-level unit of work representing a major segment of the product development lifecycle, completed when its workstreams, work packages, and tasks reach defined deliverables.",
+            "description": "Defines the top-level delivery lifecycle segments used to sequence work and validate completion at major checkpoints.",
+            "relates_to": [
+                "T7.2",
+                "T7.3",
+                "T7.4",
+                "T7.5"
+            ],
+            "produces": "structure"
+        },
+        {
+            "id": "T7.2",
+            "name": "Workstream",
+            "domain_id": "D7",
+            "definition": "A coherent flow of activities within a Phase focused on a specific discipline or problem area and producing thematically related outputs.",
+            "description": "Organizes work by role or discipline to ensure coverage without overlap and to clarify ownership and outputs.",
+            "relates_to": [
+                "T7.1",
+                "T7.3",
+                "T7.12",
+                "T7.13"
+            ],
+            "produces": "structure"
+        },
+        {
+            "id": "T7.3",
+            "name": "Work Package",
+            "domain_id": "D7",
+            "definition": "A structured, self-contained set of related deliverables within a Workstream, grouping multiple Tasks that collectively produce a complete output.",
+            "description": "Defines the delivery boundary for a meaningful chunk of output and the gate for progressing within a workstream.",
+            "relates_to": [
+                "T7.2",
+                "T7.4",
+                "T7.10"
+            ],
+            "produces": "structure"
+        },
+        {
+            "id": "T7.4",
+            "name": "Task",
+            "domain_id": "D7",
+            "definition": "The smallest unit of work assigned directly to an agent, producing one specific deliverable or performing one verification action.",
+            "description": "Defines atomic, unambiguous work units to enable deterministic execution and clear completion criteria.",
+            "relates_to": [
+                "T7.3",
+                "T7.5"
+            ],
+            "produces": "structure"
+        },
+        {
+            "id": "T7.5",
+            "name": "Delivery Plan",
+            "domain_id": "D7",
+            "definition": "A structured document describing phases of work, execution order, dependencies, major activities, and delivery structure needed to complete the Product.",
+            "description": "Acts as the operational blueprint for coordinated execution, aligning scope, sequencing, and dependencies into a coherent plan.",
+            "relates_to": [
+                "T7.6",
+                "T7.7",
+                "T7.8",
+                "T7.9",
+                "T7.11",
+                "T7.12",
+                "T7.14",
+                "T7.16",
+                "T7.17",
+                "T7.18"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T7.6",
+            "name": "Delivery Approach",
+            "domain_id": "D7",
+            "definition": "A high-level description of the method for delivering the Product, such as iterative delivery, feature-based delivery, incremental rollout, or hybrid approaches.",
+            "description": "Defines how delivery is structured and released to reduce risk and set expectations about sequencing and validation.",
+            "relates_to": [
+                "T7.5",
+                "T7.7",
+                "T7.9"
+            ],
+            "produces": "decision"
+        },
+        {
+            "id": "T7.7",
+            "name": "Delivery Objectives",
+            "domain_id": "D7",
+            "definition": "Specific goals the delivery process must achieve, such as predictability, reduced risk, cross-role alignment, or launch readiness.",
+            "description": "Defines what the delivery process must optimize for, guiding trade-offs in sequencing, coordination, and scope control.",
+            "relates_to": [
+                "T7.6",
+                "T7.16",
+                "T7.17"
+            ],
+            "produces": "decision"
+        },
+        {
+            "id": "T7.8",
+            "name": "Delivery Assumptions",
+            "domain_id": "D7",
+            "definition": "Documented conditions believed to be true for planning purposes, such as resource availability, technology readiness, or dependency timelines.",
+            "description": "Makes implicit planning expectations explicit so risks can be managed and invalid assumptions can be detected early.",
+            "relates_to": [
+                "T7.5",
+                "T7.14",
+                "T7.15",
+                "T7.16"
+            ],
+            "produces": "constraint"
+        },
+        {
+            "id": "T7.9",
+            "name": "Work Breakdown Structure",
+            "domain_id": "D7",
+            "definition": "A hierarchical decomposition of work into phases, tasks, and sub-tasks, providing a clear map of required work units.",
+            "description": "Defines the full decomposition of delivery work so it can be estimated, sequenced, assigned, and tracked.",
+            "relates_to": [
+                "T7.1",
+                "T7.2",
+                "T7.3",
+                "T7.4",
+                "T7.11"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T7.10",
+            "name": "Work Package Overview",
+            "domain_id": "D7",
+            "definition": "A summary of major Work Packages included in the delivery plan, describing their scope and purpose at a high level.",
+            "description": "Provides a quick structural view of what will be delivered and how work packages relate to phases and objectives.",
+            "relates_to": [
+                "T7.5",
+                "T7.3",
+                "T7.9"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T7.11",
+            "name": "Timeline Plan",
+            "domain_id": "D7",
+            "definition": "A sequenced representation of work units showing expected start dates, durations, and completion dates across the delivery lifecycle.",
+            "description": "Defines time-based sequencing to coordinate execution and to expose schedule feasibility and conflicts.",
+            "relates_to": [
+                "T7.9",
+                "T7.12",
+                "T7.13",
+                "T7.14"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T7.12",
+            "name": "Milestone Plan",
+            "domain_id": "D7",
+            "definition": "A list of major delivery checkpoints with completion criteria and target dates used to track progress and validate outcomes.",
+            "description": "Defines checkpoint-based progress control so completion is validated by criteria rather than activity.",
+            "relates_to": [
+                "T7.11",
+                "T7.5",
+                "T7.17"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T7.13",
+            "name": "Dependency Map",
+            "domain_id": "D7",
+            "definition": "A structured diagram or matrix showing dependencies between tasks, roles, features, components, or technical activities.",
+            "description": "Defines what must be completed before other work can begin, enabling correct sequencing and risk-aware scheduling.",
+            "relates_to": [
+                "T7.14",
+                "T7.15",
+                "T7.11",
+                "T7.9"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T7.14",
+            "name": "Cross-Role Dependencies",
+            "domain_id": "D7",
+            "definition": "Dependencies arising from interactions between different roles or disciplines, such as design depending on requirements or development depending on architecture readiness.",
+            "description": "Defines coordination constraints across roles to prevent blocking and rework due to missing upstream deliverables.",
+            "relates_to": [
+                "T7.13",
+                "T7.11",
+                "T7.5"
+            ],
+            "produces": "constraint"
+        },
+        {
+            "id": "T7.15",
+            "name": "Technical Dependencies",
+            "domain_id": "D7",
+            "definition": "Dependencies related to technological prerequisites such as API availability, database readiness, infrastructure setup, or integration availability.",
+            "description": "Defines prerequisite technical work that must exist before dependent implementation can proceed safely.",
+            "relates_to": [
+                "T7.13",
+                "T7.11",
+                "T7.5"
+            ],
+            "produces": "constraint"
+        },
+        {
+            "id": "T7.16",
+            "name": "Delivery Risk",
+            "domain_id": "D7",
+            "definition": "A potential event or condition that may negatively affect delivery timeline, scope, or quality, including impact, probability, and mitigation strategy.",
+            "description": "Captures delivery threats and defines mitigations so planning reflects uncertainty and avoids hidden schedule failure modes.",
+            "relates_to": [
+                "T7.8",
+                "T7.13",
+                "T7.11",
+                "T7.17",
+                "T7.18"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T7.17",
+            "name": "Backlog\u2013Plan Alignment Review",
+            "domain_id": "D7",
+            "definition": "A structured evaluation ensuring the prioritized backlog is consistent with the Delivery Plan, timeline, and dependency structure.",
+            "description": "Validates that planned scope can be delivered within sequencing and dependency constraints and that priorities match execution reality.",
+            "relates_to": [
+                "T7.5",
+                "T7.11",
+                "T7.13",
+                "T7.18"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T7.18",
+            "name": "Scope and Prioritization Alignment",
+            "domain_id": "D7",
+            "definition": "A validation that current scope and backlog priorities match strategic product scope, delivery capacity, and timeline expectations to prevent scope drift.",
+            "description": "Ensures that what is planned to be delivered remains aligned with strategic intent and capacity limits as planning evolves.",
+            "relates_to": [
+                "T7.17",
+                "T7.6",
+                "T7.7",
+                "T7.16"
+            ],
+            "produces": "constraint"
+        }
+    ]
+}

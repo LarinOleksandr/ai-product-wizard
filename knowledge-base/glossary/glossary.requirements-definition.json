@@ -1,0 +1,328 @@
+{
+    "domains": [
+        {
+            "id": "D3",
+            "name": "Requirements Definition",
+            "description": "Artifacts and rules that specify what the Product must do, under which conditions, and how requirements are structured, validated, and traced before design and implementation."
+        }
+    ],
+    "terms": [
+        {
+            "id": "T3.1",
+            "name": "Product Backlog",
+            "domain_id": "D3",
+            "definition": "A structured and ordered list of all planned Product work, including Epics, Features, and User Stories.",
+            "description": "Serves as the single ordered source of work items, enabling prioritization, sequencing, and controlled scope management across delivery.",
+            "relates_to": [
+                "T3.2",
+                "T3.3",
+                "T3.6"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T3.2",
+            "name": "Backlog Item",
+            "domain_id": "D3",
+            "definition": "An individual work element within the Product Backlog, such as an Epic, Feature, or User Story.",
+            "description": "Defines the atomic unit stored in the backlog structure, enabling uniform handling of hierarchy, prioritization, and tracking.",
+            "relates_to": [
+                "T3.1",
+                "T3.3",
+                "T3.4"
+            ],
+            "produces": "structure"
+        },
+        {
+            "id": "T3.3",
+            "name": "Backlog Structure",
+            "domain_id": "D3",
+            "definition": "The hierarchical organization of the Product Backlog into Epics, Features, and User Stories.",
+            "description": "Defines how work is decomposed and related across levels, enabling consistent slicing from large deliverables to implementable units.",
+            "relates_to": [
+                "T3.1",
+                "T3.2",
+                "T3.12"
+            ],
+            "produces": "structure"
+        },
+        {
+            "id": "T3.4",
+            "name": "Backlog Consistency",
+            "domain_id": "D3",
+            "definition": "The alignment of Backlog Items with Product Vision, Epics, Strategic Product Scope, and Business Goals to ensure coherent direction.",
+            "description": "Ensures backlog content does not contradict strategic intent and prevents drift by validating alignment across hierarchy and priorities.",
+            "relates_to": [
+                "T3.1",
+                "T3.2",
+                "T3.3"
+            ],
+            "produces": "constraint"
+        },
+        {
+            "id": "T3.5",
+            "name": "Capability Requirements",
+            "domain_id": "D3",
+            "definition": "High-level requirement statements describing what each Capability Area must support, bridging strategic scope and detailed requirements.",
+            "description": "Defines expectations at the capability level to guide consistent decomposition into feature and story requirements.",
+            "relates_to": [
+                "T3.6",
+                "T3.7",
+                "T3.11"
+            ],
+            "produces": "structure"
+        },
+        {
+            "id": "T3.6",
+            "name": "Feature Requirements",
+            "domain_id": "D3",
+            "definition": "Structured requirement statements describing expected system behavior for each Feature, positioned between capability requirements and user stories.",
+            "description": "Clarifies what a feature must achieve before writing detailed stories, reducing ambiguity and improving completeness.",
+            "relates_to": [
+                "T3.5",
+                "T3.7",
+                "T3.12",
+                "T3.22"
+            ],
+            "produces": "structure"
+        },
+        {
+            "id": "T3.7",
+            "name": "Functional Requirement",
+            "domain_id": "D3",
+            "definition": "A precise description of what the system must do, defining behaviors, actions, or operations required to support User Stories and Features.",
+            "description": "Specifies required behaviors in an implementable form, enabling design, development, and testing to agree on expected system output.",
+            "relates_to": [
+                "T3.6",
+                "T3.12",
+                "T3.18",
+                "T3.19",
+                "T3.10"
+            ],
+            "produces": "constraint"
+        },
+        {
+            "id": "T3.8",
+            "name": "Non-Functional Requirement",
+            "domain_id": "D3",
+            "definition": "A constraint or quality attribute defining how the system must operate, such as performance, security, reliability, or usability.",
+            "description": "Defines quality expectations and operational constraints that must be met across functionality, shaping architecture and acceptance decisions.",
+            "relates_to": [
+                "T3.9",
+                "T3.10",
+                "T3.11"
+            ],
+            "produces": "constraint"
+        },
+        {
+            "id": "T3.9",
+            "name": "Usability Requirements",
+            "domain_id": "D3",
+            "definition": "Non-functional requirements describing how easily and effectively users must be able to interact with the system, expressed as measurable system qualities.",
+            "description": "Defines usability quality targets such as clarity and learnability without prescribing UI solutions, enabling verification through testing and reviews.",
+            "relates_to": [
+                "T3.8",
+                "T3.12",
+                "T3.18"
+            ],
+            "produces": "constraint"
+        },
+        {
+            "id": "T3.10",
+            "name": "Compliance Requirements",
+            "domain_id": "D3",
+            "definition": "Non-functional requirements describing legal, regulatory, or industry-specific rules the Product must follow.",
+            "description": "Defines obligatory rules such as accessibility or data protection that constrain design, architecture, and operating procedures.",
+            "relates_to": [
+                "T3.8",
+                "T3.15",
+                "T3.7"
+            ],
+            "produces": "constraint"
+        },
+        {
+            "id": "T3.11",
+            "name": "Business Rules",
+            "domain_id": "D3",
+            "definition": "Explicit rules that govern system behavior, constraints, conditions, or allowed actions in specific contexts.",
+            "description": "Defines domain logic such as eligibility, pricing rules, validations, or decision policies that must be enforced consistently.",
+            "relates_to": [
+                "T3.15",
+                "T3.16",
+                "T3.13",
+                "T3.7"
+            ],
+            "produces": "constraint"
+        },
+        {
+            "id": "T3.12",
+            "name": "User Story",
+            "domain_id": "D3",
+            "definition": "A structured description of a user need or behavior expressed as a functional unit of work.",
+            "description": "Defines the smallest customer-value-driven work unit to implement, typically validated by acceptance criteria and readiness checks.",
+            "relates_to": [
+                "T3.21",
+                "T3.22",
+                "T3.23",
+                "T3.7",
+                "T3.18",
+                "T3.20"
+            ],
+            "produces": "structure"
+        },
+        {
+            "id": "T3.13",
+            "name": "System Logic",
+            "domain_id": "D3",
+            "definition": "The internal rules, conditions, and processing steps the system uses to determine behavior under various scenarios.",
+            "description": "Describes how inputs, states, and rules produce outcomes, enabling consistent implementation across flows, edge cases, and error handling.",
+            "relates_to": [
+                "T3.11",
+                "T3.16",
+                "T3.17",
+                "T3.7"
+            ],
+            "produces": "structure"
+        },
+        {
+            "id": "T3.14",
+            "name": "Workflow",
+            "domain_id": "D3",
+            "definition": "A defined sequence of steps describing how users or the system execute a process end-to-end, including alternative and exception paths.",
+            "description": "Defines an end-to-end process boundary and its paths, serving as a backbone for story mapping, requirements coverage, and later UX flows.",
+            "relates_to": [
+                "T3.12",
+                "T3.16",
+                "T3.17",
+                "T3.20"
+            ],
+            "produces": "structure"
+        },
+        {
+            "id": "T3.15",
+            "name": "Edge Case",
+            "domain_id": "D3",
+            "definition": "A scenario that occurs at the extreme boundaries of expected use and reveals system behavior under rare or atypical conditions.",
+            "description": "Captures rare but plausible boundary conditions that must be handled safely and consistently to avoid defects and inconsistent behavior.",
+            "relates_to": [
+                "T3.7",
+                "T3.11",
+                "T3.13"
+            ],
+            "produces": "constraint"
+        },
+        {
+            "id": "T3.16",
+            "name": "Exception Scenario",
+            "domain_id": "D3",
+            "definition": "A situation in which a process deviates from its standard path due to an error, missing input, or unexpected condition, describing the required system response.",
+            "description": "Defines what happens when the normal workflow cannot proceed, including system response, messaging, and recovery behavior.",
+            "relates_to": [
+                "T3.14",
+                "T3.13",
+                "T3.7",
+                "T3.11"
+            ],
+            "produces": "constraint"
+        },
+        {
+            "id": "T3.17",
+            "name": "Story Mapping Structure",
+            "domain_id": "D3",
+            "definition": "A structured representation of how Features and User Stories align along user workflows or activities to show the Product sliced into activities and supporting functionality.",
+            "description": "Organizes stories by user activity and progression to support prioritization, release slicing, and completeness validation across workflows.",
+            "relates_to": [
+                "T3.14",
+                "T3.12",
+                "T3.6",
+                "T3.1"
+            ],
+            "produces": "structure"
+        },
+        {
+            "id": "T3.18",
+            "name": "User Need Summary",
+            "domain_id": "D3",
+            "definition": "A consolidated description of the underlying goals, motivations, and desired outcomes that each User Story aims to support.",
+            "description": "Provides the intent behind a story to keep implementation aligned with real user outcomes rather than literal interpretation of text.",
+            "relates_to": [
+                "T3.12",
+                "T3.21"
+            ],
+            "produces": "structure"
+        },
+        {
+            "id": "T3.19",
+            "name": "Acceptance Criteria",
+            "domain_id": "D3",
+            "definition": "A structured set of conditions that define when a User Story is considered complete and correct.",
+            "description": "Defines verifiable conditions and expected outcomes that drive testing, review, and completion decisions for a story.",
+            "relates_to": [
+                "T3.12",
+                "T3.7",
+                "T3.24"
+            ],
+            "produces": "constraint"
+        },
+        {
+            "id": "T3.20",
+            "name": "Readiness Criteria",
+            "domain_id": "D3",
+            "definition": "A defined set of conditions a User Story must meet before it can be implemented, ensuring clarity, completeness, and absence of ambiguity.",
+            "description": "Defines a quality gate for stories before implementation, reducing rework by ensuring required details and dependencies are resolved.",
+            "relates_to": [
+                "T3.12",
+                "T3.19",
+                "T3.25"
+            ],
+            "produces": "constraint"
+        },
+        {
+            "id": "T3.21",
+            "name": "Requirements Consistency",
+            "domain_id": "D3",
+            "definition": "The alignment and coherence of all requirements, user stories, workflows, and logic so that they do not conflict or contradict each other.",
+            "description": "Ensures that requirements layers and process definitions do not produce contradictory behavior, preventing downstream design and build conflicts.",
+            "relates_to": [
+                "T3.7",
+                "T3.8",
+                "T3.11",
+                "T3.13",
+                "T3.12",
+                "T3.14"
+            ],
+            "produces": "constraint"
+        },
+        {
+            "id": "T3.22",
+            "name": "Requirements Completeness Review",
+            "domain_id": "D3",
+            "definition": "A structured evaluation confirming that all necessary requirements are present, fully expressed, and not missing critical cases or system rules.",
+            "description": "Checks whether the requirements set covers the needed behaviors, including edge and exception handling, and identifies omissions before design begins.",
+            "relates_to": [
+                "T3.7",
+                "T3.8",
+                "T3.11",
+                "T3.15",
+                "T3.16",
+                "T3.12",
+                "T3.14"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T3.23",
+            "name": "Requirements Traceability Mapping",
+            "domain_id": "D3",
+            "definition": "A structured mapping that links requirements across levels from capability to feature to user story to acceptance criteria to test cases.",
+            "description": "Creates explicit links for coverage control and impact analysis, ensuring that every requirement is implemented and verifiable.",
+            "relates_to": [
+                "T3.5",
+                "T3.6",
+                "T3.12",
+                "T3.19"
+            ],
+            "produces": "artifact"
+        }
+    ]
+}

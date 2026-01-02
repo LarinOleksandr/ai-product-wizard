@@ -1,0 +1,392 @@
+{
+    "domains": [
+        {
+            "id": "D9",
+            "name": "Deployment and Launch",
+            "description": "Artifacts and rules that define how the Product is released and made available to users, including environments, deployment execution, validation, operational readiness, monitoring, discoverability, access enablement, and post-launch stabilization."
+        }
+    ],
+    "terms": [
+        {
+            "id": "T9.1",
+            "name": "Environment Configuration Specification",
+            "domain_id": "D9",
+            "definition": "A document defining runtime environments (dev/test/stage/prod), their configuration variables, access rules, and environment-specific differences used for deployment and operation.",
+            "description": "Defines how environments differ, what configuration is required in each, and how environment drift is prevented during release.",
+            "relates_to": [
+                "T9.2",
+                "T9.5",
+                "T9.10"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T9.2",
+            "name": "Infrastructure Specification",
+            "domain_id": "D9",
+            "definition": "A description of infrastructure resources and topology required to run the Product in release environments, including compute, storage, networking, and managed services.",
+            "description": "Defines the runtime topology and required resources so deployments run reliably and scale under expected launch conditions.",
+            "relates_to": [
+                "T9.4",
+                "T9.3",
+                "T9.16",
+                "T9.17"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T9.3",
+            "name": "Resource Allocation Plan",
+            "domain_id": "D9",
+            "definition": "A plan defining how infrastructure resources and operational capacity are allocated to support deployment, launch load, monitoring, and incident response.",
+            "description": "Defines capacity allocation and operational coverage required to handle launch activity, performance expectations, and incident handling.",
+            "relates_to": [
+                "T9.2",
+                "T9.16",
+                "T9.18",
+                "T9.19"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T9.4",
+            "name": "Infrastructure Readiness Review",
+            "domain_id": "D9",
+            "definition": "A structured validation confirming infrastructure resources, access, networking, scaling rules, and supporting services are prepared for release.",
+            "description": "Verifies that infrastructure prerequisites are met and that operational dependencies are available before deployment execution.",
+            "relates_to": [
+                "T9.2",
+                "T9.3",
+                "T9.10",
+                "T9.16"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T9.5",
+            "name": "Deployment Pipeline Specification",
+            "domain_id": "D9",
+            "definition": "A detailed definition of build, test, and deploy automation including triggers, stages, validations, approvals, and environment promotion rules.",
+            "description": "Defines how code becomes a running system using repeatable automation and quality gates to reduce release risk.",
+            "relates_to": [
+                "T9.6",
+                "T9.8",
+                "T9.1",
+                "T9.10"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T9.6",
+            "name": "Build and Release Steps",
+            "domain_id": "D9",
+            "definition": "A step-by-step procedure describing how artifacts are built, versioned, packaged, and prepared for deployment.",
+            "description": "Defines how releases are constructed and versioned so deployments are reproducible and traceable.",
+            "relates_to": [
+                "T9.5",
+                "T9.22"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T9.7",
+            "name": "Rollback Strategy",
+            "domain_id": "D9",
+            "definition": "A predefined plan describing how to revert to a safe previous version or configuration when deployment causes failures or critical regressions.",
+            "description": "Defines how rollback is performed, what triggers it, and what verification occurs after rollback to restore stable operation.",
+            "relates_to": [
+                "T9.5",
+                "T9.9",
+                "T9.18",
+                "T9.16"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T9.8",
+            "name": "Release Execution Plan",
+            "domain_id": "D9",
+            "definition": "A structured runbook defining who executes the release, in which sequence, with checkpoints, communications, and validations.",
+            "description": "Defines the operational runbook for release so execution is coordinated, auditable, and resilient under unexpected issues.",
+            "relates_to": [
+                "T9.5",
+                "T9.9",
+                "T9.11",
+                "T9.12",
+                "T9.7"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T9.9",
+            "name": "Environment Validation Checklist",
+            "domain_id": "D9",
+            "definition": "A checklist of validations confirming environment configuration, connectivity, permissions, secrets, and dependencies are correct before and after deployment.",
+            "description": "Defines the minimal environment checks required to confirm correct setup and prevent configuration-related failures.",
+            "relates_to": [
+                "T9.1",
+                "T9.10",
+                "T9.11"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T9.10",
+            "name": "Deployment Validation Results",
+            "domain_id": "D9",
+            "definition": "Recorded outcomes and evidence of deployment validation checks, smoke tests, and health checks performed for a release.",
+            "description": "Captures evidence that deployment succeeded and that the system is operational and consistent with expected behavior.",
+            "relates_to": [
+                "T9.9",
+                "T9.8",
+                "T9.12"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T9.11",
+            "name": "Operational Readiness Checklist",
+            "domain_id": "D9",
+            "definition": "A checklist validating that monitoring, logging, alerting, incident procedures, access, and support coverage are ready for release and launch.",
+            "description": "Defines the operational prerequisites required to support stable production use and incident response.",
+            "relates_to": [
+                "T9.16",
+                "T9.17",
+                "T9.18",
+                "T9.19",
+                "T9.20",
+                "T9.21",
+                "T9.23"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T9.12",
+            "name": "Performance Validation Report",
+            "domain_id": "D9",
+            "definition": "A documented summary of performance and load test outcomes compared to performance requirements, including bottlenecks and remediation status.",
+            "description": "Summarizes whether performance meets target thresholds and identifies performance risks prior to broad launch.",
+            "relates_to": [
+                "T9.3",
+                "T9.16",
+                "T9.10"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T9.16",
+            "name": "Operational Monitoring Plan",
+            "domain_id": "D9",
+            "definition": "A plan defining required metrics, dashboards, health checks, and alert thresholds used to maintain stable operation during and after launch.",
+            "description": "Defines what is monitored and how issues are detected quickly to protect user experience and system stability.",
+            "relates_to": [
+                "T9.17",
+                "T9.18",
+                "T9.19",
+                "T9.11"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T9.17",
+            "name": "Logging Strategy",
+            "domain_id": "D9",
+            "definition": "A structured definition of what events are logged, log formats, correlation identifiers, retention, and access rules for operational debugging and audit.",
+            "description": "Defines system-wide logging required for debugging, auditability, and incident investigation during and after launch.",
+            "relates_to": [
+                "T9.16",
+                "T9.19",
+                "T9.11"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T9.18",
+            "name": "Alerting Rules",
+            "domain_id": "D9",
+            "definition": "A set of defined alert conditions and routing rules based on monitoring signals to notify responsible parties of incidents or degradations.",
+            "description": "Defines when alerts are triggered, how they are routed, and what constitutes actionable incident signals.",
+            "relates_to": [
+                "T9.16",
+                "T9.19",
+                "T9.11"
+            ],
+            "produces": "constraint"
+        },
+        {
+            "id": "T9.19",
+            "name": "Incident Preparedness Guidelines",
+            "domain_id": "D9",
+            "definition": "Operational guidelines defining incident classification, response steps, escalation, communication, and post-incident review rules.",
+            "description": "Defines how incidents are handled so response is coordinated and recovery is consistent under stress.",
+            "relates_to": [
+                "T9.18",
+                "T9.16",
+                "T9.24",
+                "T9.11"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T9.20",
+            "name": "Launch Objectives",
+            "domain_id": "D9",
+            "definition": "Defined measurable goals for the release and initial public availability of the Product.",
+            "description": "Defines what success means for the launch and what must be achieved at the moment of release to users.",
+            "relates_to": [
+                "T9.21",
+                "T9.22",
+                "T9.23"
+            ],
+            "produces": "decision"
+        },
+        {
+            "id": "T9.21",
+            "name": "Launch Messaging",
+            "domain_id": "D9",
+            "definition": "A defined set of external and internal messages describing what is launching, for whom, and what value it provides, aligned with positioning and value proposition.",
+            "description": "Defines consistent communication content used during launch so users and stakeholders understand what is available and why it matters.",
+            "relates_to": [
+                "T9.20",
+                "T9.23",
+                "T9.27",
+                "T9.28"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T9.22",
+            "name": "Launch Activities Plan",
+            "domain_id": "D9",
+            "definition": "A structured plan of coordinated actions required to execute the launch, including timing, owners, and dependencies.",
+            "description": "Defines the operational and coordination actions required to execute launch consistently across teams and systems.",
+            "relates_to": [
+                "T9.20",
+                "T9.8",
+                "T9.23"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T9.23",
+            "name": "User Access Enablement",
+            "domain_id": "D9",
+            "definition": "A specification defining how users obtain access to the Product, including signup, authentication entry points, invitations, gating rules, and prerequisites.",
+            "description": "Defines how users can start using the product in practice, including access pathways and any rollout gating applied during launch.",
+            "relates_to": [
+                "T9.27",
+                "T9.29",
+                "T9.22"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T9.24",
+            "name": "Onboarding Experience Definition",
+            "domain_id": "D9",
+            "definition": "A specification defining the first-run experience, guidance, empty-state onboarding, and completion criteria for initial user activation.",
+            "description": "Defines how first-time users are guided to first success, reducing confusion and improving activation at launch.",
+            "relates_to": [
+                "T9.23",
+                "T9.20",
+                "T9.22"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T9.25",
+            "name": "Search Engine Accessibility",
+            "domain_id": "D9",
+            "definition": "A set of technical rules ensuring the product is crawlable and indexable by search systems, including routing, robots directives, and page accessibility constraints.",
+            "description": "Defines how pages are exposed to search systems and which parts are indexable, preventing accidental invisibility or unintended exposure.",
+            "relates_to": [
+                "T9.26",
+                "T9.28"
+            ],
+            "produces": "constraint"
+        },
+        {
+            "id": "T9.26",
+            "name": "Metadata and Structured Data Specification",
+            "domain_id": "D9",
+            "definition": "A specification defining page metadata and structured data including titles, descriptions, canonical URLs, Open Graph, and schema.org markup where applicable.",
+            "description": "Defines how pages represent themselves to search and social systems to improve discoverability and consistent previews.",
+            "relates_to": [
+                "T9.25",
+                "T9.28"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T9.27",
+            "name": "Product Promotion Channels",
+            "domain_id": "D9",
+            "definition": "A defined list of supported distribution and promotion channels used to direct users to the Product at launch, such as direct links, email distribution, marketplaces, or internal distribution.",
+            "description": "Defines which channels are used to bring users to the product and what technical or operational support each channel requires.",
+            "relates_to": [
+                "T9.28",
+                "T9.23",
+                "T9.21"
+            ],
+            "produces": "structure"
+        },
+        {
+            "id": "T9.28",
+            "name": "Launch Distribution Plan",
+            "domain_id": "D9",
+            "definition": "A plan defining how users are routed to the Product during launch, including rollout sequencing, gating, traffic expectations, and channel coordination.",
+            "description": "Defines how distribution happens in practice, including sequencing and constraints needed to maintain stability while scaling access.",
+            "relates_to": [
+                "T9.27",
+                "T9.3",
+                "T9.20",
+                "T9.22",
+                "T9.23",
+                "T9.16"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T9.29",
+            "name": "Early-Life Support Plan",
+            "domain_id": "D9",
+            "definition": "A plan defining how issues are handled immediately after launch, including staffing coverage, triage rules, communication, and stabilization priorities.",
+            "description": "Defines post-launch operational support and stabilization actions to ensure user-impacting issues are handled quickly.",
+            "relates_to": [
+                "T9.19",
+                "T9.16",
+                "T9.18",
+                "T9.20"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T9.30",
+            "name": "Operational Report",
+            "domain_id": "D9",
+            "definition": "A post-launch report summarizing operational performance, incidents, metrics, and observed issues over a defined period.",
+            "description": "Summarizes what happened after launch, including stability, incidents, and performance signals to guide stabilization and improvements.",
+            "relates_to": [
+                "T9.16",
+                "T9.18",
+                "T9.19",
+                "T9.29"
+            ],
+            "produces": "artifact"
+        },
+        {
+            "id": "T9.31",
+            "name": "Release Documentation",
+            "domain_id": "D9",
+            "definition": "A structured set of documents describing release content, changes, known issues, operational notes, and user-visible updates.",
+            "description": "Defines what changed and what to expect, supporting user communication, support, and operational handover.",
+            "relates_to": [
+                "T9.8",
+                "T9.10",
+                "T9.21",
+                "T9.30"
+            ],
+            "produces": "artifact"
+        }
+    ]
+}
