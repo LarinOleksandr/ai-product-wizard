@@ -27,11 +27,9 @@ const wizardCards = [
   { title: "Deployment and Launch Wizard", active: false }
 ];
 
-const sampleIdea = `This product is designed for individuals with chronic pain who live in rural areas, providing a personalized virtual reality therapy program tailored to their specific condition and environment.
-
-The core mechanic involves using AI-powered avatars to simulate real-world environments, allowing users to confront and overcome triggers that exacerbate their pain.
-
-By doing so, users experience a sense of control and empowerment over their wellbeing, leading to improved mental health outcomes.`;
+const sampleIdea = `For students with dyslexia, our AI-powered 'Sensory Atlas' uses supportive graphics and personalized soundscapes to create an immersive learning environment.
+The core mechanic is a system adaptation to their individual reading patterns, fostering a deeper connection between the senses and the material being learned.
+By cultivating this multisensory awareness, students can develop a more intuitive understanding of complex concepts and retain information more effectively.`;
 
 export function HomePage() {
   const [idea, setIdea] = useState(sampleIdea);
@@ -73,7 +71,7 @@ export function HomePage() {
       }
       const formattedIdea = data.productIdea
         .replace(/\r?\n+/g, " ")
-        .replace(/([.!?])\s+/g, "$1\n\n");
+        .replace(/([.!?])\s+/g, "$1\n");
       setIdea(formattedIdea);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to generate an idea.");
@@ -178,6 +176,7 @@ export function HomePage() {
               onClick={() => {
                 if (idea.trim()) {
                   localStorage.setItem("discoveryWizard.productIdea", idea.trim());
+                  localStorage.setItem("discoveryWizard.pendingIdea", idea.trim());
                 }
               }}
             >

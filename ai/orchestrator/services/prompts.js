@@ -130,6 +130,9 @@ export function createPromptService({
     acc[displayKey] = field.key;
     return acc;
   }, {});
+  const displayKeyAliases = {
+    user_pain_points: "problemUnderstanding.userPainPoints"
+  };
   const resolvedInputsPath =
     sectionInputsPath || path.join(promptsDir, "sections", "section-inputs.json");
 
@@ -160,10 +163,6 @@ export function createPromptService({
   }
 
   async function getDiscoveryPromptAssets() {
-    if (promptCache && Array.isArray(promptCache.sectionSchemas)) {
-      return promptCache;
-    }
-
     const systemPrompt = await readProductManagerPromptFile(
       "product-manager-system-prompt.md"
     );
@@ -216,16 +215,28 @@ export function createPromptService({
   function buildIncomingInfoForField({
     fieldKey,
     productIdea,
-    targetUser,
-    userNotes,
     currentDocument,
     fieldStatus
   }) {
     const approvedDocument = buildApprovedDocument(currentDocument, fieldStatus);
     const incomingInfo = {
-      productIdea: productIdea || "",
-      targetUser: targetUser || "",
-      userNotes: Array.isArray(userNotes) ? userNotes : []
+      productIdea: productIdea || ""
+    };
+    const isTrulyEmpty = (value) => {
+      if (value === null || typeof value === "undefined") {
+        return true;
+      }
+      if (typeof value === "string") {
+        return value.trim().length === 0;
+      }
+      if (Array.isArray(value)) {
+        return value.length === 0 || value.every((item) => isTrulyEmpty(item));
+      }
+      if (typeof value === "object") {
+        const entries = Object.values(value);
+        return entries.length === 0 || entries.every((item) => isTrulyEmpty(item));
+      }
+      return false;
     };
     if (!sectionInputDependencies) {
       try {
@@ -238,7 +249,8 @@ export function createPromptService({
     }
     const dependencies = sectionInputDependencies[fieldKey] || [];
     dependencies.forEach((displayKey) => {
-      const fieldKeyForDisplay = fieldDisplayKeyMap[displayKey];
+      const fieldKeyForDisplay =
+        fieldDisplayKeyMap[displayKey] || displayKeyAliases[displayKey];
       if (!fieldKeyForDisplay) {
         return;
       }

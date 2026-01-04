@@ -124,24 +124,12 @@ export function createRandomService({
       throw new Error("Random generation returned incomplete data.");
     }
 
-    const targetPromptTemplate = await readPromptFile(
-      "random-target-user.prompt.md"
-    );
-    const targetPrompt = renderTemplate(targetPromptTemplate, {
-      productIdea
-    });
-    const targetResponse = await generateWithPrompt(targetPrompt);
-    const targetUser = targetResponse?.targetUser;
-    if (typeof targetUser !== "string" || countSentences(targetUser) !== 1) {
-      throw new Error("Random generation returned incomplete data.");
-    }
-
     recentIdeas.unshift(productIdea);
     if (recentIdeas.length > maxRecentIdeas) {
       recentIdeas.length = maxRecentIdeas;
     }
 
-    return { productIdea, targetUser };
+    return { productIdea };
   }
 
   return {

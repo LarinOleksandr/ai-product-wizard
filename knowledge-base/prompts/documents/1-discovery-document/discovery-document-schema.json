@@ -1,1022 +1,565 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "type": "object",
-  "additionalProperties": false,
-  "properties": {
-    "problemUnderstanding": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "problemStatement": {
-          "type": "string",
-          "minLength": 20
-        },
-        "targetUsersSegments": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "target_segments": {
-              "type": "array",
-              "minItems": 1,
-              "items": {
-                "type": "object",
-                "additionalProperties": false,
-                "properties": {
-                  "segment_name": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "problemUnderstanding": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "problemStatement": {
                     "type": "string",
-                    "minLength": 1
-                  },
-                  "business_relevance": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "user_groups": {
+                    "minLength": 20
+                },
+                "targetUsersSegments": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "user_segments": {
+                            "type": "array",
+                            "minItems": 1,
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "properties": {
+                                    "segment_name": {
+                                        "type": "string",
+                                        "minLength": 1
+                                    },
+                                    "usage_contexts": {
+                                        "type": "array",
+                                        "minItems": 1,
+                                        "items": {
+                                            "type": "string",
+                                            "minLength": 1
+                                        }
+                                    },
+                                    "characteristics": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string",
+                                            "minLength": 1
+                                        },
+                                        "minItems": 1
+                                    },
+                                    "segment_type": {
+                                        "type": "string",
+                                        "enum": [
+                                            "primary",
+                                            "secondary"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "segment_name",
+                                    "segment_type",
+                                    "usage_contexts",
+                                    "characteristics"
+                                ]
+                            }
+                        }
+                    },
+                    "required": [
+                        "user_segments"
+                    ]
+                },
+                "userPainPoints": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "user_segments": {
+                            "type": "array",
+                            "minItems": 1,
+                            "maxItems": 1,
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "properties": {
+                                    "user_segment": {
+                                        "type": "string",
+                                        "minLength": 1
+                                    },
+                                    "pain_points": {
+                                        "type": "array",
+                                        "minItems": 1,
+                                        "items": {
+                                            "type": "object",
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "name": {
+                                                    "type": "string",
+                                                    "minLength": 1
+                                                },
+                                                "description": {
+                                                    "type": "string",
+                                                    "minLength": 1
+                                                },
+                                                "severity": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "low",
+                                                        "medium",
+                                                        "high"
+                                                    ]
+                                                },
+                                                "frequency": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "low",
+                                                        "medium",
+                                                        "high"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "name",
+                                                "description",
+                                                "severity",
+                                                "frequency"
+                                            ]
+                                        }
+                                    }
+                                },
+                                "required": [
+                                    "user_segment",
+                                    "pain_points"
+                                ]
+                            }
+                        }
+                    },
+                    "required": [
+                        "user_segments"
+                    ]
+                },
+                "contextualFactors": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "contextual_factors": {
+                            "type": "array",
+                            "minItems": 0,
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "properties": {
+                                    "factor_group": {
+                                        "type": "string",
+                                        "minLength": 1
+                                    },
+                                    "factors": {
+                                        "type": "array",
+                                        "minItems": 1,
+                                        "items": {
+                                            "type": "object",
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "name": {
+                                                    "type": "string",
+                                                    "minLength": 1
+                                                },
+                                                "description": {
+                                                    "type": "string",
+                                                    "minLength": 1
+                                                }
+                                            },
+                                            "required": [
+                                                "name",
+                                                "description"
+                                            ]
+                                        }
+                                    }
+                                },
+                                "required": [
+                                    "factor_group",
+                                    "factors"
+                                ]
+                            }
+                        }
+                    },
+                    "required": [
+                        "contextual_factors"
+                    ]
+                },
+                "constraints": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "constraints": {
+                            "type": "array",
+                            "minItems": 0,
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "properties": {
+                                    "constraint_group": {
+                                        "type": "string",
+                                        "minLength": 1
+                                    },
+                                    "constraints": {
+                                        "type": "array",
+                                        "minItems": 1,
+                                        "items": {
+                                            "type": "object",
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "name": {
+                                                    "type": "string",
+                                                    "minLength": 1
+                                                },
+                                                "description": {
+                                                    "type": "string",
+                                                    "minLength": 1
+                                                }
+                                            },
+                                            "required": [
+                                                "name",
+                                                "description"
+                                            ]
+                                        }
+                                    }
+                                },
+                                "required": [
+                                    "constraint_group",
+                                    "constraints"
+                                ]
+                            }
+                        }
+                    },
+                    "required": [
+                        "constraints"
+                    ]
+                },
+                "characteristics": {
                     "type": "array",
-                    "minItems": 1,
                     "items": {
-                      "type": "object",
-                      "additionalProperties": false,
-                      "properties": {
-                        "name": {
-                          "type": "string",
-                          "minLength": 1
-                        },
-                        "characteristics": {
-                          "type": "array",
-                          "minItems": 1,
-                          "items": {
+                        "type": "string",
+                        "minLength": 1
+                    },
+                    "minItems": 1
+                }
+            },
+            "required": [
+                "problemStatement",
+                "targetUsersSegments",
+                "userPainPoints",
+                "contextualFactors",
+                "constraints",
+                "characteristics"
+            ]
+        },
+        "marketAndCompetitorAnalysis": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "marketLandscape": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "market_definition": {
                             "type": "string",
                             "minLength": 1
-                          }
+                        },
+                        "alternatives": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "direct_competitor_segments": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string",
+                                        "minLength": 1
+                                    },
+                                    "minItems": 0
+                                },
+                                "indirect_competitor_segments": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string",
+                                        "minLength": 1
+                                    },
+                                    "minItems": 0
+                                },
+                                "substitute_segments": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string",
+                                        "minLength": 1
+                                    },
+                                    "minItems": 0
+                                }
+                            },
+                            "required": [
+                                "direct_competitor_segments",
+                                "indirect_competitor_segments",
+                                "substitute_segments"
+                            ]
+                        },
+                        "market_norms": {
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "minLength": 1
+                            },
+                            "minItems": 0
+                        },
+                        "adoption_drivers": {
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "minLength": 1
+                            },
+                            "minItems": 0
+                        },
+                        "adoption_barriers": {
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "minLength": 1
+                            },
+                            "minItems": 0
                         }
-                      },
-                      "required": ["name", "characteristics"]
-                    }
-                  }
+                    },
+                    "required": [
+                        "market_definition",
+                        "alternatives",
+                        "market_norms",
+                        "adoption_drivers",
+                        "adoption_barriers"
+                    ]
                 },
-                "required": ["segment_name", "business_relevance", "user_groups"]
-              }
-            }
-          },
-          "required": ["target_segments"]
-        },
-        "userPainPoints": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "pain_point_themes": {
-              "type": "array",
-              "minItems": 1,
-              "items": {
-                "type": "object",
-                "additionalProperties": false,
-                "properties": {
-                  "theme_name": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "pain_points": {
-                    "type": "array",
-                    "minItems": 1,
-                    "items": {
-                      "type": "object",
-                      "additionalProperties": false,
-                      "properties": {
-                        "name": {
-                          "type": "string",
-                          "minLength": 1
-                        },
-                        "description": {
-                          "type": "string",
-                          "minLength": 1
-                        },
-                        "affected_user_groups": {
-                          "type": "array",
-                          "minItems": 1,
-                          "items": {
-                            "type": "string",
-                            "minLength": 1
-                          }
-                        },
-                        "severity": {
-                          "type": "string",
-                          "enum": ["low", "medium", "high"]
-                        },
-                        "frequency": {
-                          "type": "string",
-                          "enum": ["low", "medium", "high"]
-                        },
-                        "business_importance": {
-                          "type": "string",
-                          "enum": ["low", "medium", "high"]
+                "competitorInventory": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "competitors": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "direct": {
+                                    "$ref": "#/$defs/competitorArray"
+                                },
+                                "indirect": {
+                                    "$ref": "#/$defs/competitorArray"
+                                },
+                                "substitute": {
+                                    "$ref": "#/$defs/competitorArray"
+                                }
+                            },
+                            "required": [
+                                "direct",
+                                "indirect",
+                                "substitute"
+                            ]
                         }
-                      },
-                      "required": [
-                        "name",
-                        "description",
-                        "affected_user_groups",
-                        "severity",
-                        "frequency",
-                        "business_importance"
-                      ]
-                    }
-                  }
+                    },
+                    "required": [
+                        "competitors"
+                    ]
                 },
-                "required": ["theme_name", "pain_points"]
-              }
-            }
-          },
-          "required": ["pain_point_themes"]
-        },
-        "contextConstraints": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "contextual_factors": {
-              "type": "array",
-              "minItems": 0,
-              "items": {
-                "type": "object",
-                "additionalProperties": false,
-                "properties": {
-                  "name": {
-                    "type": "string",
-                    "minLength": 3
-                  },
-                  "description": {
-                    "type": "string",
-                    "minLength": 3
-                  },
-                  "impact_on_user_needs": {
-                    "type": "string",
-                    "minLength": 3
-                  },
-                  "business_implications": {
-                    "type": "string",
-                    "minLength": 3
-                  }
+                "competitorCapabilities": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "competitor_capabilities": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "Functional": {
+                                    "$ref": "#/$defs/capabilityArray"
+                                },
+                                "Technical": {
+                                    "$ref": "#/$defs/capabilityArray"
+                                },
+                                "Business": {
+                                    "$ref": "#/$defs/capabilityArray"
+                                }
+                            },
+                            "required": [
+                                "Functional",
+                                "Technical",
+                                "Business"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "competitor_capabilities"
+                    ]
                 },
-                "required": [
-                  "name",
-                  "description",
-                  "impact_on_user_needs",
-                  "business_implications"
-                ]
-              }
+                "gapsOpportunities": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "opportunities": {
+                            "type": "array",
+                            "minItems": 1,
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "properties": {
+                                    "opportunity": {
+                                        "type": "string",
+                                        "minLength": 10
+                                    },
+                                    "why_it_remains_unaddressed": {
+                                        "type": "string",
+                                        "minLength": 10
+                                    },
+                                    "user_value_potential": {
+                                        "type": "string",
+                                        "minLength": 10
+                                    }
+                                },
+                                "required": [
+                                    "opportunity",
+                                    "why_it_remains_unaddressed",
+                                    "user_value_potential"
+                                ]
+                            }
+                        }
+                    },
+                    "required": [
+                        "opportunities"
+                    ]
+                }
             },
-            "constraints": {
-              "type": "array",
-              "minItems": 0,
-              "items": {
-                "type": "object",
-                "additionalProperties": false,
-                "properties": {
-                  "name": {
-                    "type": "string",
-                    "minLength": 3
-                  },
-                  "description": {
-                    "type": "string",
-                    "minLength": 3
-                  },
-                  "impact_on_user_needs": {
-                    "type": "string",
-                    "minLength": 3
-                  },
-                  "business_implications": {
-                    "type": "string",
-                    "minLength": 3
-                  }
+            "required": [
+                "marketLandscape",
+                "competitorInventory",
+                "competitorCapabilities",
+                "gapsOpportunities"
+            ]
+        },
+        "opportunityDefinition": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "valueDrivers": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "value_drivers": {
+                            "type": "array",
+                            "minItems": 1,
+                            "items": {
+                                "type": "string",
+                                "minLength": 3
+                            }
+                        }
+                    },
+                    "required": [
+                        "value_drivers"
+                    ]
                 },
-                "required": [
-                  "name",
-                  "description",
-                  "impact_on_user_needs",
-                  "business_implications"
-                ]
-              }
-            }
-          },
-          "required": ["contextual_factors", "constraints"]
+                "feasibilityRisks": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "feasibility_risks": {
+                            "type": "array",
+                            "minItems": 1,
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "properties": {
+                                    "feasibility_risk_type": {
+                                        "type": "string",
+                                        "enum": [
+                                            "business",
+                                            "user",
+                                            "technical"
+                                        ]
+                                    },
+                                    "feasibility_risk": {
+                                        "type": "string",
+                                        "minLength": 5
+                                    },
+                                    "why_it_matters": {
+                                        "type": "string",
+                                        "minLength": 5
+                                    }
+                                },
+                                "required": [
+                                    "feasibility_risk_type",
+                                    "feasibility_risk",
+                                    "why_it_matters"
+                                ]
+                            }
+                        }
+                    },
+                    "required": [
+                        "feasibility_risks"
+                    ]
+                },
+                "characteristics": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "minLength": 1
+                    },
+                    "minItems": 1
+                }
+            },
+            "required": [
+                "valueDrivers",
+                "feasibilityRisks",
+                "characteristics"
+            ]
+        },
+        "characteristics": {
+            "type": "array",
+            "items": {
+                "type": "string",
+                "minLength": 1
+            },
+            "minItems": 1
         }
-      },
-      "required": [
-        "problemStatement",
-        "targetUsersSegments",
-        "userPainPoints",
-        "contextConstraints"
-      ]
     },
-    "marketAndCompetitorAnalysis": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "marketLandscape": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "market_definition": {
-              "type": "object",
-              "additionalProperties": false,
-              "properties": {
+    "required": [
+        "problemUnderstanding",
+        "marketAndCompetitorAnalysis",
+        "opportunityDefinition",
+        "characteristics"
+    ],
+    "$defs": {
+        "competitorArray": {
+            "type": "array",
+            "minItems": 0,
+            "items": {
+                "$ref": "#/$defs/competitorItem"
+            }
+        },
+        "competitorItem": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "product_name": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "url": {
+                    "type": "string",
+                    "format": "uri"
+                },
                 "description": {
-                  "type": "string",
-                  "minLength": 1
-                },
-                "excluded_adjacent_spaces": {
-                  "type": "array",
-                  "items": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "minItems": 0
-                }
-              },
-              "required": ["description", "excluded_adjacent_spaces"]
-            },
-            "market_size": {
-              "type": "object",
-              "additionalProperties": false,
-              "properties": {
-                "description": {
-                  "type": "string",
-                  "minLength": 1
-                }
-              },
-              "required": ["description"]
-            },
-            "market_maturity": {
-              "type": "object",
-              "additionalProperties": false,
-              "properties": {
-                "classification": {
-                  "type": "string",
-                  "enum": ["emerging", "fragmented", "consolidating", "mature"]
-                },
-                "rationale": {
-                  "type": "string",
-                  "minLength": 1
-                }
-              },
-              "required": ["classification", "rationale"]
-            },
-            "market_trends": {
-              "type": "array",
-              "minItems": 0,
-              "items": {
-                "type": "object",
-                "additionalProperties": false,
-                "properties": {
-                  "name": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "description": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "time_horizon": {
-                    "type": "string",
-                    "enum": ["short", "mid", "long"]
-                  },
-                  "affected_target_segments": {
-                    "type": "array",
-                    "items": {
-                      "type": "string",
-                      "minLength": 1
-                    },
-                    "minItems": 0
-                  },
-                  "basis": {
-                    "type": "string",
-                    "enum": ["evidence_from_inputs", "domain_generic_assumption"]
-                  },
-                  "confidence": {
-                    "type": "string",
-                    "enum": ["low", "medium", "high"]
-                  }
-                },
-                "required": [
-                  "name",
-                  "description",
-                  "time_horizon",
-                  "affected_target_segments",
-                  "basis",
-                  "confidence"
-                ]
-              }
-            },
-            "market_dynamics": {
-              "type": "array",
-              "minItems": 0,
-              "items": {
-                "type": "object",
-                "additionalProperties": false,
-                "properties": {
-                  "name": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "description": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "affected_target_segments": {
-                    "type": "array",
-                    "items": {
-                      "type": "string",
-                      "minLength": 1
-                    },
-                    "minItems": 0
-                  },
-                  "basis": {
-                    "type": "string",
-                    "enum": ["evidence_from_inputs", "domain_generic_assumption"]
-                  },
-                  "confidence": {
-                    "type": "string",
-                    "enum": ["low", "medium", "high"]
-                  }
-                },
-                "required": [
-                  "name",
-                  "description",
-                  "affected_target_segments",
-                  "basis",
-                  "confidence"
-                ]
-              }
-            },
-            "market_forces": {
-              "type": "array",
-              "minItems": 0,
-              "items": {
-                "type": "object",
-                "additionalProperties": false,
-                "properties": {
-                  "name": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "description": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "affected_target_segments": {
-                    "type": "array",
-                    "items": {
-                      "type": "string",
-                      "minLength": 1
-                    },
-                    "minItems": 0
-                  },
-                  "basis": {
-                    "type": "string",
-                    "enum": ["evidence_from_inputs", "domain_generic_assumption"]
-                  },
-                  "confidence": {
-                    "type": "string",
-                    "enum": ["low", "medium", "high"]
-                  }
-                },
-                "required": [
-                  "name",
-                  "description",
-                  "affected_target_segments",
-                  "basis",
-                  "confidence"
-                ]
-              }
-            },
-            "adoption_drivers": {
-              "type": "array",
-              "minItems": 0,
-              "items": {
-                "type": "object",
-                "additionalProperties": false,
-                "properties": {
-                  "name": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "description": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "affected_target_segments": {
-                    "type": "array",
-                    "items": {
-                      "type": "string",
-                      "minLength": 1
-                    },
-                    "minItems": 0
-                  }
-                },
-                "required": ["name", "description", "affected_target_segments"]
-              }
-            },
-            "adoption_barriers": {
-              "type": "array",
-              "minItems": 0,
-              "items": {
-                "type": "object",
-                "additionalProperties": false,
-                "properties": {
-                  "name": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "description": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "affected_target_segments": {
-                    "type": "array",
-                    "items": {
-                      "type": "string",
-                      "minLength": 1
-                    },
-                    "minItems": 0
-                  }
-                },
-                "required": ["name", "description", "affected_target_segments"]
-              }
-            }
-          },
-          "required": [
-            "market_definition",
-            "market_size",
-            "market_maturity",
-            "market_trends",
-            "market_dynamics",
-            "market_forces",
-            "adoption_drivers",
-            "adoption_barriers"
-          ]
-        },
-        "competitorInventory": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 3
-          },
-          "minItems": 1
-        },
-        "competitorCapabilities": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "competitor_capabilities": {
-              "type": "array",
-              "minItems": 1,
-              "items": {
-                "type": "object",
-                "additionalProperties": false,
-                "properties": {
-                  "competitor_name": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "functional_capabilities": {
-                    "type": "array",
-                    "items": {
-                      "type": "string",
-                      "minLength": 1
-                    }
-                  },
-                  "technical_capabilities": {
-                    "type": "array",
-                    "items": {
-                      "type": "string",
-                      "minLength": 1
-                    }
-                  },
-                  "business_capabilities": {
-                    "type": "array",
-                    "items": {
-                      "type": "string",
-                      "minLength": 1
-                    }
-                  },
-                  "strengths": {
-                    "type": "array",
-                    "items": {
-                      "type": "string",
-                      "minLength": 1
-                    }
-                  },
-                  "limitations": {
-                    "type": "array",
-                    "items": {
-                      "type": "string",
-                      "minLength": 1
-                    }
-                  },
-                  "alignment_with_user_needs": {
                     "type": "string",
                     "minLength": 3
-                  }
                 },
-                "required": [
-                  "competitor_name",
-                  "functional_capabilities",
-                  "technical_capabilities",
-                  "business_capabilities",
-                  "strengths",
-                  "limitations",
-                  "alignment_with_user_needs"
-                ]
-              }
-            },
-            "industry_capability_patterns": {
-              "type": "array",
-              "minItems": 1,
-              "items": {
-                "type": "object",
-                "additionalProperties": false,
-                "properties": {
-                  "pattern_name": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "description": {
+                "target_audience": {
                     "type": "string",
                     "minLength": 3
-                  }
                 },
-                "required": [
-                  "pattern_name",
-                  "description"
-                ]
-              }
-            }
-          },
-          "required": [
-            "competitor_capabilities",
-            "industry_capability_patterns"
-          ]
-        },
-        "gapsOpportunities": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "gaps_and_opportunities": {
-              "type": "object",
-              "additionalProperties": false,
-              "properties": {
-                "functional": {
-                  "type": "array",
-                  "minItems": 1,
-                  "items": {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "properties": {
-                      "gap_description": {
-                        "type": "string",
-                        "minLength": 10
-                      },
-                      "affected_user_segments": {
-                        "type": "array",
-                        "minItems": 1,
-                        "items": {
-                          "type": "string",
-                          "minLength": 3
-                        }
-                      },
-                      "opportunity_description": {
-                        "type": "string",
-                        "minLength": 10
-                      },
-                      "user_value_potential": {
-                        "type": "string",
-                        "enum": [
-                          "low",
-                          "medium",
-                          "high"
-                        ]
-                      },
-                      "feasibility": {
-                        "type": "string",
-                        "enum": [
-                          "low",
-                          "medium",
-                          "high"
-                        ]
-                      }
-                    },
-                    "required": [
-                      "gap_description",
-                      "affected_user_segments",
-                      "opportunity_description",
-                      "user_value_potential",
-                      "feasibility"
-                    ]
-                  }
-                },
-                "technical": {
-                  "type": "array",
-                  "minItems": 1,
-                  "items": {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "properties": {
-                      "gap_description": {
-                        "type": "string",
-                        "minLength": 10
-                      },
-                      "affected_user_segments": {
-                        "type": "array",
-                        "minItems": 1,
-                        "items": {
-                          "type": "string",
-                          "minLength": 3
-                        }
-                      },
-                      "opportunity_description": {
-                        "type": "string",
-                        "minLength": 10
-                      },
-                      "user_value_potential": {
-                        "type": "string",
-                        "enum": [
-                          "low",
-                          "medium",
-                          "high"
-                        ]
-                      },
-                      "feasibility": {
-                        "type": "string",
-                        "enum": [
-                          "low",
-                          "medium",
-                          "high"
-                        ]
-                      }
-                    },
-                    "required": [
-                      "gap_description",
-                      "affected_user_segments",
-                      "opportunity_description",
-                      "user_value_potential",
-                      "feasibility"
-                    ]
-                  }
-                },
-                "business": {
-                  "type": "array",
-                  "minItems": 1,
-                  "items": {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "properties": {
-                      "gap_description": {
-                        "type": "string",
-                        "minLength": 10
-                      },
-                      "affected_user_segments": {
-                        "type": "array",
-                        "minItems": 1,
-                        "items": {
-                          "type": "string",
-                          "minLength": 3
-                        }
-                      },
-                      "opportunity_description": {
-                        "type": "string",
-                        "minLength": 10
-                      },
-                      "user_value_potential": {
-                        "type": "string",
-                        "enum": [
-                          "low",
-                          "medium",
-                          "high"
-                        ]
-                      },
-                      "feasibility": {
-                        "type": "string",
-                        "enum": [
-                          "low",
-                          "medium",
-                          "high"
-                        ]
-                      }
-                    },
-                    "required": [
-                      "gap_description",
-                      "affected_user_segments",
-                      "opportunity_description",
-                      "user_value_potential",
-                      "feasibility"
-                    ]
-                  }
+                "positioning": {
+                    "type": "string",
+                    "minLength": 3
                 }
-              },
-              "required": [
-                "functional",
-                "technical",
-                "business"
-              ]
-            }
-          },
-          "required": [
-            "gaps_and_opportunities"
-          ]
+            },
+            "required": [
+                "product_name",
+                "url",
+                "description",
+                "target_audience",
+                "positioning"
+            ]
         }
-      },
-      "required": [
-        "marketLandscape",
-        "competitorInventory",
-        "competitorCapabilities",
-        "gapsOpportunities"
-      ]
-    },
-    "opportunityDefinition": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "opportunityStatement": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "opportunity_statement": {
-              "type": "string",
-              "minLength": 3
-            }
-          },
-          "required": [
-            "opportunity_statement"
-          ]
-        },
-        "valueDrivers": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "value_drivers": {
-              "type": "array",
-              "minItems": 1,
-              "items": {
-                "type": "object",
-                "additionalProperties": false,
-                "properties": {
-                  "name": {
-                    "type": "string",
-                    "minLength": 3
-                  },
-                  "user_need_or_pain": {
-                    "type": "string",
-                    "minLength": 3
-                  },
-                  "user_value_impact": {
-                    "type": "string",
-                    "enum": [
-                      "low",
-                      "medium",
-                      "high"
-                    ]
-                  },
-                  "business_value_lever": {
-                    "type": "string",
-                    "minLength": 3
-                  },
-                  "business_value_impact": {
-                    "type": "string",
-                    "enum": [
-                      "low",
-                      "medium",
-                      "high"
-                    ]
-                  },
-                  "priority": {
-                    "type": "string",
-                    "enum": [
-                      "low",
-                      "medium",
-                      "high"
-                    ]
-                  }
-                },
-                "required": [
-                  "name",
-                  "user_need_or_pain",
-                  "user_value_impact",
-                  "business_value_lever",
-                  "business_value_impact",
-                  "priority"
-                ]
-              }
-            }
-          },
-          "required": [
-            "value_drivers"
-          ]
-        },
-        "marketFitHypothesis": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "market_fit_hypothesis": {
-              "type": "object",
-              "additionalProperties": false,
-              "properties": {
-                "desirability": {
-                  "type": "array",
-                  "minItems": 1,
-                  "items": {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "properties": {
-                      "hypothesis": {
-                        "type": "string",
-                        "minLength": 3
-                      },
-                      "rationale": {
-                        "type": "string",
-                        "minLength": 3
-                      },
-                      "key_risks_or_unknowns": {
-                        "type": "array",
-                        "minItems": 1,
-                        "items": {
-                          "type": "string",
-                          "minLength": 3
-                        }
-                      }
-                    },
-                    "required": [
-                      "hypothesis",
-                      "rationale",
-                      "key_risks_or_unknowns"
-                    ]
-                  }
-                },
-                "viability": {
-                  "type": "array",
-                  "minItems": 1,
-                  "items": {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "properties": {
-                      "hypothesis": {
-                        "type": "string",
-                        "minLength": 3
-                      },
-                      "rationale": {
-                        "type": "string",
-                        "minLength": 3
-                      },
-                      "key_risks_or_unknowns": {
-                        "type": "array",
-                        "minItems": 1,
-                        "items": {
-                          "type": "string",
-                          "minLength": 3
-                        }
-                      }
-                    },
-                    "required": [
-                      "hypothesis",
-                      "rationale",
-                      "key_risks_or_unknowns"
-                    ]
-                  }
-                }
-              },
-              "required": [
-                "desirability",
-                "viability"
-              ]
-            }
-          },
-          "required": [
-            "market_fit_hypothesis"
-          ]
-        },
-        "feasibilityAssessment": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "feasibility_assessment": {
-              "type": "object",
-              "additionalProperties": false,
-              "properties": {
-                "business_constraints": {
-                  "type": "array",
-                  "minItems": 1,
-                  "items": {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "properties": {
-                      "name": {
-                        "type": "string",
-                        "minLength": 3
-                      },
-                      "description": {
-                        "type": "string",
-                        "minLength": 5
-                      },
-                      "readiness": {
-                        "type": "string",
-                        "enum": [
-                          "low",
-                          "medium",
-                          "high"
-                        ]
-                      }
-                    },
-                    "required": [
-                      "name",
-                      "description",
-                      "readiness"
-                    ]
-                  }
-                },
-                "user_constraints": {
-                  "type": "array",
-                  "minItems": 1,
-                  "items": {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "properties": {
-                      "name": {
-                        "type": "string",
-                        "minLength": 3
-                      },
-                      "description": {
-                        "type": "string",
-                        "minLength": 5
-                      },
-                      "readiness": {
-                        "type": "string",
-                        "enum": [
-                          "low",
-                          "medium",
-                          "high"
-                        ]
-                      }
-                    },
-                    "required": [
-                      "name",
-                      "description",
-                      "readiness"
-                    ]
-                  }
-                },
-                "technical_concerns": {
-                  "type": "array",
-                  "minItems": 1,
-                  "items": {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "properties": {
-                      "name": {
-                        "type": "string",
-                        "minLength": 3
-                      },
-                      "description": {
-                        "type": "string",
-                        "minLength": 5
-                      },
-                      "readiness": {
-                        "type": "string",
-                        "enum": [
-                          "low",
-                          "medium",
-                          "high"
-                        ]
-                      }
-                    },
-                    "required": [
-                      "name",
-                      "description",
-                      "readiness"
-                    ]
-                  }
-                }
-              },
-              "required": [
-                "business_constraints",
-                "user_constraints",
-                "technical_concerns"
-              ]
-            }
-          },
-          "required": [
-            "feasibility_assessment"
-          ]
-        }
-      },
-      "required": [
-        "opportunityStatement",
-        "valueDrivers",
-        "marketFitHypothesis",
-        "feasibilityAssessment"
-      ]
     }
-  },
-  "required": [
-    "problemUnderstanding",
-    "marketAndCompetitorAnalysis",
-    "opportunityDefinition"
-  ]
 }

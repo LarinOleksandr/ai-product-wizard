@@ -94,7 +94,8 @@ export function createDiscoveryRouter({
       const result = await regenerateDiscoveryField({
         version: body.version,
         fieldKey: body.fieldKey,
-        approver: body.approver
+        approver: body.approver,
+        productIdea: body.productIdea
       });
       sendJson(res, 200, {
         status: "in_progress",

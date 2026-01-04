@@ -3,19 +3,18 @@
   "type": "object",
   "additionalProperties": false,
   "properties": {
-    "user_segments": {
+    "constraints": {
       "type": "array",
-      "minItems": 1,
-      "maxItems": 1,
+      "minItems": 0,
       "items": {
         "type": "object",
         "additionalProperties": false,
         "properties": {
-          "user_segment": {
+          "constraint_group": {
             "type": "string",
             "minLength": 1
           },
-          "pain_points": {
+          "constraints": {
             "type": "array",
             "minItems": 1,
             "items": {
@@ -29,23 +28,23 @@
                 "description": {
                   "type": "string",
                   "minLength": 1
-                },
-                "severity": {
-                  "type": "string",
-                  "enum": ["low", "medium", "high"]
-                },
-                "frequency": {
-                  "type": "string",
-                  "enum": ["low", "medium", "high"]
                 }
               },
-              "required": ["name", "description", "severity", "frequency"]
+              "required": [
+                "name",
+                "description"
+              ]
             }
           }
         },
-        "required": ["user_segment", "pain_points"]
+        "required": [
+          "constraint_group",
+          "constraints"
+        ]
       }
     }
   },
-  "required": ["user_segments"]
+  "required": [
+    "constraints"
+  ]
 }

@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "competitors": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "direct": {
+          "$ref": "#/$defs/competitorArray"
+        },
+        "indirect": {
+          "$ref": "#/$defs/competitorArray"
+        },
+        "substitute": {
+          "$ref": "#/$defs/competitorArray"
+        }
+      },
+      "required": [
+        "direct",
+        "indirect",
+        "substitute"
+      ]
+    }
+  },
+  "required": [
+    "competitors"
+  ],
+  "$defs": {
+    "competitorArray": {
+      "type": "array",
+      "minItems": 0,
+      "items": {
+        "$ref": "#/$defs/competitorItem"
+      }
+    },
+    "competitorItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "product_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 3
+        },
+        "target_audience": {
+          "type": "string",
+          "minLength": 3
+        },
+        "positioning": {
+          "type": "string",
+          "minLength": 3
+        }
+      },
+      "required": [
+        "product_name",
+        "url",
+        "description",
+        "target_audience",
+        "positioning"
+      ]
+    }
+  }
+}

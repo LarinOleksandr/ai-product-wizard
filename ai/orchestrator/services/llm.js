@@ -51,9 +51,13 @@ export function createLlmService({
         if (!activeModel) {
           return { done: false, lastRawText, lastValidationErrors };
         }
-        const response = await activeModel.invoke(messages);
+        const activeMessages =
+          typeof messages === "function"
+            ? messages({ attempt, lastValidationErrors })
+            : messages;
+        const response = await activeModel.invoke(activeMessages);
         const result = await onResponse(response);
-        if (result?.rawText) {
+        if (typeof result?.rawText === "string") {
           lastRawText = result.rawText;
         }
         if (Array.isArray(result?.lastValidationErrors)) {

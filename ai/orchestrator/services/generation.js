@@ -36,6 +36,28 @@ function tryParseDiscoveryResponse(response) {
   return parsed || {};
 }
 
+function insertSentenceLineBreaks(value) {
+  if (typeof value !== "string") {
+    return value;
+  }
+  return value.replace(/([.!?])\s+(?=[A-Z0-9])/g, "$1\n");
+}
+
+function formatGeneratedText(value) {
+  if (typeof value === "string") {
+    return insertSentenceLineBreaks(value);
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => formatGeneratedText(item));
+  }
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, val]) => [key, formatGeneratedText(val)])
+    );
+  }
+  return value;
+}
+
 function formatScalarMarkdown(value) {
   if (value === null || typeof value === "undefined") {
     return "none";
@@ -163,8 +185,6 @@ export function createGenerationService({
     approvedDocument,
     systemPrompt,
     productIdea,
-    targetUser,
-    userNotes,
     outputRules,
     sectionPrompt,
     sectionSchema,
@@ -177,7 +197,6 @@ export function createGenerationService({
   }) {
     const fieldName = fieldKey?.split(".").pop() || "field";
     const outputKey = fieldOutputKey || fieldName;
-    const safeNotes = Array.isArray(userNotes) ? userNotes : [];
     const schemaBlock = sectionSchemaJson
       ? buildSchemaSketch(sectionSchemaJson)
       : sectionSchema
@@ -196,8 +215,6 @@ export function createGenerationService({
     const approved = approvedDocument || {};
     return renderTemplate(prompt, {
       productIdea,
-      targetUser,
-      userNotes: safeNotes.length ? `- ${safeNotes.join("\n- ")}` : "none",
       problemStatement:
         getNestedValue(approved, "problemUnderstanding.problemStatement") || "",
       targetUsersAndSegments: JSON.stringify(
@@ -210,9 +227,15 @@ export function createGenerationService({
         null,
         2
       ),
-      contextConstraints: JSON.stringify(
-        getNestedValue(approved, "problemUnderstanding.contextConstraints") || {
-          contextual_factors: [],
+      contextualFactors: JSON.stringify(
+        getNestedValue(approved, "problemUnderstanding.contextualFactors") || {
+          contextual_factors: []
+        },
+        null,
+        2
+      ),
+      constraints: JSON.stringify(
+        getNestedValue(approved, "problemUnderstanding.constraints") || {
           constraints: []
         },
         null,
@@ -232,26 +255,14 @@ export function createGenerationService({
       ),
       competitorCapabilities: JSON.stringify(
         getNestedValue(approved, "marketAndCompetitorAnalysis.competitorCapabilities") || {
-          competitor_capabilities: [],
-          industry_capability_patterns: []
+          competitor_capabilities: []
         },
         null,
         2
       ),
       gapsOpportunities: JSON.stringify(
         getNestedValue(approved, "marketAndCompetitorAnalysis.gapsOpportunities") || {
-          gaps_and_opportunities: {
-            functional: [],
-            technical: [],
-            business: []
-          }
-        },
-        null,
-        2
-      ),
-      opportunityStatement: JSON.stringify(
-        getNestedValue(approved, "opportunityDefinition.opportunityStatement") || {
-          opportunity_statement: ""
+          opportunities: []
         },
         null,
         2
@@ -263,23 +274,9 @@ export function createGenerationService({
         null,
         2
       ),
-      marketFitHypothesis: JSON.stringify(
-        getNestedValue(approved, "opportunityDefinition.marketFitHypothesis") || {
-          market_fit_hypothesis: {
-            desirability: [],
-            viability: []
-          }
-        },
-        null,
-        2
-      ),
-      feasibilityAssessment: JSON.stringify(
-        getNestedValue(approved, "opportunityDefinition.feasibilityAssessment") || {
-          feasibility_assessment: {
-            business_constraints: [],
-            user_constraints: [],
-            technical_concerns: []
-          }
+      feasibilityRisks: JSON.stringify(
+        getNestedValue(approved, "opportunityDefinition.feasibilityRisks") || {
+          feasibility_risks: []
         },
         null,
         2
@@ -290,12 +287,10 @@ export function createGenerationService({
     });
   }
 
-  async function generateFieldValue({ field, productIdea, targetUser, userNotes, currentDocument }) {
+  async function generateFieldValue({ field, productIdea, currentDocument }) {
     const result = await generateFieldValueWithOutput({
       field,
       productIdea,
-      targetUser,
-      userNotes,
       currentDocument
     });
     return result.value;
@@ -304,8 +299,6 @@ export function createGenerationService({
   async function generateFieldValueWithOutput({
     field,
     productIdea,
-    targetUser,
-    userNotes,
     currentDocument,
     fieldStatus
   }) {
@@ -319,8 +312,6 @@ export function createGenerationService({
       promptService.buildIncomingInfoForField({
         fieldKey: field.key,
         productIdea,
-        targetUser,
-        userNotes,
         currentDocument,
         fieldStatus
       })
@@ -330,8 +321,6 @@ export function createGenerationService({
       approvedDocument,
       systemPrompt: promptAssets.systemPrompt,
       productIdea,
-      targetUser,
-      userNotes,
       outputRules: promptAssets.outputRules,
       sectionPrompt,
       sectionSchema,
@@ -343,7 +332,7 @@ export function createGenerationService({
       fieldOutputKey: field.outputKey
     });
 
-    const messages = [
+    const baseMessages = [
       {
         role: "system",
         content: promptAssets.systemPrompt
@@ -353,6 +342,25 @@ export function createGenerationService({
         content: prompt
       }
     ];
+    const messages =
+      field.key === "marketAndCompetitorAnalysis.competitorInventory"
+        ? ({ attempt, lastValidationErrors }) => {
+            if (!attempt || !lastValidationErrors.length) {
+              return baseMessages;
+            }
+            return baseMessages.concat([
+              {
+                role: "user",
+                content: [
+                  "Your previous output was rejected. Fix only the errors below and regenerate the full JSON output:",
+                  ...lastValidationErrors.map((error) => `- ${error}`),
+                  "",
+                  "Reminder: product_name must be a specific named product/company (no generic categories), and each URL must be an official product URL."
+                ].join("\n")
+              }
+            ]);
+          }
+        : baseMessages;
 
     const model = llmService.getChatModel();
     if (!model) {
@@ -377,10 +385,25 @@ export function createGenerationService({
             tryParseDiscoveryResponse(response),
             approvedDocument
           );
-          if (field.type === "object" && validationService.isPlainObject(parsed) && sectionSchemaJson?.type === "object") {
-            const candidate = parsed;
+          if (
+            field.type === "object" &&
+            validationService.isPlainObject(parsed) &&
+            sectionSchemaJson?.type === "object"
+          ) {
+            const candidate = formatGeneratedText(parsed);
             const validation = validationService.validateAgainstSchema(candidate, sectionSchemaJson);
             if (validation.valid) {
+              if (field.key === "marketAndCompetitorAnalysis.competitorInventory") {
+                const competitorErrors =
+                  validationService.validateCompetitorInventoryValue(candidate);
+                if (competitorErrors.length > 0) {
+                  return {
+                    done: false,
+                    rawText,
+                    lastValidationErrors: competitorErrors
+                  };
+                }
+              }
               return {
                 done: true,
                 value: candidate,
@@ -393,7 +416,7 @@ export function createGenerationService({
           if (field.outputKey && typeof parsed?.[field.outputKey] !== "undefined") {
             if (field.wrapOutputKey) {
               const value = { [field.outputKey]: parsed[field.outputKey] };
-              const candidate = value;
+              const candidate = formatGeneratedText(value);
               const validation = validationService.validateAgainstSchema(candidate, sectionSchemaJson || null);
               if (!validation.valid) {
                 return { done: false, rawText, lastValidationErrors: validation.errors };
@@ -405,7 +428,7 @@ export function createGenerationService({
                 validationStatus: "valid"
               };
             }
-            const value = parsed[field.outputKey];
+            const value = formatGeneratedText(parsed[field.outputKey]);
             const validationValue = sectionSchemaJson?.type === "object"
               ? { [field.outputKey]: value }
               : value;
@@ -426,7 +449,7 @@ export function createGenerationService({
             };
           }
           if (fieldName && typeof parsed?.[fieldName] !== "undefined") {
-            const value = parsed[fieldName];
+            const value = formatGeneratedText(parsed[fieldName]);
             const validationValue = sectionSchemaJson?.type === "object"
               ? { [fieldName]: value }
               : value;
@@ -448,11 +471,11 @@ export function createGenerationService({
           }
           const nested = getNestedValue(parsed, field.key);
           if (typeof nested !== "undefined") {
-            const candidateValue = nested;
-            const validation = validationService.validateAgainstSchema(
-              candidateValue,
-              sectionSchemaJson || null
-            );
+          const candidateValue = formatGeneratedText(nested);
+          const validation = validationService.validateAgainstSchema(
+            candidateValue,
+            sectionSchemaJson || null
+          );
             if (!validation.valid) {
               return { done: false, rawText, lastValidationErrors: validation.errors };
             }
@@ -466,10 +489,11 @@ export function createGenerationService({
         } catch (parseError) {
           if (rawText) {
             const normalized = validationService.normalizeRawFieldValue(rawText, field.type);
+            const formattedNormalized = formatGeneratedText(normalized);
             const validationValue = sectionSchemaJson?.type === "object"
-              ? { [field.outputKey || fieldName || "value"]: normalized }
-              : normalized;
-            const candidateValue = normalized;
+              ? { [field.outputKey || fieldName || "value"]: formattedNormalized }
+              : formattedNormalized;
+            const candidateValue = formattedNormalized;
             const candidateForValidation = validationValue;
             const validation = validationService.validateAgainstSchema(
               candidateForValidation,
@@ -504,7 +528,7 @@ export function createGenerationService({
 
     const failure = new Error(`LLM output invalid for field ${field.key}.`);
     failure.lastPrompt = prompt;
-    failure.lastOutput = result.lastRawText || null;
+    failure.lastOutput = typeof result.lastRawText === "string" ? result.lastRawText : "";
     failure.lastOutputFieldKey = field.key;
     failure.validationErrors = result.lastValidationErrors || [];
     throw failure;

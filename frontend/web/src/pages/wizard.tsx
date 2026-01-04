@@ -33,210 +33,143 @@ import {
 const API_BASE =
   import.meta.env.VITE_ORCHESTRATOR_URL || "http://localhost:8002";
 
-type UserGroup = {
-  name: string;
-  characteristics: string[];
-};
-
 type TargetSegment = {
   segment_name: string;
-  business_relevance: string;
-  user_groups: UserGroup[];
+  segment_type: "primary" | "secondary";
+  usage_contexts: string[];
+  characteristics: string[];
 };
 
 type PainPoint = {
   name: string;
   description: string;
-  affected_user_groups: string[];
   severity: "low" | "medium" | "high";
   frequency: "low" | "medium" | "high";
-  business_importance: "low" | "medium" | "high";
 };
 
-type PainPointTheme = {
-  theme_name: string;
+type PainPointGroup = {
+  user_segment: string;
   pain_points: PainPoint[];
 };
 
-type ContextConstraintItem = {
+type ContextFactor = {
   name: string;
   description: string;
-  impact_on_user_needs: string;
-  business_implications: string;
 };
 
-type ContextConstraints = {
-  contextual_factors: ContextConstraintItem[];
-  constraints: ContextConstraintItem[];
+type ContextFactorGroup = {
+  factor_group: string;
+  factors: ContextFactor[];
 };
 
-type MarketDefinition = {
-  description: string;
-  excluded_adjacent_spaces: string[];
-};
-
-type MarketSize = {
-  description: string;
-};
-
-type MarketMaturity = {
-  classification: "emerging" | "fragmented" | "consolidating" | "mature";
-  rationale: string;
-};
-
-type MarketTrend = {
+type ConstraintItem = {
   name: string;
   description: string;
-  time_horizon: "short" | "mid" | "long";
-  affected_target_segments: string[];
-  basis: "evidence_from_inputs" | "domain_generic_assumption";
-  confidence: "low" | "medium" | "high";
 };
 
-type MarketDynamic = {
-  name: string;
-  description: string;
-  affected_target_segments: string[];
-  basis: "evidence_from_inputs" | "domain_generic_assumption";
-  confidence: "low" | "medium" | "high";
+type ConstraintGroup = {
+  constraint_group: string;
+  constraints: ConstraintItem[];
 };
 
-type MarketForce = MarketDynamic;
-
-type AdoptionDriver = {
-  name: string;
-  description: string;
-  affected_target_segments: string[];
+type ContextualFactors = {
+  contextual_factors: ContextFactorGroup[];
 };
 
-type AdoptionBarrier = AdoptionDriver;
+type Constraints = {
+  constraints: ConstraintGroup[];
+};
+
+type MarketAlternatives = {
+  direct_competitor_segments: string[];
+  indirect_competitor_segments: string[];
+  substitute_segments: string[];
+};
 
 type MarketLandscape = {
-  market_definition: MarketDefinition;
-  market_size: MarketSize;
-  market_maturity: MarketMaturity;
-  market_trends: MarketTrend[];
-  market_dynamics: MarketDynamic[];
-  market_forces: MarketForce[];
-  adoption_drivers: AdoptionDriver[];
-  adoption_barriers: AdoptionBarrier[];
+  market_definition: string;
+  alternatives: MarketAlternatives;
+  market_norms: string[];
+  adoption_drivers: string[];
+  adoption_barriers: string[];
 };
 
 type CompetitorEntry = {
-  name: string;
+  product_name: string;
   url: string;
-  category: "direct" | "indirect" | "substitute";
   description: string;
   target_audience: string;
   positioning: string;
 };
 
 type CompetitorInventory = {
-  competitors: CompetitorEntry[];
+  competitors: {
+    direct: CompetitorEntry[];
+    indirect: CompetitorEntry[];
+    substitute: CompetitorEntry[];
+  };
 };
 
 type CompetitorCapabilityEntry = {
-  competitor_name: string;
-  functional_capabilities: string[];
-  technical_capabilities: string[];
-  business_capabilities: string[];
-  strengths: string[];
-  limitations: string[];
+  capability: string;
   alignment_with_user_needs: string;
-};
-
-type IndustryCapabilityPattern = {
-  pattern_name: string;
-  description: string;
+  owning_competitors: string[];
+  gaps_and_limitations: string[];
 };
 
 type CompetitorCapabilities = {
-  competitor_capabilities: CompetitorCapabilityEntry[];
-  industry_capability_patterns: IndustryCapabilityPattern[];
-};
-
-type GapOpportunity = {
-  gap_description: string;
-  affected_user_segments: string[];
-  opportunity_description: string;
-  user_value_potential: "low" | "medium" | "high";
-  feasibility: "low" | "medium" | "high";
-};
-
-type GapsOpportunities = {
-  gaps_and_opportunities: {
-    functional: GapOpportunity[];
-    technical: GapOpportunity[];
-    business: GapOpportunity[];
+  competitor_capabilities: {
+    Functional: CompetitorCapabilityEntry[];
+    Technical: CompetitorCapabilityEntry[];
+    Business: CompetitorCapabilityEntry[];
   };
 };
 
-type OpportunityStatement = {
-  opportunity_statement: string;
+type OpportunityItem = {
+  opportunity: string;
+  why_it_remains_unaddressed: string;
+  user_value_potential: string;
 };
 
-type ValueDriver = {
-  name: string;
-  user_need_or_pain: string;
-  user_value_impact: "low" | "medium" | "high";
-  business_value_lever: string;
-  business_value_impact: "low" | "medium" | "high";
-  priority: "low" | "medium" | "high";
+type Opportunities = {
+  opportunities: OpportunityItem[];
 };
 
 type ValueDrivers = {
-  value_drivers: ValueDriver[];
+  value_drivers: string[];
 };
 
-type MarketFitHypothesisItem = {
-  hypothesis: string;
-  rationale: string;
-  key_risks_or_unknowns: string[];
+type FeasibilityRisk = {
+  feasibility_risk_type: "business" | "user" | "technical";
+  feasibility_risk: string;
+  why_it_matters: string;
 };
 
-type MarketFitHypothesis = {
-  market_fit_hypothesis: {
-    desirability: MarketFitHypothesisItem[];
-    viability: MarketFitHypothesisItem[];
-  };
-};
-
-type FeasibilityConstraintItem = {
-  name: string;
-  description: string;
-  readiness: "low" | "medium" | "high";
-};
-
-type FeasibilityAssessment = {
-  feasibility_assessment: {
-    business_constraints: FeasibilityConstraintItem[];
-    user_constraints: FeasibilityConstraintItem[];
-    technical_concerns: FeasibilityConstraintItem[];
-  };
+type FeasibilityRisks = {
+  feasibility_risks: FeasibilityRisk[];
 };
 
 type DiscoveryDocument = {
   problemUnderstanding?: {
     problemStatement?: string;
     targetUsersSegments?: {
-      target_segments?: TargetSegment[];
+      user_segments?: TargetSegment[];
     };
     userPainPoints?: {
-      pain_point_themes?: PainPointTheme[];
+      user_segments?: PainPointGroup[];
     };
-    contextConstraints?: ContextConstraints;
+    contextualFactors?: ContextualFactors;
+    constraints?: Constraints;
   };
   marketAndCompetitorAnalysis?: {
     marketLandscape?: MarketLandscape;
     competitorInventory?: CompetitorInventory;
     competitorCapabilities?: CompetitorCapabilities;
-    gapsOpportunities?: GapsOpportunities;
+    gapsOpportunities?: Opportunities;
   };
   opportunityDefinition?: {
-    opportunityStatement?: OpportunityStatement;
     valueDrivers?: ValueDrivers;
-    marketFitHypothesis?: MarketFitHypothesis;
-    feasibilityAssessment?: FeasibilityAssessment;
+    feasibilityRisks?: FeasibilityRisks;
   };
 };
 
@@ -244,7 +177,6 @@ type DiscoveryRecord = {
   version: number;
   timestamp?: string;
   productIdea?: string;
-  targetUser?: string;
   discoveryDocument?: DiscoveryDocument;
   approved?: boolean;
   changeReason?: string;
@@ -277,52 +209,56 @@ const statusColors: Record<ApiStatus, string> = {
   error: "bg-red-100 text-red-800"
 };
 
+const formatProductIdea = (value: string) =>
+  value
+    .replace(/\r?\n+/g, " ")
+    .replace(/([.!?])\s+/g, "$1\n")
+    .trim();
+
 const emptyMarketLandscape: MarketLandscape = {
-  market_definition: {
-    description: "",
-    excluded_adjacent_spaces: []
+  market_definition: "",
+  alternatives: {
+    direct_competitor_segments: [],
+    indirect_competitor_segments: [],
+    substitute_segments: []
   },
-  market_size: {
-    description: ""
-  },
-  market_maturity: {
-    classification: "emerging",
-    rationale: ""
-  },
-  market_trends: [],
-  market_dynamics: [],
-  market_forces: [],
+  market_norms: [],
   adoption_drivers: [],
   adoption_barriers: []
 };
 
 const emptyCompetitorInventory: CompetitorInventory = {
-  competitors: []
+  competitors: {
+    direct: [],
+    indirect: [],
+    substitute: []
+  }
 };
 
 const emptyCompetitorCapabilities: CompetitorCapabilities = {
-  competitor_capabilities: [],
-  industry_capability_patterns: []
+  competitor_capabilities: {
+    Functional: [],
+    Technical: [],
+    Business: []
+  }
 };
 
-const emptyGapsOpportunities: GapsOpportunities = {
-  gaps_and_opportunities: {
-    functional: [],
-    technical: [],
-    business: []
-  }
+const emptyGapsOpportunities: Opportunities = {
+  opportunities: []
 };
 
 const emptyDocument: DiscoveryDocument = {
   problemUnderstanding: {
     targetUsersSegments: {
-      target_segments: []
+      user_segments: []
     },
     userPainPoints: {
-      pain_point_themes: []
+      user_segments: []
     },
-    contextConstraints: {
+    contextualFactors: {
       contextual_factors: [],
+    },
+    constraints: {
       constraints: []
     }
   },
@@ -333,24 +269,11 @@ const emptyDocument: DiscoveryDocument = {
     gapsOpportunities: emptyGapsOpportunities
   },
   opportunityDefinition: {
-    opportunityStatement: {
-      opportunity_statement: ""
-    },
     valueDrivers: {
       value_drivers: []
     },
-    marketFitHypothesis: {
-      market_fit_hypothesis: {
-        desirability: [],
-        viability: []
-      }
-    },
-    feasibilityAssessment: {
-      feasibility_assessment: {
-        business_constraints: [],
-        user_constraints: [],
-        technical_concerns: []
-      }
+    feasibilityRisks: {
+      feasibility_risks: []
     }
   }
 };
@@ -372,21 +295,27 @@ const fieldDefinitions: FieldDefinition[] = [
   },
   {
     key: "problemUnderstanding.targetUsersSegments",
-    label: "Target Users & Segments",
+    label: "User Segments",
     type: "object",
     group: "Problem Understanding",
-    outputKey: "target_segments"
+    outputKey: "user_segments"
   },
   {
     key: "problemUnderstanding.userPainPoints",
     label: "User Pain Points",
     type: "object",
     group: "Problem Understanding",
-    outputKey: "pain_point_themes"
+    outputKey: "user_pain_points"
   },
   {
-    key: "problemUnderstanding.contextConstraints",
-    label: "Context & Constraints",
+    key: "problemUnderstanding.contextualFactors",
+    label: "Contextual Factors",
+    type: "object",
+    group: "Problem Understanding"
+  },
+  {
+    key: "problemUnderstanding.constraints",
+    label: "Constraints",
     type: "object",
     group: "Problem Understanding"
   },
@@ -398,7 +327,7 @@ const fieldDefinitions: FieldDefinition[] = [
   },
   {
     key: "marketAndCompetitorAnalysis.competitorInventory",
-    label: "Competitor Inventory",
+    label: "Competitors",
     type: "object",
     group: "Market and Competitor Analysis"
   },
@@ -410,16 +339,9 @@ const fieldDefinitions: FieldDefinition[] = [
   },
   {
     key: "marketAndCompetitorAnalysis.gapsOpportunities",
-    label: "Gaps & Opportunities",
+    label: "Opportunities",
     type: "object",
-    group: "Market and Competitor Analysis"
-  },
-  {
-    key: "opportunityDefinition.opportunityStatement",
-    label: "Opportunity Statement",
-    type: "object",
-    group: "Opportunity Definition",
-    outputKey: "opportunity_statement"
+    group: "Opportunity Definition"
   },
   {
     key: "opportunityDefinition.valueDrivers",
@@ -428,14 +350,8 @@ const fieldDefinitions: FieldDefinition[] = [
     group: "Opportunity Definition"
   },
   {
-    key: "opportunityDefinition.marketFitHypothesis",
-    label: "Market Fit Hypothesis",
-    type: "object",
-    group: "Opportunity Definition"
-  },
-  {
-    key: "opportunityDefinition.feasibilityAssessment",
-    label: "Feasibility Assessment",
+    key: "opportunityDefinition.feasibilityRisks",
+    label: "Feasibility Risks",
     type: "object",
     group: "Opportunity Definition"
   }
@@ -544,135 +460,175 @@ function getFieldDisplayKey(field: FieldDefinition) {
 }
 
 function normalizeMarketLandscapeValue(value?: MarketLandscape | null): MarketLandscape {
+  const alternatives = value?.alternatives;
+  const legacyDefinition =
+    typeof (value as { market_definition?: { description?: string } })?.market_definition
+      ?.description === "string"
+      ? (value as { market_definition: { description: string } }).market_definition.description
+      : "";
   return {
-    market_definition: {
-      description: value?.market_definition?.description || "",
-      excluded_adjacent_spaces: Array.isArray(
-        value?.market_definition?.excluded_adjacent_spaces
-      )
-        ? value?.market_definition?.excluded_adjacent_spaces || []
+    market_definition:
+      typeof value?.market_definition === "string" ? value.market_definition : legacyDefinition,
+    alternatives: {
+      direct_competitor_segments: Array.isArray(alternatives?.direct_competitor_segments)
+        ? alternatives.direct_competitor_segments
+        : [],
+      indirect_competitor_segments: Array.isArray(alternatives?.indirect_competitor_segments)
+        ? alternatives.indirect_competitor_segments
+        : [],
+      substitute_segments: Array.isArray(alternatives?.substitute_segments)
+        ? alternatives.substitute_segments
         : []
     },
-    market_size: {
-      description: value?.market_size?.description || ""
-    },
-    market_maturity: {
-      classification: value?.market_maturity?.classification || "emerging",
-      rationale: value?.market_maturity?.rationale || ""
-    },
-    market_trends: Array.isArray(value?.market_trends) ? value?.market_trends || [] : [],
-    market_dynamics: Array.isArray(value?.market_dynamics)
-      ? value?.market_dynamics || []
-      : [],
-    market_forces: Array.isArray(value?.market_forces) ? value?.market_forces || [] : [],
-    adoption_drivers: Array.isArray(value?.adoption_drivers)
-      ? value?.adoption_drivers || []
-      : [],
-    adoption_barriers: Array.isArray(value?.adoption_barriers)
-      ? value?.adoption_barriers || []
-      : []
+    market_norms: Array.isArray(value?.market_norms) ? value.market_norms : [],
+    adoption_drivers: Array.isArray(value?.adoption_drivers) ? value.adoption_drivers : [],
+    adoption_barriers: Array.isArray(value?.adoption_barriers) ? value.adoption_barriers : []
   };
 }
 
 function normalizeCompetitorInventoryValue(
   value?: CompetitorInventory | null
 ): CompetitorInventory {
+  const raw = value?.competitors;
+  if (Array.isArray(raw)) {
+    const grouped = { direct: [], indirect: [], substitute: [] } as CompetitorInventory["competitors"];
+    raw.forEach((item: any) => {
+      const entry: CompetitorEntry = {
+        product_name: item?.product_name || item?.name || "",
+        url: item?.url || "",
+        description: item?.description || "",
+        target_audience: item?.target_audience || "",
+        positioning: item?.positioning || ""
+      };
+      if (item?.category === "indirect") {
+        grouped.indirect.push(entry);
+      } else if (item?.category === "substitute") {
+        grouped.substitute.push(entry);
+      } else {
+        grouped.direct.push(entry);
+      }
+    });
+    return { competitors: grouped };
+  }
   return {
-    competitors: Array.isArray(value?.competitors) ? value?.competitors || [] : []
+    competitors: {
+      direct: Array.isArray(raw?.direct) ? raw.direct : [],
+      indirect: Array.isArray(raw?.indirect) ? raw.indirect : [],
+      substitute: Array.isArray(raw?.substitute) ? raw.substitute : []
+    }
   };
 }
 
 function normalizeCompetitorCapabilitiesValue(
   value?: CompetitorCapabilities | null
 ): CompetitorCapabilities {
+  const normalizeItems = (items: unknown) =>
+    Array.isArray(items)
+      ? items.map((item: any) => ({
+          capability: item?.capability || "",
+          alignment_with_user_needs: item?.alignment_with_user_needs || "",
+          owning_competitors: Array.isArray(item?.owning_competitors)
+            ? item.owning_competitors
+            : [],
+          gaps_and_limitations: Array.isArray(item?.gaps_and_limitations)
+            ? item.gaps_and_limitations
+            : []
+        }))
+      : [];
+  if (Array.isArray((value as any)?.competitor_capabilities)) {
+    return {
+      competitor_capabilities: {
+        Functional: normalizeItems((value as any).competitor_capabilities),
+        Technical: [],
+        Business: []
+      }
+    };
+  }
   return {
-    competitor_capabilities: Array.isArray(value?.competitor_capabilities)
-      ? value?.competitor_capabilities || []
-      : [],
-    industry_capability_patterns: Array.isArray(value?.industry_capability_patterns)
-      ? value?.industry_capability_patterns || []
-      : []
+    competitor_capabilities: {
+      Functional: normalizeItems(value?.competitor_capabilities?.Functional),
+      Technical: normalizeItems(value?.competitor_capabilities?.Technical),
+      Business: normalizeItems(value?.competitor_capabilities?.Business)
+    }
   };
 }
 
 function normalizeGapsOpportunitiesValue(
-  value?: GapsOpportunities | null
-): GapsOpportunities {
-  const normalizeGap = (item: Partial<GapOpportunity> | null | undefined): GapOpportunity => ({
-    gap_description: item?.gap_description || "",
-    affected_user_segments: Array.isArray(item?.affected_user_segments)
-      ? item?.affected_user_segments || []
-      : [],
-    opportunity_description: item?.opportunity_description || "",
-    user_value_potential: item?.user_value_potential || "medium",
-    feasibility: item?.feasibility || "medium"
+  value?: Opportunities | null
+): Opportunities {
+  const normalizeItem = (
+    item: Partial<OpportunityItem> | null | undefined
+  ): OpportunityItem => ({
+    opportunity:
+      item?.opportunity ||
+      (item as { opportunity_description?: string })?.opportunity_description ||
+      (item as { gap_description?: string })?.gap_description ||
+      "",
+    why_it_remains_unaddressed:
+      item?.why_it_remains_unaddressed ||
+      (item as { persistence_reason?: string })?.persistence_reason ||
+      "",
+    user_value_potential: item?.user_value_potential || ""
   });
-  const normalizeGapList = (list: GapOpportunity[] | undefined | null) =>
-    Array.isArray(list) ? list.map((item) => normalizeGap(item)) : [];
-  const legacyList = Array.isArray(
-    (value as { gaps_and_opportunities?: unknown })?.gaps_and_opportunities
-  )
-    ? (value as { gaps_and_opportunities: GapOpportunity[] }).gaps_and_opportunities
-    : null;
-  return {
-    gaps_and_opportunities: {
-      functional: legacyList
-        ? normalizeGapList(legacyList)
-        : normalizeGapList(value?.gaps_and_opportunities?.functional),
-      technical: normalizeGapList(value?.gaps_and_opportunities?.technical),
-      business: normalizeGapList(value?.gaps_and_opportunities?.business)
-    }
-  };
-}
-
-function normalizeOpportunityStatementValue(
-  value?: OpportunityStatement | null
-): OpportunityStatement {
-  if (typeof value === "string") {
-    return { opportunity_statement: value };
+  if (Array.isArray(value?.opportunities)) {
+    return { opportunities: value.opportunities.map((item) => normalizeItem(item)) };
   }
-  return {
-    opportunity_statement: value?.opportunity_statement || ""
-  };
+  const legacy = (value as { gaps_and_opportunities?: any })?.gaps_and_opportunities;
+  if (legacy && typeof legacy === "object") {
+    const merged = [
+      ...(Array.isArray(legacy.functional) ? legacy.functional : []),
+      ...(Array.isArray(legacy.technical) ? legacy.technical : []),
+      ...(Array.isArray(legacy.business) ? legacy.business : [])
+    ];
+    return { opportunities: merged.map((item) => normalizeItem(item)) };
+  }
+  return { opportunities: [] };
 }
 
 function normalizeValueDriversValue(value?: ValueDrivers | null): ValueDrivers {
-  return {
-    value_drivers: Array.isArray(value?.value_drivers) ? value?.value_drivers || [] : []
-  };
+  if (Array.isArray(value)) {
+    return { value_drivers: value.map((item) => String(item)) };
+  }
+  if (Array.isArray(value?.value_drivers)) {
+    const drivers = value.value_drivers.map((item) =>
+      typeof item === "string" ? item : (item as any)?.name || String(item)
+    );
+    return { value_drivers: drivers };
+  }
+  return { value_drivers: [] };
 }
 
-function normalizeMarketFitHypothesisValue(
-  value?: MarketFitHypothesis | null
-): MarketFitHypothesis {
-  return {
-    market_fit_hypothesis: {
-      desirability: Array.isArray(value?.market_fit_hypothesis?.desirability)
-        ? value?.market_fit_hypothesis?.desirability || []
-        : [],
-      viability: Array.isArray(value?.market_fit_hypothesis?.viability)
-        ? value?.market_fit_hypothesis?.viability || []
-        : []
-    }
-  };
-}
-
-function normalizeFeasibilityAssessmentValue(
-  value?: FeasibilityAssessment | null
-): FeasibilityAssessment {
-  return {
-    feasibility_assessment: {
-      business_constraints: Array.isArray(value?.feasibility_assessment?.business_constraints)
-        ? value?.feasibility_assessment?.business_constraints || []
-        : [],
-      user_constraints: Array.isArray(value?.feasibility_assessment?.user_constraints)
-        ? value?.feasibility_assessment?.user_constraints || []
-        : [],
-      technical_concerns: Array.isArray(value?.feasibility_assessment?.technical_concerns)
-        ? value?.feasibility_assessment?.technical_concerns || []
-        : []
-    }
-  };
+function normalizeFeasibilityRisksValue(
+  value?: FeasibilityRisks | null
+): FeasibilityRisks {
+  if (Array.isArray(value)) {
+    return { feasibility_risks: value as FeasibilityRisk[] };
+  }
+  if (Array.isArray(value?.feasibility_risks)) {
+    return { feasibility_risks: value.feasibility_risks };
+  }
+  const legacy = (value as any)?.feasibility_assessment;
+  if (legacy && typeof legacy === "object") {
+    const mapLegacy = (
+      items: any[],
+      riskType: FeasibilityRisk["feasibility_risk_type"]
+    ) =>
+      Array.isArray(items)
+        ? items.map((item) => ({
+            feasibility_risk_type: riskType,
+            feasibility_risk: item?.name || "",
+            why_it_matters: item?.description || ""
+          }))
+        : [];
+    return {
+      feasibility_risks: [
+        ...mapLegacy(legacy.business_constraints, "business"),
+        ...mapLegacy(legacy.user_constraints, "user"),
+        ...mapLegacy(legacy.technical_concerns, "technical")
+      ]
+    };
+  }
+  return { feasibility_risks: [] };
 }
 
 function hasFieldValue(field: FieldDefinition, value: unknown): boolean {
@@ -685,90 +641,75 @@ function hasFieldValue(field: FieldDefinition, value: unknown): boolean {
   if (!value || typeof value !== "object") {
     return false;
   }
-  if (field.key === "problemUnderstanding.contextConstraints") {
-    const constraintsValue = value as ContextConstraints;
-    return Boolean(
-      (Array.isArray(constraintsValue.contextual_factors) &&
-        constraintsValue.contextual_factors.length > 0) ||
-        (Array.isArray(constraintsValue.constraints) &&
-          constraintsValue.constraints.length > 0)
+  if (field.key === "problemUnderstanding.contextualFactors") {
+    const factorsValue = value as ContextualFactors;
+    return Array.isArray(factorsValue.contextual_factors)
+      ? factorsValue.contextual_factors.some(
+          (group) => Array.isArray(group.factors) && group.factors.length > 0
+        )
+      : false;
+  }
+  if (field.key === "problemUnderstanding.targetUsersSegments") {
+    const segmentsValue = value as { user_segments?: TargetSegment[] };
+    return Array.isArray(segmentsValue.user_segments) && segmentsValue.user_segments.length > 0;
+  }
+  if (field.key === "problemUnderstanding.userPainPoints") {
+    const painPointsValue = value as { user_segments?: PainPointGroup[] };
+    return (
+      Array.isArray(painPointsValue.user_segments) &&
+      painPointsValue.user_segments.length > 0
     );
   }
+  if (field.key === "problemUnderstanding.constraints") {
+    const constraintsValue = value as Constraints;
+    return Array.isArray(constraintsValue.constraints)
+      ? constraintsValue.constraints.some(
+          (group) => Array.isArray(group.constraints) && group.constraints.length > 0
+        )
+      : false;
+  }
   if (field.key === "marketAndCompetitorAnalysis.marketLandscape") {
-    const landscapeValue = value as MarketLandscape;
+    const landscapeValue = normalizeMarketLandscapeValue(value as MarketLandscape);
     return Boolean(
-      landscapeValue.market_definition?.description?.trim() ||
-        landscapeValue.market_size?.description?.trim() ||
-        landscapeValue.market_maturity?.rationale?.trim() ||
-        (Array.isArray(landscapeValue.market_trends) &&
-          landscapeValue.market_trends.length > 0) ||
-        (Array.isArray(landscapeValue.market_dynamics) &&
-          landscapeValue.market_dynamics.length > 0) ||
-        (Array.isArray(landscapeValue.market_forces) &&
-          landscapeValue.market_forces.length > 0) ||
-        (Array.isArray(landscapeValue.adoption_drivers) &&
-          landscapeValue.adoption_drivers.length > 0) ||
-        (Array.isArray(landscapeValue.adoption_barriers) &&
-          landscapeValue.adoption_barriers.length > 0)
+      landscapeValue.market_definition.trim() ||
+        landscapeValue.alternatives.direct_competitor_segments.length > 0 ||
+        landscapeValue.alternatives.indirect_competitor_segments.length > 0 ||
+        landscapeValue.alternatives.substitute_segments.length > 0 ||
+        landscapeValue.market_norms.length > 0 ||
+        landscapeValue.adoption_drivers.length > 0 ||
+        landscapeValue.adoption_barriers.length > 0
     );
   }
   if (field.key === "marketAndCompetitorAnalysis.competitorInventory") {
     const inventoryValue = value as CompetitorInventory;
-    return Array.isArray(inventoryValue.competitors) && inventoryValue.competitors.length > 0;
+    if (Array.isArray(inventoryValue.competitors)) {
+      return inventoryValue.competitors.length > 0;
+    }
+    return Boolean(
+      inventoryValue.competitors?.direct?.length ||
+        inventoryValue.competitors?.indirect?.length ||
+        inventoryValue.competitors?.substitute?.length
+    );
   }
   if (field.key === "marketAndCompetitorAnalysis.competitorCapabilities") {
     const capabilityValue = value as CompetitorCapabilities;
     return Boolean(
-      (Array.isArray(capabilityValue.competitor_capabilities) &&
-        capabilityValue.competitor_capabilities.length > 0) ||
-        (Array.isArray(capabilityValue.industry_capability_patterns) &&
-          capabilityValue.industry_capability_patterns.length > 0)
+      capabilityValue.competitor_capabilities?.Functional?.length ||
+        capabilityValue.competitor_capabilities?.Technical?.length ||
+        capabilityValue.competitor_capabilities?.Business?.length
     );
   }
   if (field.key === "marketAndCompetitorAnalysis.gapsOpportunities") {
-    const gapsValue = value as GapsOpportunities;
-    return (
-      (Array.isArray(gapsValue.gaps_and_opportunities?.functional) &&
-        gapsValue.gaps_and_opportunities.functional.length > 0) ||
-      (Array.isArray(gapsValue.gaps_and_opportunities?.technical) &&
-        gapsValue.gaps_and_opportunities.technical.length > 0) ||
-      (Array.isArray(gapsValue.gaps_and_opportunities?.business) &&
-        gapsValue.gaps_and_opportunities.business.length > 0)
-    );
-  }
-  if (field.key === "opportunityDefinition.opportunityStatement") {
-    if (typeof value === "string") {
-      return value.trim().length > 0;
-    }
-    if (value && typeof value === "object") {
-      const statement = (value as OpportunityStatement).opportunity_statement;
-      return typeof statement === "string" && statement.trim().length > 0;
-    }
-    return false;
+    const gapsValue = value as Opportunities;
+    return Array.isArray(gapsValue.opportunities) && gapsValue.opportunities.length > 0;
   }
   if (field.key === "opportunityDefinition.valueDrivers") {
     const driversValue = value as ValueDrivers;
     return Array.isArray(driversValue.value_drivers) && driversValue.value_drivers.length > 0;
   }
-  if (field.key === "opportunityDefinition.marketFitHypothesis") {
-    const hypothesisValue = value as MarketFitHypothesis;
-    return Boolean(
-      (Array.isArray(hypothesisValue.market_fit_hypothesis?.desirability) &&
-        hypothesisValue.market_fit_hypothesis.desirability.length > 0) ||
-        (Array.isArray(hypothesisValue.market_fit_hypothesis?.viability) &&
-          hypothesisValue.market_fit_hypothesis.viability.length > 0)
-    );
-  }
-  if (field.key === "opportunityDefinition.feasibilityAssessment") {
-    const assessmentValue = value as FeasibilityAssessment;
-    return Boolean(
-      (Array.isArray(assessmentValue.feasibility_assessment?.business_constraints) &&
-        assessmentValue.feasibility_assessment.business_constraints.length > 0) ||
-        (Array.isArray(assessmentValue.feasibility_assessment?.user_constraints) &&
-          assessmentValue.feasibility_assessment.user_constraints.length > 0) ||
-        (Array.isArray(assessmentValue.feasibility_assessment?.technical_concerns) &&
-          assessmentValue.feasibility_assessment.technical_concerns.length > 0)
-    );
+  if (field.key === "opportunityDefinition.feasibilityRisks") {
+    const risksValue = value as FeasibilityRisks;
+    return Array.isArray(risksValue.feasibility_risks) && risksValue.feasibility_risks.length > 0;
   }
   if (field.outputKey) {
     const collection = (value as Record<string, unknown>)[field.outputKey];
@@ -787,10 +728,9 @@ function hasFieldValue(field: FieldDefinition, value: unknown): boolean {
 
 export function WizardPage() {
   const [form, setForm] = useState({
-    productIdea: "",
-    targetUser: "",
-    notes: ""
+    productIdea: ""
   });
+  const textareaContainerRef = useRef<HTMLDivElement | null>(null);
   const [status, setStatus] = useState<ApiStatus>("idle");
   const [message, setMessage] = useState("Provide inputs and run the agent.");
   const [session, setSession] = useState<Session | null>(null);
@@ -812,12 +752,37 @@ export function WizardPage() {
   const [error, setError] = useState<string | null>(null);
   const [debugPrompt, setDebugPrompt] = useState<string | null>(null);
   const [debugOutput, setDebugOutput] = useState<string | null>(null);
+  const errorPromptRef = useRef<HTMLTextAreaElement | null>(null);
+  const errorOutputRef = useRef<HTMLTextAreaElement | null>(null);
+  const llmPromptRef = useRef<HTMLTextAreaElement | null>(null);
+  const llmOutputRef = useRef<HTMLTextAreaElement | null>(null);
   const [lastLlmError, setLastLlmError] = useState<{
     message?: string;
     lastPrompt?: string | null;
     lastOutput?: string | null;
     lastOutputFieldKey?: string | null;
   } | null>(null);
+  const errorPromptText =
+    typeof lastLlmError?.lastPrompt === "string"
+      ? lastLlmError.lastPrompt
+      : status === "error"
+        ? debugPrompt || latestRecord?.lastPrompt || null
+        : null;
+  const errorOutputText =
+    typeof lastLlmError?.lastOutput === "string"
+      ? lastLlmError.lastOutput
+      : status === "error"
+        ? debugOutput || latestRecord?.lastOutput || null
+        : null;
+  const formatDebugValue = (value: string | null) => {
+    if (value === null) {
+      return "Not available.";
+    }
+    if (value === "") {
+      return "(empty output)";
+    }
+    return value;
+  };
 
   const captureLlmError = (payload?: any) => {
     if (!payload || typeof payload !== "object") {
@@ -834,21 +799,34 @@ export function WizardPage() {
         typeof payload.lastOutputFieldKey === "string" ? payload.lastOutputFieldKey : null
     });
   };
+  useEffect(() => {
+    const resizeTextarea = (textarea: HTMLTextAreaElement | null) => {
+      if (!textarea) {
+        return;
+      }
+      textarea.style.height = "auto";
+      textarea.style.height = `${textarea.scrollHeight}px`;
+      textarea.style.overflow = "hidden";
+    };
+    resizeTextarea(errorPromptRef.current);
+    resizeTextarea(errorOutputRef.current);
+    resizeTextarea(llmPromptRef.current);
+    resizeTextarea(llmOutputRef.current);
+  }, [errorPromptText, errorOutputText, debugPrompt, debugOutput, latestRecord]);
   const [draftFields, setDraftFields] = useState<
     Record<
       string,
       | string
       | TargetSegment[]
-      | PainPointTheme[]
-      | ContextConstraints
+      | PainPointGroup[]
+      | ContextualFactors
+      | Constraints
       | MarketLandscape
       | CompetitorInventory
       | CompetitorCapabilities
-      | GapsOpportunities
-      | OpportunityStatement
+      | Opportunities
       | ValueDrivers
-      | MarketFitHypothesis
-      | FeasibilityAssessment
+      | FeasibilityRisks
     >
   >({});
   const [approvingFieldKey, setApprovingFieldKey] = useState<string | null>(null);
@@ -881,14 +859,6 @@ export function WizardPage() {
     Record<string, string[]>
   >(initialOpenFieldsByGroup);
 
-  const notesArray = useMemo(
-    () =>
-      form.notes
-        .split("\n")
-        .map((line) => line.trim())
-        .filter(Boolean),
-    [form.notes]
-  );
   const isDocumentCleared = (record?: DiscoveryRecord | null) =>
     record?.changeReason === "Cleared document" ||
     record?.lastStatusMessage === "Document cleared.";
@@ -1040,7 +1010,16 @@ export function WizardPage() {
     }
     if (currentField.type === "object") {
       const items = draftFields[currentField.key];
-      if (currentField.key === "problemUnderstanding.contextConstraints") {
+      if (currentField.key === "problemUnderstanding.contextualFactors") {
+        return items && typeof items === "object" ? items : null;
+      }
+      if (currentField.key === "problemUnderstanding.constraints") {
+        return items && typeof items === "object" ? items : null;
+      }
+      if (currentField.key === "problemUnderstanding.targetUsersSegments") {
+        return items && typeof items === "object" ? items : null;
+      }
+      if (currentField.key === "problemUnderstanding.userPainPoints") {
         return items && typeof items === "object" ? items : null;
       }
       if (currentField.key === "marketAndCompetitorAnalysis.marketLandscape") {
@@ -1055,16 +1034,10 @@ export function WizardPage() {
       if (currentField.key === "marketAndCompetitorAnalysis.gapsOpportunities") {
         return items && typeof items === "object" ? items : null;
       }
-      if (currentField.key === "opportunityDefinition.opportunityStatement") {
-        return items && typeof items === "object" ? items : null;
-      }
       if (currentField.key === "opportunityDefinition.valueDrivers") {
         return items && typeof items === "object" ? items : null;
       }
-      if (currentField.key === "opportunityDefinition.marketFitHypothesis") {
-        return items && typeof items === "object" ? items : null;
-      }
-      if (currentField.key === "opportunityDefinition.feasibilityAssessment") {
+      if (currentField.key === "opportunityDefinition.feasibilityRisks") {
         return items && typeof items === "object" ? items : null;
       }
       return Array.isArray(items) ? items : null;
@@ -1080,9 +1053,7 @@ export function WizardPage() {
       : "";
   const inputSummary = useMemo(() => {
     const base = {
-      productIdea: form.productIdea.trim(),
-      targetUser: form.targetUser.trim(),
-      userNotes: notesArray
+      productIdea: form.productIdea.trim()
     };
     if (!latestRecord) {
       return JSON.stringify(base, null, 2);
@@ -1094,11 +1065,18 @@ export function WizardPage() {
         const fieldName = getFieldDisplayKey(field);
         if (field.type === "object") {
           const items = draftFields[field.key];
-          if (field.key === "problemUnderstanding.contextConstraints") {
+          if (field.key === "problemUnderstanding.contextualFactors") {
             previousOutputs[fieldName] =
-              items && typeof items === "object"
-                ? items
-                : { contextual_factors: [], constraints: [] };
+              items && typeof items === "object" ? items : { contextual_factors: [] };
+          } else if (field.key === "problemUnderstanding.constraints") {
+            previousOutputs[fieldName] =
+              items && typeof items === "object" ? items : { constraints: [] };
+          } else if (field.key === "problemUnderstanding.targetUsersSegments") {
+            previousOutputs[fieldName] =
+              items && typeof items === "object" ? items : { user_segments: [] };
+          } else if (field.key === "problemUnderstanding.userPainPoints") {
+            previousOutputs[fieldName] =
+              items && typeof items === "object" ? items : { user_segments: [] };
           } else if (field.key === "marketAndCompetitorAnalysis.marketLandscape") {
             previousOutputs[fieldName] =
               items && typeof items === "object" ? items : emptyMarketLandscape;
@@ -1111,32 +1089,15 @@ export function WizardPage() {
           } else if (field.key === "marketAndCompetitorAnalysis.gapsOpportunities") {
             previousOutputs[fieldName] =
               items && typeof items === "object" ? items : emptyGapsOpportunities;
-          } else if (field.key === "opportunityDefinition.opportunityStatement") {
-            previousOutputs[fieldName] =
-              items && typeof items === "object" ? items : { opportunity_statement: "" };
           } else if (field.key === "opportunityDefinition.valueDrivers") {
             previousOutputs[fieldName] =
               items && typeof items === "object" ? items : { value_drivers: [] };
-          } else if (field.key === "opportunityDefinition.marketFitHypothesis") {
+          } else if (field.key === "opportunityDefinition.feasibilityRisks") {
             previousOutputs[fieldName] =
               items && typeof items === "object"
                 ? items
                 : {
-                  market_fit_hypothesis: {
-                    desirability: [],
-                    viability: []
-                  }
-                };
-          } else if (field.key === "opportunityDefinition.feasibilityAssessment") {
-            previousOutputs[fieldName] =
-              items && typeof items === "object"
-                ? items
-                : {
-                  feasibility_assessment: {
-                    business_constraints: [],
-                    user_constraints: [],
-                    technical_concerns: []
-                  }
+                  feasibility_risks: []
                 };
           } else {
             previousOutputs[fieldName] = Array.isArray(items) ? items : [];
@@ -1149,11 +1110,45 @@ export function WizardPage() {
       }
     });
     return JSON.stringify({ ...base, ...previousOutputs }, null, 2);
-  }, [draftFields, fieldDefinitions, form.productIdea, form.targetUser, latestRecord, notesArray]);
+  }, [draftFields, fieldDefinitions, form.productIdea, latestRecord]);
 
   useEffect(() => {
     void refreshLatest(true);
   }, []);
+
+  useEffect(() => {
+    const container = textareaContainerRef.current;
+    if (!container) {
+      return;
+    }
+    const resize = (textarea: HTMLTextAreaElement) => {
+      textarea.style.height = "auto";
+      textarea.style.height = `${textarea.scrollHeight}px`;
+      textarea.style.overflow = "hidden";
+    };
+    const handleInput = (event: Event) => {
+      if (event.target instanceof HTMLTextAreaElement) {
+        resize(event.target);
+      }
+    };
+    container.addEventListener("input", handleInput);
+    container.querySelectorAll("textarea").forEach((textarea) => resize(textarea));
+    return () => {
+      container.removeEventListener("input", handleInput);
+    };
+  }, []);
+
+  useEffect(() => {
+    const container = textareaContainerRef.current;
+    if (!container) {
+      return;
+    }
+    container.querySelectorAll("textarea").forEach((textarea) => {
+      textarea.style.height = "auto";
+      textarea.style.height = `${textarea.scrollHeight}px`;
+      textarea.style.overflow = "hidden";
+    });
+  }, [draftFields, form.productIdea]);
 
   const downloadBlob = (blob: Blob, filename: string) => {
     const url = URL.createObjectURL(blob);
@@ -1236,8 +1231,6 @@ export function WizardPage() {
 
     const payload = {
       productIdea: form.productIdea.trim(),
-      targetUser: form.targetUser.trim(),
-      userMessages: notesArray,
       forceNew: true
     };
 
@@ -1317,13 +1310,17 @@ export function WizardPage() {
   };
 
   function loadSavedInputs() {
+    const pendingIdea = localStorage.getItem("discoveryWizard.pendingIdea") || "";
     const savedIdea = localStorage.getItem("discoveryWizard.productIdea") || "";
-    const savedTarget = localStorage.getItem("discoveryWizard.targetUser") || "";
+    const rawIdea = pendingIdea || savedIdea;
+    const formattedIdea = rawIdea ? formatProductIdea(rawIdea) : "";
+    if (pendingIdea) {
+      localStorage.removeItem("discoveryWizard.pendingIdea");
+      localStorage.setItem("discoveryWizard.productIdea", formattedIdea);
+    }
     setForm((prev) => ({
       ...prev,
-      productIdea: savedIdea,
-      targetUser: savedTarget,
-      notes: prev.notes
+      productIdea: formattedIdea
     }));
     setLatestRecord(null);
     setLatestVersion(null);
@@ -1342,14 +1339,16 @@ export function WizardPage() {
     const nextDrafts: Record<
       string,
       | string
-      | TargetSegment[]
-      | PainPointTheme[]
-      | ContextConstraints
+      | { user_segments: TargetSegment[] }
+      | { user_segments: PainPointGroup[] }
+      | ContextualFactors
+      | Constraints
       | MarketLandscape
       | CompetitorInventory
       | CompetitorCapabilities
-      | GapsOpportunities
-      | OpportunityStatement
+      | Opportunities
+      | ValueDrivers
+      | FeasibilityRisks
     > = {};
     let approvedCount = 0;
     fieldDefinitions.forEach((field) => {
@@ -1363,15 +1362,42 @@ export function WizardPage() {
       const shouldShow = isApproved || isCurrent || hasFieldValue(field, rawValue);
       const value = shouldShow ? rawValue : "";
       if (field.type === "object") {
-        if (field.key === "problemUnderstanding.contextConstraints") {
+        if (field.key === "problemUnderstanding.targetUsersSegments") {
+          const segmentsValue =
+            typeof value === "object" && value !== null
+              ? (value as { user_segments?: TargetSegment[] })
+              : { user_segments: [] };
+          nextDrafts[field.key] = {
+            user_segments: Array.isArray(segmentsValue.user_segments)
+              ? segmentsValue.user_segments
+              : []
+          };
+        } else if (field.key === "problemUnderstanding.userPainPoints") {
+          const painPointsValue =
+            typeof value === "object" && value !== null
+              ? (value as { user_segments?: PainPointGroup[] })
+              : { user_segments: [] };
+          nextDrafts[field.key] = {
+            user_segments: Array.isArray(painPointsValue.user_segments)
+              ? painPointsValue.user_segments
+              : []
+          };
+        } else if (field.key === "problemUnderstanding.contextualFactors") {
+          const factorsValue =
+            typeof value === "object" && value !== null
+              ? (value as ContextualFactors)
+              : { contextual_factors: [] };
+          nextDrafts[field.key] = {
+            contextual_factors: Array.isArray(factorsValue.contextual_factors)
+              ? factorsValue.contextual_factors
+              : []
+          };
+        } else if (field.key === "problemUnderstanding.constraints") {
           const constraintsValue =
             typeof value === "object" && value !== null
-              ? (value as ContextConstraints)
-              : { contextual_factors: [], constraints: [] };
+              ? (value as Constraints)
+              : { constraints: [] };
           nextDrafts[field.key] = {
-            contextual_factors: Array.isArray(constraintsValue.contextual_factors)
-              ? constraintsValue.contextual_factors
-              : [],
             constraints: Array.isArray(constraintsValue.constraints)
               ? constraintsValue.constraints
               : []
@@ -1397,33 +1423,21 @@ export function WizardPage() {
         } else if (field.key === "marketAndCompetitorAnalysis.gapsOpportunities") {
           const gapsValue =
             typeof value === "object" && value !== null
-              ? (value as GapsOpportunities)
+              ? (value as Opportunities)
               : null;
           nextDrafts[field.key] = normalizeGapsOpportunitiesValue(gapsValue);
-        } else if (field.key === "opportunityDefinition.opportunityStatement") {
-          const statementValue =
-            typeof value === "object" && value !== null
-              ? (value as OpportunityStatement)
-              : null;
-          nextDrafts[field.key] = normalizeOpportunityStatementValue(statementValue);
         } else if (field.key === "opportunityDefinition.valueDrivers") {
           const driversValue =
             typeof value === "object" && value !== null
               ? (value as ValueDrivers)
               : null;
           nextDrafts[field.key] = normalizeValueDriversValue(driversValue);
-        } else if (field.key === "opportunityDefinition.marketFitHypothesis") {
-          const hypothesisValue =
+        } else if (field.key === "opportunityDefinition.feasibilityRisks") {
+          const risksValue =
             typeof value === "object" && value !== null
-              ? (value as MarketFitHypothesis)
+              ? (value as FeasibilityRisks)
               : null;
-          nextDrafts[field.key] = normalizeMarketFitHypothesisValue(hypothesisValue);
-        } else if (field.key === "opportunityDefinition.feasibilityAssessment") {
-          const assessmentValue =
-            typeof value === "object" && value !== null
-              ? (value as FeasibilityAssessment)
-              : null;
-          nextDrafts[field.key] = normalizeFeasibilityAssessmentValue(assessmentValue);
+          nextDrafts[field.key] = normalizeFeasibilityRisksValue(risksValue);
         } else {
           const outputKey = field.outputKey || "";
           const collection =
@@ -1574,18 +1588,20 @@ export function WizardPage() {
         setLatestVersion(payload.record.version);
         setDebugPrompt(payload.record.lastPrompt ?? null);
         setDebugOutput(payload.record.lastOutput ?? null);
-        setForm({
-          productIdea: payload.record.productIdea || "",
-          targetUser: payload.record.targetUser || "",
-          notes: Array.isArray(payload.record.userMessages)
-            ? payload.record.userMessages.join("\n")
-            : ""
-        });
-        if (payload.record.productIdea) {
-          localStorage.setItem("discoveryWizard.productIdea", payload.record.productIdea);
+        const pendingIdea = localStorage.getItem("discoveryWizard.pendingIdea") || "";
+        const formattedIdea = pendingIdea
+          ? formatProductIdea(pendingIdea)
+          : payload.record.productIdea
+            ? formatProductIdea(payload.record.productIdea)
+            : "";
+        if (pendingIdea) {
+          localStorage.removeItem("discoveryWizard.pendingIdea");
         }
-        if (payload.record.targetUser) {
-          localStorage.setItem("discoveryWizard.targetUser", payload.record.targetUser);
+        setForm({
+          productIdea: formattedIdea
+        });
+        if (formattedIdea) {
+          localStorage.setItem("discoveryWizard.productIdea", formattedIdea);
         }
         const nextStatus = isDocumentCleared(payload.record)
           ? "idle"
@@ -1641,8 +1657,6 @@ export function WizardPage() {
 
     const payload = {
       productIdea: form.productIdea.trim(),
-      targetUser: form.targetUser.trim(),
-      userMessages: notesArray,
       forceNew: true
     };
 
@@ -1872,17 +1886,15 @@ export function WizardPage() {
         throw new Error(data?.message || "Random generation failed.");
       }
       const productIdea = typeof data?.productIdea === "string" ? data.productIdea : "";
-      const targetUser = typeof data?.targetUser === "string" ? data.targetUser : "";
-      if (!productIdea || !targetUser) {
+      if (!productIdea) {
         throw new Error("Random generation returned incomplete data.");
       }
+      const formattedIdea = formatProductIdea(productIdea);
       setForm((prev) => {
-        localStorage.setItem("discoveryWizard.productIdea", productIdea);
-        localStorage.setItem("discoveryWizard.targetUser", targetUser);
+        localStorage.setItem("discoveryWizard.productIdea", formattedIdea);
         return {
           ...prev,
-          productIdea,
-          targetUser
+          productIdea: formattedIdea
         };
       });
     } catch (err) {
@@ -2127,7 +2139,7 @@ export function WizardPage() {
     try {
       const data = await postWithRetry(
         `${API_BASE}/discovery/field/regenerate`,
-        { version: latestVersion, fieldKey },
+        { version: latestVersion, fieldKey, productIdea: form.productIdea.trim() },
         () => {
           setMessage("Error LLM response. Requesting again...");
         }
@@ -2163,7 +2175,7 @@ export function WizardPage() {
   const statusClass = statusColors[status] || statusColors.idle;
 
   return (
-    <div className="space-y-6">
+    <div ref={textareaContainerRef} className="space-y-6">
       {confirmRegenerateFieldKey && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
           <div className="w-full max-w-md rounded-lg border bg-white p-5 shadow-lg">
@@ -2341,35 +2353,7 @@ By doing so, users experience a sense of control and empowerment over their well
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Target user</label>
-            <input
-              className="mt-1 block w-full rounded border px-3 py-2 text-sm"
-              value={form.targetUser}
-              onChange={(event) =>
-                setForm((prev) => {
-                  const nextValue = event.target.value;
-                  localStorage.setItem("discoveryWizard.targetUser", nextValue);
-                  return { ...prev, targetUser: nextValue };
-                })
-              }
-              placeholder="Example: SaaS founders who need clear specs."
-              required
-              disabled={isBlockingInputs}
-            />
-          </div>
-
-  <div>
-    <label className="block text-sm font-medium text-gray-700">User notes</label>
-    <textarea
-      className="mt-1 block w-full rounded border px-3 py-2 text-sm"
-      rows={1}
-      value={form.notes}
-      onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))}
-      placeholder="One note per line."
-      disabled={isBlockingInputs}
-    />
-  </div>
+          
 
   <div className="flex items-center gap-3">
     <button
@@ -2633,9 +2617,88 @@ By doing so, users experience a sense of control and empowerment over their well
                                         title={field.label}
                                         showTitle={false}
                                         segments={
-                                          Array.isArray(draftFields[field.key])
-                                            ? (draftFields[field.key] as TargetSegment[])
+                                          typeof draftFields[field.key] === "object" &&
+                                          draftFields[field.key] !== null
+                                            ? (draftFields[field.key] as {
+                                                user_segments?: TargetSegment[];
+                                              }).user_segments || []
                                             : []
+                                        }
+                                        onChange={(nextValue) =>
+                                          setDraftFields((prev) => ({
+                                            ...prev,
+                                            [field.key]: { user_segments: nextValue }
+                                          }))
+                                        }
+                                        onApprove={() => approveField(field.key, field.type)}
+                                        onRegenerate={() => regenerateField(field.key)}
+                                        onClear={() => clearField(field.key)}
+                                        approved={isApproved}
+                                        disabled={isBlocked}
+                                        isApproving={approvingFieldKey === field.key}
+                                        isRegenerating={regeneratingFieldKey === field.key}
+                                        regenerateLabel={
+                                          isGeneratingLabel ? "Generating..." : "Regenerating..."
+                                        }
+                                        isClearing={clearingFieldKey === field.key}
+                                        showRegenerate={showRegenerate}
+                                        hideApprove={isFullGenerationActive}
+                                      />
+                                    ) : field.key === "problemUnderstanding.userPainPoints" ? (
+                                      <PainPointsEditor
+                                        title={field.label}
+                                        showTitle={false}
+                                        value={
+                                          typeof draftFields[field.key] === "object" &&
+                                          draftFields[field.key] !== null
+                                            ? (draftFields[field.key] as {
+                                                user_segments?: PainPointGroup[];
+                                              }).user_segments || []
+                                            : []
+                                        }
+                                        segmentOptions={
+                                          typeof draftFields[
+                                            "problemUnderstanding.targetUsersSegments"
+                                          ] === "object" &&
+                                          draftFields[
+                                            "problemUnderstanding.targetUsersSegments"
+                                          ] !== null
+                                            ? (draftFields[
+                                                "problemUnderstanding.targetUsersSegments"
+                                              ] as {
+                                                user_segments?: TargetSegment[];
+                                              }).user_segments || []
+                                            : []
+                                        }
+                                        onChange={(nextValue) =>
+                                          setDraftFields((prev) => ({
+                                            ...prev,
+                                            [field.key]: { user_segments: nextValue }
+                                          }))
+                                        }
+                                        onApprove={() => approveField(field.key, field.type)}
+                                        onRegenerate={() => regenerateField(field.key)}
+                                        onClear={() => clearField(field.key)}
+                                        approved={isApproved}
+                                        disabled={isBlocked}
+                                        isApproving={approvingFieldKey === field.key}
+                                        isRegenerating={regeneratingFieldKey === field.key}
+                                        regenerateLabel={
+                                          isGeneratingLabel ? "Generating..." : "Regenerating..."
+                                        }
+                                        isClearing={clearingFieldKey === field.key}
+                                        showRegenerate={showRegenerate}
+                                        hideApprove={isFullGenerationActive}
+                                      />
+                                    ) : field.key === "problemUnderstanding.contextualFactors" ? (
+                                      <ContextualFactorsEditor
+                                        title={field.label}
+                                        showTitle={false}
+                                        value={
+                                          typeof draftFields[field.key] === "object" &&
+                                          draftFields[field.key] !== null
+                                            ? (draftFields[field.key] as ContextualFactors)
+                                            : { contextual_factors: [] }
                                         }
                                         onChange={(nextValue) =>
                                           setDraftFields((prev) => ({
@@ -2650,13 +2713,44 @@ By doing so, users experience a sense of control and empowerment over their well
                                         disabled={isBlocked}
                                         isApproving={approvingFieldKey === field.key}
                                         isRegenerating={regeneratingFieldKey === field.key}
-                                        regenerateLabel={isGeneratingLabel ? "Generating..." : "Regenerating..."}
+                                        regenerateLabel={
+                                          isGeneratingLabel ? "Generating..." : "Regenerating..."
+                                        }
                                         isClearing={clearingFieldKey === field.key}
                                         showRegenerate={showRegenerate}
                                         hideApprove={isFullGenerationActive}
                                       />
-                                    ) : field.key ===
-                                      "marketAndCompetitorAnalysis.marketLandscape" ? (
+                                    ) : field.key === "problemUnderstanding.constraints" ? (
+                                      <ConstraintsEditor
+                                        title={field.label}
+                                        showTitle={false}
+                                        value={
+                                          typeof draftFields[field.key] === "object" &&
+                                          draftFields[field.key] !== null
+                                            ? (draftFields[field.key] as Constraints)
+                                            : { constraints: [] }
+                                        }
+                                        onChange={(nextValue) =>
+                                          setDraftFields((prev) => ({
+                                            ...prev,
+                                            [field.key]: nextValue
+                                          }))
+                                        }
+                                        onApprove={() => approveField(field.key, field.type)}
+                                        onRegenerate={() => regenerateField(field.key)}
+                                        onClear={() => clearField(field.key)}
+                                        approved={isApproved}
+                                        disabled={isBlocked}
+                                        isApproving={approvingFieldKey === field.key}
+                                        isRegenerating={regeneratingFieldKey === field.key}
+                                        regenerateLabel={
+                                          isGeneratingLabel ? "Generating..." : "Regenerating..."
+                                        }
+                                        isClearing={clearingFieldKey === field.key}
+                                        showRegenerate={showRegenerate}
+                                        hideApprove={isFullGenerationActive}
+                                      />
+                                    ) : field.key === "marketAndCompetitorAnalysis.marketLandscape" ? (
                                       <MarketLandscapeEditor
                                         title={field.label}
                                         showTitle={false}
@@ -2679,13 +2773,14 @@ By doing so, users experience a sense of control and empowerment over their well
                                         disabled={isBlocked}
                                         isApproving={approvingFieldKey === field.key}
                                         isRegenerating={regeneratingFieldKey === field.key}
-                                        regenerateLabel={isGeneratingLabel ? "Generating..." : "Regenerating..."}
+                                        regenerateLabel={
+                                          isGeneratingLabel ? "Generating..." : "Regenerating..."
+                                        }
                                         isClearing={clearingFieldKey === field.key}
                                         showRegenerate={showRegenerate}
                                         hideApprove={isFullGenerationActive}
                                       />
-                                    ) : field.key ===
-                                      "marketAndCompetitorAnalysis.competitorInventory" ? (
+                                    ) : field.key === "marketAndCompetitorAnalysis.competitorInventory" ? (
                                       <CompetitorInventoryEditor
                                         title={field.label}
                                         showTitle={false}
@@ -2708,13 +2803,14 @@ By doing so, users experience a sense of control and empowerment over their well
                                         disabled={isBlocked}
                                         isApproving={approvingFieldKey === field.key}
                                         isRegenerating={regeneratingFieldKey === field.key}
-                                        regenerateLabel={isGeneratingLabel ? "Generating..." : "Regenerating..."}
+                                        regenerateLabel={
+                                          isGeneratingLabel ? "Generating..." : "Regenerating..."
+                                        }
                                         isClearing={clearingFieldKey === field.key}
                                         showRegenerate={showRegenerate}
                                         hideApprove={isFullGenerationActive}
                                       />
-                                    ) : field.key ===
-                                      "marketAndCompetitorAnalysis.competitorCapabilities" ? (
+                                    ) : field.key === "marketAndCompetitorAnalysis.competitorCapabilities" ? (
                                       <CompetitorCapabilitiesEditor
                                         title={field.label}
                                         showTitle={false}
@@ -2737,20 +2833,21 @@ By doing so, users experience a sense of control and empowerment over their well
                                         disabled={isBlocked}
                                         isApproving={approvingFieldKey === field.key}
                                         isRegenerating={regeneratingFieldKey === field.key}
-                                        regenerateLabel={isGeneratingLabel ? "Generating..." : "Regenerating..."}
+                                        regenerateLabel={
+                                          isGeneratingLabel ? "Generating..." : "Regenerating..."
+                                        }
                                         isClearing={clearingFieldKey === field.key}
                                         showRegenerate={showRegenerate}
                                         hideApprove={isFullGenerationActive}
                                       />
-                                    ) : field.key ===
-                                      "marketAndCompetitorAnalysis.gapsOpportunities" ? (
-                                      <GapsOpportunitiesEditor
+                                    ) : field.key === "marketAndCompetitorAnalysis.gapsOpportunities" ? (
+                                      <OpportunitiesEditor
                                         title={field.label}
                                         showTitle={false}
                                         value={
                                           typeof draftFields[field.key] === "object" &&
                                           draftFields[field.key] !== null
-                                            ? (draftFields[field.key] as GapsOpportunities)
+                                            ? (draftFields[field.key] as Opportunities)
                                             : emptyGapsOpportunities
                                         }
                                         onChange={(nextValue) =>
@@ -2766,40 +2863,9 @@ By doing so, users experience a sense of control and empowerment over their well
                                         disabled={isBlocked}
                                         isApproving={approvingFieldKey === field.key}
                                         isRegenerating={regeneratingFieldKey === field.key}
-                                        regenerateLabel={isGeneratingLabel ? "Generating..." : "Regenerating..."}
-                                        isClearing={clearingFieldKey === field.key}
-                                        showRegenerate={showRegenerate}
-                                        hideApprove={isFullGenerationActive}
-                                      />
-                                    ) : field.key ===
-                                      "opportunityDefinition.opportunityStatement" ? (
-                                      <FieldEditor
-                                        title={field.label}
-                                        showTitle={false}
-                                        type="string"
-                                        value={
-                                          typeof draftFields[field.key] === "object" &&
-                                          draftFields[field.key] !== null
-                                            ? (draftFields[field.key] as OpportunityStatement)
-                                                .opportunity_statement
-                                            : ""
+                                        regenerateLabel={
+                                          isGeneratingLabel ? "Generating..." : "Regenerating..."
                                         }
-                                        onChange={(nextValue) =>
-                                          setDraftFields((prev) => ({
-                                            ...prev,
-                                            [field.key]: {
-                                              opportunity_statement: nextValue
-                                            }
-                                          }))
-                                        }
-                                        onApprove={() => approveField(field.key, field.type)}
-                                        onRegenerate={() => regenerateField(field.key)}
-                                        onClear={() => clearField(field.key)}
-                                        approved={isApproved}
-                                        disabled={isBlocked}
-                                        isApproving={approvingFieldKey === field.key}
-                                        isRegenerating={regeneratingFieldKey === field.key}
-                                        regenerateLabel={isGeneratingLabel ? "Generating..." : "Regenerating..."}
                                         isClearing={clearingFieldKey === field.key}
                                         showRegenerate={showRegenerate}
                                         hideApprove={isFullGenerationActive}
@@ -2827,26 +2893,22 @@ By doing so, users experience a sense of control and empowerment over their well
                                         disabled={isBlocked}
                                         isApproving={approvingFieldKey === field.key}
                                         isRegenerating={regeneratingFieldKey === field.key}
-                                        regenerateLabel={isGeneratingLabel ? "Generating..." : "Regenerating..."}
+                                        regenerateLabel={
+                                          isGeneratingLabel ? "Generating..." : "Regenerating..."
+                                        }
                                         isClearing={clearingFieldKey === field.key}
                                         showRegenerate={showRegenerate}
                                         hideApprove={isFullGenerationActive}
                                       />
-                                    ) : field.key ===
-                                      "opportunityDefinition.marketFitHypothesis" ? (
-                                      <MarketFitHypothesisEditor
+                                    ) : field.key === "opportunityDefinition.feasibilityRisks" ? (
+                                      <FeasibilityRisksEditor
                                         title={field.label}
                                         showTitle={false}
                                         value={
                                           typeof draftFields[field.key] === "object" &&
                                           draftFields[field.key] !== null
-                                            ? (draftFields[field.key] as MarketFitHypothesis)
-                                            : {
-                                              market_fit_hypothesis: {
-                                                desirability: [],
-                                                viability: []
-                                              }
-                                            }
+                                            ? (draftFields[field.key] as FeasibilityRisks)
+                                            : { feasibility_risks: [] }
                                         }
                                         onChange={(nextValue) =>
                                           setDraftFields((prev) => ({
@@ -2861,98 +2923,9 @@ By doing so, users experience a sense of control and empowerment over their well
                                         disabled={isBlocked}
                                         isApproving={approvingFieldKey === field.key}
                                         isRegenerating={regeneratingFieldKey === field.key}
-                                        regenerateLabel={isGeneratingLabel ? "Generating..." : "Regenerating..."}
-                                        isClearing={clearingFieldKey === field.key}
-                                        showRegenerate={showRegenerate}
-                                        hideApprove={isFullGenerationActive}
-                                      />
-                                    ) : field.key ===
-                                      "opportunityDefinition.feasibilityAssessment" ? (
-                                      <FeasibilityAssessmentEditor
-                                        title={field.label}
-                                        showTitle={false}
-                                        value={
-                                          typeof draftFields[field.key] === "object" &&
-                                          draftFields[field.key] !== null
-                                            ? (draftFields[field.key] as FeasibilityAssessment)
-                                            : {
-                                              feasibility_assessment: {
-                                                business_constraints: [],
-                                                user_constraints: [],
-                                                technical_concerns: []
-                                              }
-                                            }
+                                        regenerateLabel={
+                                          isGeneratingLabel ? "Generating..." : "Regenerating..."
                                         }
-                                        onChange={(nextValue) =>
-                                          setDraftFields((prev) => ({
-                                            ...prev,
-                                            [field.key]: nextValue
-                                          }))
-                                        }
-                                        onApprove={() => approveField(field.key, field.type)}
-                                        onRegenerate={() => regenerateField(field.key)}
-                                        onClear={() => clearField(field.key)}
-                                        approved={isApproved}
-                                        disabled={isBlocked}
-                                        isApproving={approvingFieldKey === field.key}
-                                        isRegenerating={regeneratingFieldKey === field.key}
-                                        regenerateLabel={isGeneratingLabel ? "Generating..." : "Regenerating..."}
-                                        isClearing={clearingFieldKey === field.key}
-                                        showRegenerate={showRegenerate}
-                                        hideApprove={isFullGenerationActive}
-                                      />
-                                    ) : field.key === "problemUnderstanding.contextConstraints" ? (
-                                      <ContextConstraintsEditor
-                                        title={field.label}
-                                        showTitle={false}
-                                        value={
-                                          typeof draftFields[field.key] === "object" &&
-                                          draftFields[field.key] !== null
-                                            ? (draftFields[field.key] as ContextConstraints)
-                                            : { contextual_factors: [], constraints: [] }
-                                        }
-                                        onChange={(nextValue) =>
-                                          setDraftFields((prev) => ({
-                                            ...prev,
-                                            [field.key]: nextValue
-                                          }))
-                                        }
-                                        onApprove={() => approveField(field.key, field.type)}
-                                        onRegenerate={() => regenerateField(field.key)}
-                                        onClear={() => clearField(field.key)}
-                                        approved={isApproved}
-                                        disabled={isBlocked}
-                                        isApproving={approvingFieldKey === field.key}
-                                        isRegenerating={regeneratingFieldKey === field.key}
-                                        regenerateLabel={isGeneratingLabel ? "Generating..." : "Regenerating..."}
-                                        isClearing={clearingFieldKey === field.key}
-                                        showRegenerate={showRegenerate}
-                                        hideApprove={isFullGenerationActive}
-                                      />
-                                    ) : field.key ===
-                                      "problemUnderstanding.userPainPoints" ? (
-                                      <PainPointsEditor
-                                        title={field.label}
-                                        showTitle={false}
-                                        themes={
-                                          Array.isArray(draftFields[field.key])
-                                            ? (draftFields[field.key] as PainPointTheme[])
-                                            : []
-                                        }
-                                        onChange={(nextValue) =>
-                                          setDraftFields((prev) => ({
-                                            ...prev,
-                                            [field.key]: nextValue
-                                          }))
-                                        }
-                                        onApprove={() => approveField(field.key, field.type)}
-                                        onRegenerate={() => regenerateField(field.key)}
-                                        onClear={() => clearField(field.key)}
-                                        approved={isApproved}
-                                        disabled={isBlocked}
-                                        isApproving={approvingFieldKey === field.key}
-                                        isRegenerating={regeneratingFieldKey === field.key}
-                                        regenerateLabel={isGeneratingLabel ? "Generating..." : "Regenerating..."}
                                         isClearing={clearingFieldKey === field.key}
                                         showRegenerate={showRegenerate}
                                         hideApprove={isFullGenerationActive}
@@ -3170,20 +3143,28 @@ By doing so, users experience a sense of control and empowerment over their well
                 Field: {lastLlmError.lastOutputFieldKey}
               </p>
             )}
-            {lastLlmError?.lastPrompt && (
+            {status === "error" && (
               <div className="mt-2">
                 <p className="text-xs font-semibold text-slate-600">Last prompt</p>
-                <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap rounded bg-slate-50 p-2 text-xs text-slate-700">
-                  {lastLlmError.lastPrompt}
-                </pre>
+                <textarea
+                  readOnly
+                  className="mt-1 w-full resize-none overflow-hidden rounded bg-slate-50 p-2 text-xs text-slate-700"
+                  rows={6}
+                  ref={errorPromptRef}
+                  value={formatDebugValue(errorPromptText)}
+                />
               </div>
             )}
-            {lastLlmError?.lastOutput && (
+            {status === "error" && (
               <div className="mt-2">
                 <p className="text-xs font-semibold text-slate-600">Last output</p>
-                <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap rounded bg-slate-50 p-2 text-xs text-slate-700">
-                  {lastLlmError.lastOutput}
-                </pre>
+                <textarea
+                  readOnly
+                  className="mt-1 w-full resize-none overflow-hidden rounded bg-slate-50 p-2 text-xs text-slate-700"
+                  rows={6}
+                  ref={errorOutputRef}
+                  value={formatDebugValue(errorOutputText)}
+                />
               </div>
             )}
           </div>
@@ -3194,11 +3175,17 @@ By doing so, users experience a sense of control and empowerment over their well
                 LLM Prompt
               </AccordionTrigger>
               <AccordionContent className="px-3 pb-3">
-                <pre className="whitespace-pre-wrap rounded border bg-gray-50 p-3 text-xs text-gray-700">
-                  {status === "error"
-                    ? debugPrompt || latestRecord?.lastPrompt || "Not available."
-                    : latestRecord?.lastPrompt || debugPrompt || "Not available."}
-                </pre>
+                <textarea
+                  readOnly
+                  className="w-full resize-none overflow-hidden rounded border bg-gray-50 p-3 text-xs text-gray-700"
+                  rows={8}
+                  ref={llmPromptRef}
+                  value={formatDebugValue(
+                    status === "error"
+                      ? debugPrompt || latestRecord?.lastPrompt || null
+                      : latestRecord?.lastPrompt || debugPrompt || null
+                  )}
+                />
               </AccordionContent>
             </AccordionItem>
 
@@ -3207,11 +3194,17 @@ By doing so, users experience a sense of control and empowerment over their well
                 LLM output
               </AccordionTrigger>
               <AccordionContent className="px-3 pb-3">
-                <pre className="whitespace-pre-wrap rounded border bg-gray-50 p-3 text-xs text-gray-700">
-                  {status === "error"
-                    ? debugOutput || latestRecord?.lastOutput || "Not available."
-                    : latestRecord?.lastOutput || debugOutput || "Not available."}
-                </pre>
+                <textarea
+                  readOnly
+                  className="w-full resize-none overflow-hidden rounded border bg-gray-50 p-3 text-xs text-gray-700"
+                  rows={8}
+                  ref={llmOutputRef}
+                  value={formatDebugValue(
+                    status === "error"
+                      ? debugOutput || latestRecord?.lastOutput || null
+                      : latestRecord?.lastOutput || debugOutput || null
+                  )}
+                />
               </AccordionContent>
             </AccordionItem>
           </Accordion>
@@ -3424,8 +3417,63 @@ type TargetSegmentsEditorProps = {
     isClearing: boolean;
   showTitle?: boolean;
   showRegenerate?: boolean;
-    regenerateLabel?: string;
-    hideApprove?: boolean;
+  regenerateLabel?: string;
+  hideApprove?: boolean;
+};
+
+const SEGMENT_TYPE_OPTIONS: TargetSegment["segment_type"][] = [
+  "primary",
+  "secondary"
+];
+
+const SEVERITY_ORDER: Record<PainPoint["severity"], number> = {
+  high: 0,
+  medium: 1,
+  low: 2
+};
+
+const FREQUENCY_ORDER: Record<PainPoint["frequency"], number> = {
+  high: 0,
+  medium: 1,
+  low: 2
+};
+
+const toLineItems = (value: string) =>
+  value
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+
+const toLineValue = (items: string[]) => items.join("\n");
+
+const normalizeSegments = (segments: TargetSegment[]) => {
+  const next = segments.map((segment) => ({
+    segment_name: segment.segment_name ?? "",
+    segment_type: segment.segment_type ?? "secondary",
+    usage_contexts: Array.isArray(segment.usage_contexts)
+      ? segment.usage_contexts
+      : [],
+    characteristics: Array.isArray(segment.characteristics)
+      ? segment.characteristics
+      : []
+  }));
+
+  const primaryIndex = next.findIndex(
+    (segment) => segment.segment_type === "primary"
+  );
+  if (primaryIndex === -1 && next.length > 0) {
+    next[0] = { ...next[0], segment_type: "primary" };
+  } else if (primaryIndex >= 0) {
+    next.forEach((segment, index) => {
+      if (index !== primaryIndex && segment.segment_type === "primary") {
+        segment.segment_type = "secondary";
+      }
+    });
+  }
+
+  const primary = next.find((segment) => segment.segment_type === "primary");
+  const secondary = next.filter((segment) => segment.segment_type !== "primary");
+  return primary ? [primary, ...secondary] : next;
 };
 
 function TargetSegmentsEditor({
@@ -3439,71 +3487,45 @@ function TargetSegmentsEditor({
   disabled,
   isApproving,
   isRegenerating,
-    isClearing,
+  isClearing,
   showTitle = true,
   showRegenerate = true,
-    regenerateLabel,
-    hideApprove = false
+  regenerateLabel,
+  hideApprove = false
 }: TargetSegmentsEditorProps) {
-  const safeSegments = Array.isArray(segments) ? segments : [];
+  const safeSegments = normalizeSegments(segments);
   const hasSegments = safeSegments.length > 0;
-  const [openSegments, setOpenSegments] = useState<string[]>([]);
-
-  useEffect(() => {
-    setOpenSegments((prev) => {
-      const keys = segments.map((_, index) => `segment-${index}`);
-      const next = prev.filter((key) => keys.includes(key));
-      keys.forEach((key) => {
-        if (!next.includes(key)) {
-          next.push(key);
-        }
-      });
-      return next;
-    });
-  }, [segments.length]);
+  const [openSegments, setOpenSegments] = useOpenItems(safeSegments, "segment");
 
   const updateSegment = (index: number, nextSegment: TargetSegment) => {
-    const next = segments.slice();
+    const next = safeSegments.slice();
     next[index] = nextSegment;
-    onChange(next);
-  };
-
-  const removeSegment = (index: number) => {
-    const next = segments.slice();
-    next.splice(index, 1);
-    onChange(next);
+    onChange(normalizeSegments(next));
   };
 
   const addSegment = () => {
     onChange(
-      segments.concat([
-        {
-          segment_name: "",
-          business_relevance: "",
-          user_groups: [
-            {
-              name: "",
-              characteristics: [""]
-            }
-          ]
-        }
-      ])
+      normalizeSegments(
+        safeSegments.concat([
+          {
+            segment_name: "",
+            segment_type: safeSegments.some(
+              (segment) => segment.segment_type === "primary"
+            )
+              ? "secondary"
+              : "primary",
+            usage_contexts: [],
+            characteristics: []
+          }
+        ])
+      )
     );
   };
 
-  const addUserGroup = (segmentIndex: number) => {
-    const segment = segments[segmentIndex];
-    const nextGroups = segment.user_groups.concat([
-      { name: "", characteristics: [""] }
-    ]);
-    updateSegment(segmentIndex, { ...segment, user_groups: nextGroups });
-  };
-
-  const removeUserGroup = (segmentIndex: number, groupIndex: number) => {
-    const segment = segments[segmentIndex];
-    const nextGroups = segment.user_groups.slice();
-    nextGroups.splice(groupIndex, 1);
-    updateSegment(segmentIndex, { ...segment, user_groups: nextGroups });
+  const removeSegment = (index: number) => {
+    const next = safeSegments.slice();
+    next.splice(index, 1);
+    onChange(normalizeSegments(next));
   };
 
   return (
@@ -3521,7 +3543,7 @@ function TargetSegmentsEditor({
               onClick={onClear}
               disabled={isClearing}
             >
-              {isClearing ? "Clearing…" : "Clear block"}
+              {isClearing ? "Clearing..." : "Clear block"}
             </button>
           )}
         </div>
@@ -3529,7 +3551,7 @@ function TargetSegmentsEditor({
 
       {safeSegments.length === 0 && (
         <p className="mt-3 text-xs text-gray-500">
-          No segments yet. Add one to begin.
+          No user segments yet. Add one to begin.
         </p>
       )}
 
@@ -3537,145 +3559,107 @@ function TargetSegmentsEditor({
         type="multiple"
         value={openSegments}
         onValueChange={setOpenSegments}
-        className="mt-3 space-y-4"
+        className="mt-3 space-y-3"
       >
-        {safeSegments.map((segment, segmentIndex) => {
-          const segmentKey = `segment-${segmentIndex}`;
+        {safeSegments.map((segment, index) => {
+          const itemKey = `segment-${index}`;
           return (
             <AccordionItem
-              key={segmentKey}
-              value={segmentKey}
-              className="rounded border border-slate-200 p-3"
+              key={itemKey}
+              value={itemKey}
+              className="rounded border border-slate-100 p-2"
             >
-              <div className="grid items-start gap-2 md:grid-cols-[1fr_1fr_auto]">
+              <div className="grid items-start gap-3 md:grid-cols-[1fr_auto]">
                 <div>
                   <div className="flex items-center gap-2">
                     <AccordionTrigger className="flex-none justify-center gap-0 py-0 text-slate-600 hover:no-underline [&>svg]:h-3 [&>svg]:w-3">
-                      <span className="sr-only">Toggle groups</span>
+                      <span className="sr-only">Toggle segment details</span>
                     </AccordionTrigger>
                     <label className="block text-xs text-gray-600">Segment name</label>
                   </div>
-                  <input
-                    className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                    value={segment.segment_name}
-                    onChange={(event) =>
-                      updateSegment(segmentIndex, {
-                        ...segment,
-                        segment_name: event.target.value
-                      })
-                    }
-                    disabled={disabled || approved}
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-600">
-                    Business relevance
-                  </label>
-                  <textarea
-                    className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                    rows={2}
-                    value={segment.business_relevance}
-                    onChange={(event) =>
-                      updateSegment(segmentIndex, {
-                        ...segment,
-                        business_relevance: event.target.value
-                      })
-                    }
-                    disabled={disabled || approved}
-                  />
-                </div>
-                <div className="flex items-end">
-                  {!approved && !disabled && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-slate-600 hover:text-slate-700"
-                      onClick={() => removeSegment(segmentIndex)}
-                      disabled={disabled}
-                      aria-label="Remove segment"
-                    >
-                      <Trash2 />
-                    </Button>
-                  )}
+                  <div className="mt-1 flex items-center gap-2">
+                    <input
+                      className="w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                      value={segment.segment_name}
+                      onChange={(event) =>
+                        updateSegment(index, {
+                          ...segment,
+                          segment_name: event.target.value
+                        })
+                      }
+                      disabled={disabled || approved}
+                    />
+                    {!approved && !disabled && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-slate-600 hover:text-slate-700"
+                        onClick={() => removeSegment(index)}
+                        disabled={disabled}
+                        aria-label="Remove segment"
+                      >
+                        <Trash2 />
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
-              <AccordionContent className="pt-0">
-                <div className="mt-3">
-                  <div className="mt-2 space-y-3">
-                    {(segment.user_groups || []).map((group, groupIndex) => (
-                      <div key={groupIndex} className="rounded border border-slate-100 p-2">
-                        <div className="grid items-start gap-2 md:grid-cols-[1fr_1fr_auto]">
-                          <div>
-                            <label className="block text-xs text-gray-600">Group name</label>
-                            <input
-                              className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                              value={group.name}
-                              onChange={(event) => {
-                                const nextGroups = segment.user_groups.slice();
-                                nextGroups[groupIndex] = {
-                                  ...group,
-                                  name: event.target.value
-                                };
-                                updateSegment(segmentIndex, {
-                                  ...segment,
-                                  user_groups: nextGroups
-                                });
-                              }}
-                              disabled={disabled || approved}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs text-gray-600">
-                              Characteristics (one per line)
-                            </label>
-                            <textarea
-                              className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                              rows={3}
-                              value={group.characteristics.join("\n")}
-                              onChange={(event) => {
-                                const nextGroups = segment.user_groups.slice();
-                                nextGroups[groupIndex] = {
-                                  ...group,
-                                  characteristics: event.target.value.split("\n")
-                                };
-                                updateSegment(segmentIndex, {
-                                  ...segment,
-                                  user_groups: nextGroups
-                                });
-                              }}
-                              disabled={disabled || approved}
-                            />
-                          </div>
-                          <div className="flex items-start">
-                            {!approved && !disabled && (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7 text-slate-600 hover:text-slate-700"
-                                onClick={() => removeUserGroup(segmentIndex, groupIndex)}
-                                disabled={disabled}
-                                aria-label="Remove user group"
-                              >
-                                <Trash2 />
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  {!approved && (
-                    <button
-                      type="button"
-                      className="mt-2 text-xs text-blue-600 disabled:opacity-60"
-                      onClick={() => addUserGroup(segmentIndex)}
-                      disabled={disabled}
+              <AccordionContent className="pt-2">
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs text-gray-600">Segment type</label>
+                    <select
+                      className="mt-1 w-auto min-w-[9rem] max-w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                      value={segment.segment_type}
+                      onChange={(event) =>
+                        updateSegment(index, {
+                          ...segment,
+                          segment_type:
+                            event.target.value as TargetSegment["segment_type"]
+                        })
+                      }
+                      disabled={disabled || approved}
                     >
-                      + Group
-                    </button>
-                  )}
+                      {SEGMENT_TYPE_OPTIONS.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-600">Usage contexts</label>
+                    <textarea
+                      className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                      rows={2}
+                      value={toLineValue(segment.usage_contexts)}
+                      onChange={(event) =>
+                        updateSegment(index, {
+                          ...segment,
+                          usage_contexts: toLineItems(event.target.value)
+                        })
+                      }
+                      disabled={disabled || approved}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-600">
+                      Characteristics (one per line)
+                    </label>
+                    <textarea
+                      className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                      rows={2}
+                      value={toLineValue(segment.characteristics)}
+                      onChange={(event) =>
+                        updateSegment(index, {
+                          ...segment,
+                          characteristics: toLineItems(event.target.value)
+                        })
+                      }
+                      disabled={disabled || approved}
+                    />
+                  </div>
                 </div>
               </AccordionContent>
             </AccordionItem>
@@ -3686,11 +3670,11 @@ function TargetSegmentsEditor({
       {!approved && (
         <button
           type="button"
-          className="mt-3 inline-flex items-center rounded border border-slate-300 px-3 py-1 text-xs text-slate-700 disabled:opacity-60"
+          className="mt-3 text-xs text-blue-600 disabled:opacity-60"
           onClick={addSegment}
-          disabled={disabled || approved}
+          disabled={disabled}
         >
-          + Segment
+          + User Segment
         </button>
       )}
 
@@ -3702,7 +3686,7 @@ function TargetSegmentsEditor({
             onClick={onApprove}
             disabled={disabled || approved || !hasSegments || isApproving}
           >
-            {isApproving ? "Approving…" : "Approve and Proceed"}
+            {isApproving ? "Approving..." : "Approve and Proceed"}
           </button>
         )}
         {showRegenerate && (
@@ -3720,10 +3704,20 @@ function TargetSegmentsEditor({
   );
 }
 
+const sortPainPoints = (items: PainPoint[]) =>
+  items
+    .slice()
+    .sort(
+      (a, b) =>
+        SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity] ||
+        FREQUENCY_ORDER[a.frequency] - FREQUENCY_ORDER[b.frequency]
+    );
+
 type PainPointsEditorProps = {
   title: string;
-  themes: PainPointTheme[];
-  onChange: (themes: PainPointTheme[]) => void;
+  value: PainPointGroup[];
+  segmentOptions: TargetSegment[];
+  onChange: (value: PainPointGroup[]) => void;
   onApprove: () => void;
   onRegenerate: () => void;
   onClear: () => void;
@@ -3731,43 +3725,17 @@ type PainPointsEditorProps = {
   disabled: boolean;
   isApproving: boolean;
   isRegenerating: boolean;
-    isClearing: boolean;
+  isClearing: boolean;
   showTitle?: boolean;
   showRegenerate?: boolean;
-    regenerateLabel?: string;
-    hideApprove?: boolean;
+  regenerateLabel?: string;
+  hideApprove?: boolean;
 };
-
-const RATING_OPTIONS: Array<PainPoint["severity"]> = ["low", "medium", "high"];
-const MARKET_MATURITY_OPTIONS: Array<MarketMaturity["classification"]> = [
-  "emerging",
-  "fragmented",
-  "consolidating",
-  "mature"
-];
-const TIME_HORIZON_OPTIONS: Array<MarketTrend["time_horizon"]> = [
-  "short",
-  "mid",
-  "long"
-];
-const BASIS_OPTIONS: Array<MarketTrend["basis"]> = [
-  "evidence_from_inputs",
-  "domain_generic_assumption"
-];
-const CONFIDENCE_OPTIONS: Array<MarketTrend["confidence"]> = [
-  "low",
-  "medium",
-  "high"
-];
-const COMPETITOR_CATEGORY_OPTIONS: Array<CompetitorEntry["category"]> = [
-  "direct",
-  "indirect",
-  "substitute"
-];
 
 function PainPointsEditor({
   title,
-  themes,
+  value,
+  segmentOptions,
   onChange,
   onApprove,
   onRegenerate,
@@ -3776,104 +3744,143 @@ function PainPointsEditor({
   disabled,
   isApproving,
   isRegenerating,
-    isClearing,
+  isClearing,
   showTitle = true,
   showRegenerate = true,
-    regenerateLabel,
-    hideApprove = false
+  regenerateLabel,
+  hideApprove = false
 }: PainPointsEditorProps) {
-  const hasThemes = themes.length > 0;
-  const [openThemes, setOpenThemes] = useState<string[]>([]);
-  const [openPainPoints, setOpenPainPoints] = useState<Record<string, string[]>>(
-    {}
+  const safeGroups = Array.isArray(value)
+    ? value.map((group) => ({
+        user_segment: group.user_segment ?? "",
+        pain_points: Array.isArray(group.pain_points) ? group.pain_points : []
+      }))
+    : [];
+  const hasGroups = safeGroups.length > 0;
+  const [openGroups, setOpenGroups] = useOpenItems(safeGroups, "pain-segment");
+  const [openPainPointsByGroup, setOpenPainPointsByGroup] = useState<
+    Record<string, string[]>
+  >({});
+  const painPointCountsKey = safeGroups
+    .map((group) => group.pain_points.length)
+    .join("|");
+  const normalizedSegments = normalizeSegments(segmentOptions);
+  const segmentNames = Array.from(
+    new Set(
+      normalizedSegments
+        .map((segment) => segment.segment_name)
+        .filter((name) => name.trim().length > 0)
+    )
   );
+  const primarySegmentName =
+    normalizedSegments.find((segment) => segment.segment_type === "primary")
+      ?.segment_name || "";
+  const defaultSegment = primarySegmentName || segmentNames[0] || "";
 
   useEffect(() => {
-    const themeKeys = themes.map((_, index) => `theme-${index}`);
-    setOpenThemes((prev) => {
-      const next = prev.filter((key) => themeKeys.includes(key));
-      themeKeys.forEach((key) => {
-        if (!next.includes(key)) {
-          next.push(key);
-        }
-      });
-      return next;
-    });
-    setOpenPainPoints((prev) => {
+    if (!defaultSegment) {
+      return;
+    }
+    const nextGroups = safeGroups.map((group) => ({
+      ...group,
+      user_segment: group.user_segment || defaultSegment
+    }));
+    const changed = nextGroups.some(
+      (group, index) => group.user_segment !== safeGroups[index]?.user_segment
+    );
+    if (changed) {
+      onChange(nextGroups);
+    }
+  }, [defaultSegment, safeGroups, onChange]);
+
+  useEffect(() => {
+    setOpenPainPointsByGroup((prev) => {
       const next: Record<string, string[]> = { ...prev };
-      themeKeys.forEach((themeKey, index) => {
-        const points = themes[index]?.pain_points || [];
-        const pointKeys = points.map((__, pointIndex) => `${themeKey}-point-${pointIndex}`);
-        const existing = next[themeKey] || [];
-        const merged = existing.filter((key) => pointKeys.includes(key));
-        pointKeys.forEach((key) => {
-          if (!merged.includes(key)) {
-            merged.push(key);
-          }
-        });
-        next[themeKey] = merged;
+      safeGroups.forEach((group, groupIndex) => {
+        const groupKey = `pain-segment-${groupIndex}`;
+        const keys = sortPainPoints(group.pain_points).map(
+          (_point, pointIndex) => `pain-point-${groupKey}-${pointIndex}`
+        );
+        const current = next[groupKey] || [];
+        const filtered = current.filter((key) => keys.includes(key));
+        const newlyAdded = keys.filter((key) => !filtered.includes(key));
+        next[groupKey] = filtered.concat(newlyAdded);
       });
       Object.keys(next).forEach((key) => {
-        if (!themeKeys.includes(key)) {
+        if (!safeGroups.some((_group, index) => `pain-segment-${index}` === key)) {
           delete next[key];
         }
       });
       return next;
     });
-  }, [themes.length, themes]);
+  }, [painPointCountsKey, safeGroups.length]);
 
-  const updateTheme = (index: number, nextTheme: PainPointTheme) => {
-    const next = themes.slice();
-    next[index] = nextTheme;
+  const updateGroup = (index: number, nextGroup: PainPointGroup) => {
+    const next = safeGroups.slice();
+    next[index] = {
+      ...nextGroup,
+      pain_points: sortPainPoints(nextGroup.pain_points)
+    };
     onChange(next);
   };
 
-  const removeTheme = (index: number) => {
-    const next = themes.slice();
-    next.splice(index, 1);
-    onChange(next);
-  };
-
-  const addTheme = () => {
+  const addGroup = () => {
     onChange(
-      themes.concat([
+      safeGroups.concat([
         {
-          theme_name: "",
-          pain_points: [
-            {
-              name: "",
-              description: "",
-              affected_user_groups: [""],
-              severity: "medium",
-              frequency: "medium",
-              business_importance: "medium"
-            }
-          ]
+          user_segment: defaultSegment,
+          pain_points: []
         }
       ])
     );
   };
 
-  const addPainPoint = (themeIndex: number) => {
-    const theme = themes[themeIndex];
-    const nextPoints = theme.pain_points.concat([
-      {
-        name: "",
-        description: "",
-        affected_user_groups: [""],
-        severity: "medium",
-        frequency: "medium",
-        business_importance: "medium"
-      }
-    ]);
-    updateTheme(themeIndex, { ...theme, pain_points: nextPoints });
+  const removeGroup = (index: number) => {
+    const next = safeGroups.slice();
+    next.splice(index, 1);
+    onChange(next);
   };
 
-  const removePainPoint = (themeIndex: number, pointIndex: number) => {
-    const theme = themes[themeIndex];
-    const nextPoints = theme.pain_points.slice();
+  const updatePainPoint = (
+    groupIndex: number,
+    pointIndex: number,
+    nextPoint: PainPoint
+  ) => {
+    const group = safeGroups[groupIndex];
+    if (!group) {
+      return;
+    }
+    const nextPoints = group.pain_points.slice();
+    nextPoints[pointIndex] = nextPoint;
+    updateGroup(groupIndex, { ...group, pain_points: nextPoints });
+  };
+
+  const addPainPoint = (groupIndex: number) => {
+    const group = safeGroups[groupIndex];
+    if (!group) {
+      return;
+    }
+    updateGroup(groupIndex, {
+      ...group,
+      pain_points: group.pain_points.concat([
+        {
+          name: "",
+          description: "",
+          severity: "medium",
+          frequency: "medium"
+        }
+      ])
+    });
+  };
+
+  const removePainPoint = (groupIndex: number, pointIndex: number) => {
+    const group = safeGroups[groupIndex];
+    if (!group) {
+      return;
+    }
+    const nextPoints = group.pain_points.slice();
     nextPoints.splice(pointIndex, 1);
-    updateTheme(themeIndex, { ...theme, pain_points: nextPoints });
+    updateGroup(groupIndex, { ...group, pain_points: nextPoints });
   };
 
   return (
@@ -3891,119 +3898,129 @@ function PainPointsEditor({
               onClick={onClear}
               disabled={isClearing}
             >
-              {isClearing ? "Clearing…" : "Clear block"}
+              {isClearing ? "Clearing..." : "Clear block"}
             </button>
           )}
         </div>
       )}
 
-      {themes.length === 0 && (
+      <p className="mt-2 text-xs text-gray-500">
+        Only the primary User Segment is generated to keep scope clear. Add more user segments
+        manually as needed. Pain points are ordered by severity and then frequency.
+      </p>
+
+      {safeGroups.length === 0 && (
         <p className="mt-3 text-xs text-gray-500">
-          No themes yet. Add one to begin.
+          No user segments yet. Add one to begin.
         </p>
       )}
 
       <Accordion
         type="multiple"
-        value={openThemes}
-        onValueChange={setOpenThemes}
-        className="mt-3 space-y-4"
+        value={openGroups}
+        onValueChange={setOpenGroups}
+        className="mt-3 space-y-3"
       >
-        {themes.map((theme, themeIndex) => {
-          const themeKey = `theme-${themeIndex}`;
-          const openPoints = openPainPoints[themeKey] || [];
+        {safeGroups.map((group, groupIndex) => {
+          const groupKey = `pain-segment-${groupIndex}`;
           return (
             <AccordionItem
-              key={themeKey}
-              value={themeKey}
-              className="rounded border border-slate-200 p-3"
+              key={groupKey}
+              value={groupKey}
+              className="rounded border border-slate-100 p-2"
             >
-              <div className="grid items-start gap-2 md:grid-cols-[1fr_auto]">
+              <div className="grid items-start gap-3 md:grid-cols-[1fr_auto]">
                 <div>
                   <div className="flex items-center gap-2">
                     <AccordionTrigger className="flex-none justify-center gap-0 py-0 text-slate-600 hover:no-underline [&>svg]:h-3 [&>svg]:w-3">
-                      <span className="sr-only">Toggle theme</span>
+                      <span className="sr-only">Toggle segment pain points</span>
                     </AccordionTrigger>
-                    <label className="block text-xs text-gray-600">Theme name</label>
+                    <label className="block text-xs text-gray-600">User Segment</label>
                   </div>
-                  <input
-                    className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                    value={theme.theme_name}
-                    onChange={(event) =>
-                      updateTheme(themeIndex, { ...theme, theme_name: event.target.value })
-                    }
-                    disabled={disabled || approved}
-                  />
-                </div>
-                <div className="flex items-start">
-                  {!approved && !disabled && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-slate-600 hover:text-slate-700"
-                      onClick={() => removeTheme(themeIndex)}
-                      disabled={disabled}
-                      aria-label="Remove theme"
+                  <div className="mt-1 flex items-center gap-2">
+                    <select
+                      className="w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                      value={group.user_segment}
+                      onChange={(event) =>
+                        updateGroup(groupIndex, {
+                          ...group,
+                          user_segment: event.target.value
+                        })
+                      }
+                      disabled={disabled || approved}
                     >
-                      <Trash2 />
-                    </Button>
-                  )}
+                      <option value="">Select User Segment</option>
+                      {segmentNames.map((name) => (
+                        <option key={name} value={name}>
+                          {name}
+                        </option>
+                      ))}
+                    </select>
+                    {!approved && !disabled && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-slate-600 hover:text-slate-700"
+                        onClick={() => removeGroup(groupIndex)}
+                        disabled={disabled}
+                        aria-label="Remove user segment"
+                      >
+                        <Trash2 />
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              <AccordionContent className="pt-0">
+              <AccordionContent className="pt-2">
                 <Accordion
                   type="multiple"
-                  value={openPoints}
-                  onValueChange={(nextValue) =>
-                    setOpenPainPoints((prev) => ({ ...prev, [themeKey]: nextValue }))
+                  value={openPainPointsByGroup[groupKey] || []}
+                  onValueChange={(nextItems) =>
+                    setOpenPainPointsByGroup((prev) => ({
+                      ...prev,
+                      [groupKey]: nextItems
+                    }))
                   }
-                  className="mt-3 space-y-3"
+                  className="space-y-3"
                 >
-                  {theme.pain_points.map((point, pointIndex) => {
-                    const pointKey = `${themeKey}-point-${pointIndex}`;
+                  {sortPainPoints(group.pain_points).map((point, pointIndex) => {
+                    const itemKey = `pain-point-${groupKey}-${pointIndex}`;
                     return (
                       <AccordionItem
-                        key={pointKey}
-                        value={pointKey}
+                        key={itemKey}
+                        value={itemKey}
                         className="rounded border border-slate-100 p-2"
                       >
-                        <div className="grid items-start gap-2 md:grid-cols-[1fr_auto]">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <AccordionTrigger className="flex-none justify-center gap-0 py-0 text-slate-600 hover:no-underline [&>svg]:h-3 [&>svg]:w-3">
-                                <span className="sr-only">Toggle pain point</span>
-                              </AccordionTrigger>
-                              <label className="block text-xs text-gray-600">
-                                Pain point name
-                              </label>
-                            </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <AccordionTrigger className="flex-none justify-center gap-0 py-0 text-slate-600 hover:no-underline [&>svg]:h-3 [&>svg]:w-3">
+                              <span className="sr-only">Toggle pain point details</span>
+                            </AccordionTrigger>
+                            <label className="block text-xs text-gray-600">
+                              Pain Point Name
+                            </label>
+                          </div>
+                          <div className="mt-1 flex items-center gap-2">
                             <input
-                              className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                              className="w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
                               value={point.name}
-                              onChange={(event) => {
-                                const nextPoints = theme.pain_points.slice();
-                                nextPoints[pointIndex] = {
+                              onChange={(event) =>
+                                updatePainPoint(groupIndex, pointIndex, {
                                   ...point,
                                   name: event.target.value
-                                };
-                                updateTheme(themeIndex, {
-                                  ...theme,
-                                  pain_points: nextPoints
-                                });
-                              }}
+                                })
+                              }
                               disabled={disabled || approved}
                             />
-                          </div>
-                          <div className="flex items-start">
                             {!approved && !disabled && (
                               <Button
                                 type="button"
                                 variant="ghost"
                                 size="icon"
-                                className="h-7 w-7 text-slate-600 hover:text-slate-700"
-                                onClick={() => removePainPoint(themeIndex, pointIndex)}
+                                className="h-8 w-8 text-slate-600 hover:text-slate-700"
+                                onClick={() => removePainPoint(groupIndex, pointIndex)}
                                 disabled={disabled}
                                 aria-label="Remove pain point"
                               >
@@ -4012,145 +4029,81 @@ function PainPointsEditor({
                             )}
                           </div>
                         </div>
-
-                        <AccordionContent className="pt-0">
-                          <div className="mt-2">
-                            <label className="block text-xs text-gray-600">Description</label>
-                            <textarea
-                              className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                              rows={1}
-                              value={point.description}
-                              onChange={(event) => {
-                                const nextPoints = theme.pain_points.slice();
-                                nextPoints[pointIndex] = {
-                                  ...point,
-                                  description: event.target.value
-                                };
-                                updateTheme(themeIndex, {
-                                  ...theme,
-                                  pain_points: nextPoints
-                                });
-                              }}
-                              disabled={disabled || approved}
-                            />
-                          </div>
-
-                          <div className="mt-2 grid gap-2 md:grid-cols-3">
-                            <div>
-                              <label className="block text-xs text-gray-600">Severity</label>
-                              <select
-                                className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                                value={point.severity}
-                                onChange={(event) => {
-                                  const nextPoints = theme.pain_points.slice();
-                                  nextPoints[pointIndex] = {
-                                    ...point,
-                                    severity: event.target.value as PainPoint["severity"]
-                                  };
-                                  updateTheme(themeIndex, {
-                                    ...theme,
-                                    pain_points: nextPoints
-                                  });
-                                }}
-                                disabled={disabled || approved}
-                              >
-                                {RATING_OPTIONS.map((option) => (
-                                  <option key={option} value={option}>
-                                    {option}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                            <div>
-                              <label className="block text-xs text-gray-600">Frequency</label>
-                              <select
-                                className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                                value={point.frequency}
-                                onChange={(event) => {
-                                  const nextPoints = theme.pain_points.slice();
-                                  nextPoints[pointIndex] = {
-                                    ...point,
-                                    frequency: event.target.value as PainPoint["frequency"]
-                                  };
-                                  updateTheme(themeIndex, {
-                                    ...theme,
-                                    pain_points: nextPoints
-                                  });
-                                }}
-                                disabled={disabled || approved}
-                              >
-                                {RATING_OPTIONS.map((option) => (
-                                  <option key={option} value={option}>
-                                    {option}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
+                        <AccordionContent className="pt-2">
+                          <div className="space-y-3">
                             <div>
                               <label className="block text-xs text-gray-600">
-                                Business importance
+                                Description (behavioral evidence)
                               </label>
-                              <select
+                              <textarea
                                 className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                                value={point.business_importance}
-                                onChange={(event) => {
-                                  const nextPoints = theme.pain_points.slice();
-                                  nextPoints[pointIndex] = {
+                                rows={2}
+                                value={point.description}
+                                onChange={(event) =>
+                                  updatePainPoint(groupIndex, pointIndex, {
                                     ...point,
-                                    business_importance: event.target.value as PainPoint["business_importance"]
-                                  };
-                                  updateTheme(themeIndex, {
-                                    ...theme,
-                                    pain_points: nextPoints
-                                  });
-                                }}
+                                    description: event.target.value
+                                  })
+                                }
                                 disabled={disabled || approved}
-                              >
-                                {RATING_OPTIONS.map((option) => (
-                                  <option key={option} value={option}>
-                                    {option}
-                                  </option>
-                                ))}
-                              </select>
+                              />
                             </div>
-                          </div>
-
-                          <div className="mt-2">
-                            <label className="block text-xs text-gray-600">
-                              Affected user groups (one per line)
-                            </label>
-                            <textarea
-                              className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                              rows={1}
-                              value={point.affected_user_groups.join("\n")}
-                              onChange={(event) => {
-                                const nextPoints = theme.pain_points.slice();
-                                nextPoints[pointIndex] = {
-                                  ...point,
-                                  affected_user_groups: event.target.value.split("\n")
-                                };
-                                updateTheme(themeIndex, {
-                                  ...theme,
-                                  pain_points: nextPoints
-                                });
-                              }}
-                              disabled={disabled || approved}
-                            />
+                            <div className="grid gap-2 md:grid-cols-2">
+                              <div>
+                                <label className="block text-xs text-gray-600">
+                                  Severity
+                                </label>
+                                <select
+                                  className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                                  value={point.severity}
+                                  onChange={(event) =>
+                                    updatePainPoint(groupIndex, pointIndex, {
+                                      ...point,
+                                      severity: event.target.value as PainPoint["severity"]
+                                    })
+                                  }
+                                  disabled={disabled || approved}
+                                >
+                                  <option value="high">high</option>
+                                  <option value="medium">medium</option>
+                                  <option value="low">low</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-xs text-gray-600">
+                                  Frequency
+                                </label>
+                                <select
+                                  className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                                  value={point.frequency}
+                                  onChange={(event) =>
+                                    updatePainPoint(groupIndex, pointIndex, {
+                                      ...point,
+                                      frequency: event.target.value as PainPoint["frequency"]
+                                    })
+                                  }
+                                  disabled={disabled || approved}
+                                >
+                                  <option value="high">high</option>
+                                  <option value="medium">medium</option>
+                                  <option value="low">low</option>
+                                </select>
+                              </div>
+                            </div>
                           </div>
                         </AccordionContent>
                       </AccordionItem>
                     );
                   })}
                 </Accordion>
-
                 {!approved && (
                   <button
                     type="button"
-                    className="mt-2 text-xs text-blue-600 disabled:opacity-60"
-                    onClick={() => addPainPoint(themeIndex)}
+                    className="mt-3 text-xs text-blue-600 disabled:opacity-60"
+                    onClick={() => addPainPoint(groupIndex)}
                     disabled={disabled}
                   >
-                    + Pain point
+                    + Pain Point
                   </button>
                 )}
               </AccordionContent>
@@ -4162,11 +4115,11 @@ function PainPointsEditor({
       {!approved && (
         <button
           type="button"
-          className="mt-3 inline-flex items-center rounded border border-slate-300 px-3 py-1 text-xs text-slate-700 disabled:opacity-60"
-          onClick={addTheme}
+          className="mt-3 text-xs text-blue-600 disabled:opacity-60"
+          onClick={addGroup}
           disabled={disabled}
         >
-          + Theme
+          + User Segment
         </button>
       )}
 
@@ -4176,9 +4129,9 @@ function PainPointsEditor({
             type="button"
             className="inline-flex min-w-[96px] items-center justify-center rounded border border-green-600 px-3 py-2 text-sm font-medium text-green-700 disabled:opacity-60"
             onClick={onApprove}
-            disabled={disabled || !hasThemes || isApproving}
+            disabled={disabled || approved || !hasGroups || isApproving}
           >
-            {isApproving ? "Approving…" : "Approve and Proceed"}
+            {isApproving ? "Approving..." : "Approve and Proceed"}
           </button>
         )}
         {showRegenerate && (
@@ -4196,10 +4149,10 @@ function PainPointsEditor({
   );
 }
 
-type ContextConstraintsEditorProps = {
+type ContextualFactorsEditorProps = {
   title: string;
-  value: ContextConstraints;
-  onChange: (value: ContextConstraints) => void;
+  value: ContextualFactors;
+  onChange: (value: ContextualFactors) => void;
   onApprove: () => void;
   onRegenerate: () => void;
   onClear: () => void;
@@ -4207,14 +4160,14 @@ type ContextConstraintsEditorProps = {
   disabled: boolean;
   isApproving: boolean;
   isRegenerating: boolean;
-    isClearing: boolean;
+  isClearing: boolean;
   showTitle?: boolean;
   showRegenerate?: boolean;
-    regenerateLabel?: string;
-    hideApprove?: boolean;
+  regenerateLabel?: string;
+  hideApprove?: boolean;
 };
 
-function ContextConstraintsEditor({
+function ContextualFactorsEditor({
   title,
   value,
   onChange,
@@ -4225,170 +4178,71 @@ function ContextConstraintsEditor({
   disabled,
   isApproving,
   isRegenerating,
-    isClearing,
+  isClearing,
   showTitle = true,
   showRegenerate = true,
-    regenerateLabel,
-    hideApprove = false
-}: ContextConstraintsEditorProps) {
-  const safeValue: ContextConstraints = {
-    contextual_factors: Array.isArray(value?.contextual_factors)
+  regenerateLabel,
+  hideApprove = false
+}: ContextualFactorsEditorProps) {
+  const safeValue: ContextualFactors = {
+    contextual_factors: Array.isArray(value.contextual_factors)
       ? value.contextual_factors
-      : [],
-    constraints: Array.isArray(value?.constraints) ? value.constraints : []
+      : []
   };
-
-  const updateList = (
-    key: keyof ContextConstraints,
-    nextItems: ContextConstraintItem[]
-  ) => {
-    onChange({ ...safeValue, [key]: nextItems });
-  };
-
-  const updateItem = (
-    key: keyof ContextConstraints,
-    index: number,
-    nextItem: ContextConstraintItem
-  ) => {
-    const items = safeValue[key].slice();
-    items[index] = nextItem;
-    updateList(key, items);
-  };
-
-  const addItem = (key: keyof ContextConstraints) => {
-    updateList(key, safeValue[key].concat([
-      {
-        name: "",
-        description: "",
-        impact_on_user_needs: "",
-        business_implications: ""
-      }
-    ]));
-  };
-
-  const removeItem = (key: keyof ContextConstraints, index: number) => {
-    const items = safeValue[key].slice();
-    items.splice(index, 1);
-    updateList(key, items);
-  };
-
-  const renderList = (label: string, key: keyof ContextConstraints) => (
-    <Accordion type="multiple" defaultValue={[key]}>
-      <AccordionItem value={key} className="border-0">
-        <AccordionTrigger className="py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 hover:no-underline">
-          {label}
-        </AccordionTrigger>
-        <AccordionContent className="pt-2">
-          <Accordion type="multiple" className="space-y-3">
-        {safeValue[key].map((item, index) => {
-          const itemKey = `${key}-${index}`;
-          return (
-            <AccordionItem
-              key={itemKey}
-              value={itemKey}
-              className="rounded border border-slate-100 p-2"
-            >
-              <div className="grid items-start gap-2 md:grid-cols-[1fr_auto]">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <AccordionTrigger className="flex-none justify-center gap-0 py-0 text-slate-600 hover:no-underline [&>svg]:h-3 [&>svg]:w-3">
-                      <span className="sr-only">Toggle item</span>
-                    </AccordionTrigger>
-                    <label className="block text-xs text-gray-600">Name</label>
-                  </div>
-                  <input
-                    className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                    value={item.name}
-                    onChange={(event) =>
-                      updateItem(key, index, { ...item, name: event.target.value })
-                    }
-                    disabled={disabled || approved}
-                  />
-                </div>
-                <div className="flex items-start">
-                  {!approved && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-slate-600 hover:text-slate-700"
-                      onClick={() => removeItem(key, index)}
-                      disabled={disabled}
-                      aria-label={`Remove ${label.toLowerCase()} item`}
-                    >
-                      <Trash2 />
-                    </Button>
-                  )}
-                </div>
-              </div>
-              <AccordionContent className="pt-0">
-                <div className="mt-2">
-                  <label className="block text-xs text-gray-600">Description</label>
-                  <textarea
-                    className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                    rows={1}
-                    value={item.description}
-                    onChange={(event) =>
-                      updateItem(key, index, { ...item, description: event.target.value })
-                    }
-                    disabled={disabled || approved}
-                  />
-                </div>
-                <div className="mt-2 grid gap-3 md:grid-cols-2">
-                  <div>
-                    <label className="block text-xs text-gray-600">
-                      Impact on user needs
-                    </label>
-                    <textarea
-                      className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                      rows={1}
-                      value={item.impact_on_user_needs}
-                      onChange={(event) =>
-                        updateItem(key, index, {
-                          ...item,
-                          impact_on_user_needs: event.target.value
-                        })
-                      }
-                      disabled={disabled || approved}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-600">
-                      Business implications
-                    </label>
-                    <textarea
-                      className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                      rows={1}
-                      value={item.business_implications}
-                      onChange={(event) =>
-                        updateItem(key, index, {
-                          ...item,
-                          business_implications: event.target.value
-                        })
-                      }
-                      disabled={disabled || approved}
-                    />
-                  </div>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-          );
-        })}
-          </Accordion>
-          {!approved && (
-            <button
-              type="button"
-              className="mt-3 text-xs text-blue-600 disabled:opacity-60"
-              onClick={() => addItem(key)}
-              disabled={disabled}
-            >
-              + {label === "Contextual factors" ? "Factor" : "Constraint"}
-            </button>
-          )}
-        </AccordionContent>
-      </AccordionItem>
-    </Accordion>
+  const hasGroups = safeValue.contextual_factors.length > 0;
+  const [openGroups, setOpenGroups] = useOpenItems(
+    safeValue.contextual_factors,
+    "context-group"
   );
+
+  const updateGroup = (index: number, nextGroup: ContextFactorGroup) => {
+    const next = safeValue.contextual_factors.slice();
+    next[index] = nextGroup;
+    onChange({ contextual_factors: next });
+  };
+
+  const addGroup = () => {
+    onChange({
+      contextual_factors: safeValue.contextual_factors.concat([
+        { factor_group: "", factors: [] }
+      ])
+    });
+  };
+
+  const removeGroup = (index: number) => {
+    const next = safeValue.contextual_factors.slice();
+    next.splice(index, 1);
+    onChange({ contextual_factors: next });
+  };
+
+  const addFactor = (groupIndex: number) => {
+    const group = safeValue.contextual_factors[groupIndex];
+    if (!group) return;
+    updateGroup(groupIndex, {
+      ...group,
+      factors: group.factors.concat([{ name: "", description: "" }])
+    });
+  };
+
+  const updateFactor = (
+    groupIndex: number,
+    factorIndex: number,
+    nextFactor: ContextFactor
+  ) => {
+    const group = safeValue.contextual_factors[groupIndex];
+    if (!group) return;
+    const nextFactors = group.factors.slice();
+    nextFactors[factorIndex] = nextFactor;
+    updateGroup(groupIndex, { ...group, factors: nextFactors });
+  };
+
+  const removeFactor = (groupIndex: number, factorIndex: number) => {
+    const group = safeValue.contextual_factors[groupIndex];
+    if (!group) return;
+    const nextFactors = group.factors.slice();
+    nextFactors.splice(factorIndex, 1);
+    updateGroup(groupIndex, { ...group, factors: nextFactors });
+  };
 
   return (
     <div className="rounded border bg-white p-4">
@@ -4405,24 +4259,431 @@ function ContextConstraintsEditor({
               onClick={onClear}
               disabled={isClearing}
             >
-              {isClearing ? "Clearing…" : "Clear block"}
+              {isClearing ? "Clearing..." : "Clear block"}
             </button>
           )}
         </div>
       )}
 
-      {renderList("Contextual factors", "contextual_factors")}
-      {renderList("Constraints", "constraints")}
+      {safeValue.contextual_factors.length === 0 && (
+        <p className="mt-3 text-xs text-gray-500">
+          No contextual factor groups yet. Add one to begin.
+        </p>
+      )}
 
-      <div className="mt-4 flex items-center gap-2">
+      <Accordion
+        type="multiple"
+        value={openGroups}
+        onValueChange={setOpenGroups}
+        className="mt-3 space-y-3"
+      >
+        {safeValue.contextual_factors.map((group, groupIndex) => {
+          const groupKey = `context-group-${groupIndex}`;
+          return (
+            <AccordionItem
+              key={groupKey}
+              value={groupKey}
+              className="rounded border border-slate-100 p-2"
+            >
+              <div className="grid items-start gap-3 md:grid-cols-[1fr_auto]">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <AccordionTrigger className="flex-none justify-center gap-0 py-0 text-slate-600 hover:no-underline [&>svg]:h-3 [&>svg]:w-3">
+                      <span className="sr-only">Toggle contextual factors</span>
+                    </AccordionTrigger>
+                    <label className="block text-xs text-gray-600">Factor Group</label>
+                  </div>
+                  <div className="mt-1 flex items-center gap-2">
+                    <input
+                      className="w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                      value={group.factor_group}
+                      onChange={(event) =>
+                        updateGroup(groupIndex, {
+                          ...group,
+                          factor_group: event.target.value
+                        })
+                      }
+                      disabled={disabled || approved}
+                    />
+                    {!approved && !disabled && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-slate-600 hover:text-slate-700"
+                        onClick={() => removeGroup(groupIndex)}
+                        disabled={disabled}
+                        aria-label="Remove factor group"
+                      >
+                        <Trash2 />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <AccordionContent className="pt-2">
+                {group.factors.map((factor, factorIndex) => (
+                  <div
+                    key={`${groupKey}-factor-${factorIndex}`}
+                    className="mt-3 rounded border border-slate-100 p-3"
+                  >
+                    <div>
+                      <label className="block text-xs text-gray-600">Factor Name</label>
+                      <div className="mt-1 flex items-center gap-2">
+                        <input
+                          className="w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                          value={factor.name}
+                          onChange={(event) =>
+                            updateFactor(groupIndex, factorIndex, {
+                              ...factor,
+                              name: event.target.value
+                            })
+                          }
+                          disabled={disabled || approved}
+                        />
+                        {!approved && !disabled && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-slate-600 hover:text-slate-700"
+                            onClick={() => removeFactor(groupIndex, factorIndex)}
+                            disabled={disabled}
+                            aria-label="Remove factor"
+                          >
+                            <Trash2 />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    <div className="mt-2">
+                      <label className="block text-xs text-gray-600">Description</label>
+                      <textarea
+                        className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                        rows={2}
+                        value={factor.description}
+                        onChange={(event) =>
+                          updateFactor(groupIndex, factorIndex, {
+                            ...factor,
+                            description: event.target.value
+                          })
+                        }
+                        disabled={disabled || approved}
+                      />
+                    </div>
+                  </div>
+                ))}
+                {!approved && (
+                  <button
+                    type="button"
+                    className="mt-3 text-xs text-blue-600 disabled:opacity-60"
+                    onClick={() => addFactor(groupIndex)}
+                    disabled={disabled}
+                  >
+                    + Factor
+                  </button>
+                )}
+              </AccordionContent>
+            </AccordionItem>
+          );
+        })}
+      </Accordion>
+
+      {!approved && (
+        <button
+          type="button"
+          className="mt-3 text-xs text-blue-600 disabled:opacity-60"
+          onClick={addGroup}
+          disabled={disabled}
+        >
+          + Factor Group
+        </button>
+      )}
+
+      <div className="mt-3 flex items-center gap-2">
         {!approved && !hideApprove && (
           <button
             type="button"
             className="inline-flex min-w-[96px] items-center justify-center rounded border border-green-600 px-3 py-2 text-sm font-medium text-green-700 disabled:opacity-60"
             onClick={onApprove}
-            disabled={disabled || isApproving}
+            disabled={disabled || approved || !hasGroups || isApproving}
           >
-            {isApproving ? "Approving…" : "Approve and Proceed"}
+            {isApproving ? "Approving..." : "Approve and Proceed"}
+          </button>
+        )}
+        {showRegenerate && (
+          <button
+            type="button"
+            className="inline-flex min-w-[108px] items-center justify-center rounded border border-blue-600 px-3 py-2 text-sm font-medium text-blue-700 disabled:opacity-60"
+            onClick={onRegenerate}
+            disabled={isRegenerating}
+          >
+            {isRegenerating ? (regenerateLabel ?? "Regenerating...") : "Regenerate"}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+type ConstraintsEditorProps = {
+  title: string;
+  value: Constraints;
+  onChange: (value: Constraints) => void;
+  onApprove: () => void;
+  onRegenerate: () => void;
+  onClear: () => void;
+  approved: boolean;
+  disabled: boolean;
+  isApproving: boolean;
+  isRegenerating: boolean;
+  isClearing: boolean;
+  showTitle?: boolean;
+  showRegenerate?: boolean;
+  regenerateLabel?: string;
+  hideApprove?: boolean;
+};
+
+function ConstraintsEditor({
+  title,
+  value,
+  onChange,
+  onApprove,
+  onRegenerate,
+  onClear,
+  approved,
+  disabled,
+  isApproving,
+  isRegenerating,
+  isClearing,
+  showTitle = true,
+  showRegenerate = true,
+  regenerateLabel,
+  hideApprove = false
+}: ConstraintsEditorProps) {
+  const safeValue: Constraints = {
+    constraints: Array.isArray(value.constraints) ? value.constraints : []
+  };
+  const hasGroups = safeValue.constraints.length > 0;
+  const [openGroups, setOpenGroups] = useOpenItems(
+    safeValue.constraints,
+    "constraint-group"
+  );
+
+  const updateGroup = (index: number, nextGroup: ConstraintGroup) => {
+    const next = safeValue.constraints.slice();
+    next[index] = nextGroup;
+    onChange({ constraints: next });
+  };
+
+  const addGroup = () => {
+    onChange({
+      constraints: safeValue.constraints.concat([
+        { constraint_group: "", constraints: [] }
+      ])
+    });
+  };
+
+  const removeGroup = (index: number) => {
+    const next = safeValue.constraints.slice();
+    next.splice(index, 1);
+    onChange({ constraints: next });
+  };
+
+  const addConstraint = (groupIndex: number) => {
+    const group = safeValue.constraints[groupIndex];
+    if (!group) return;
+    updateGroup(groupIndex, {
+      ...group,
+      constraints: group.constraints.concat([{ name: "", description: "" }])
+    });
+  };
+
+  const updateConstraint = (
+    groupIndex: number,
+    constraintIndex: number,
+    nextConstraint: ConstraintItem
+  ) => {
+    const group = safeValue.constraints[groupIndex];
+    if (!group) return;
+    const nextConstraints = group.constraints.slice();
+    nextConstraints[constraintIndex] = nextConstraint;
+    updateGroup(groupIndex, { ...group, constraints: nextConstraints });
+  };
+
+  const removeConstraint = (groupIndex: number, constraintIndex: number) => {
+    const group = safeValue.constraints[groupIndex];
+    if (!group) return;
+    const nextConstraints = group.constraints.slice();
+    nextConstraints.splice(constraintIndex, 1);
+    updateGroup(groupIndex, { ...group, constraints: nextConstraints });
+  };
+
+  return (
+    <div className="rounded border bg-white p-4">
+      {showTitle && (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-semibold text-gray-800">{title}</p>
+            {approved && <span className="text-xs font-medium text-green-600">Ready</span>}
+          </div>
+          {!approved && (
+            <button
+              type="button"
+              className="rounded border px-3 py-2 text-sm disabled:opacity-60"
+              onClick={onClear}
+              disabled={isClearing}
+            >
+              {isClearing ? "Clearing..." : "Clear block"}
+            </button>
+          )}
+        </div>
+      )}
+
+      {safeValue.constraints.length === 0 && (
+        <p className="mt-3 text-xs text-gray-500">
+          No constraint groups yet. Add one to begin.
+        </p>
+      )}
+
+      <Accordion
+        type="multiple"
+        value={openGroups}
+        onValueChange={setOpenGroups}
+        className="mt-3 space-y-3"
+      >
+        {safeValue.constraints.map((group, groupIndex) => {
+          const groupKey = `constraint-group-${groupIndex}`;
+          return (
+            <AccordionItem
+              key={groupKey}
+              value={groupKey}
+              className="rounded border border-slate-100 p-2"
+            >
+              <div className="grid items-start gap-3 md:grid-cols-[1fr_auto]">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <AccordionTrigger className="flex-none justify-center gap-0 py-0 text-slate-600 hover:no-underline [&>svg]:h-3 [&>svg]:w-3">
+                      <span className="sr-only">Toggle constraints</span>
+                    </AccordionTrigger>
+                    <label className="block text-xs text-gray-600">Constraint Group</label>
+                  </div>
+                  <div className="mt-1 flex items-center gap-2">
+                    <input
+                      className="w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                      value={group.constraint_group}
+                      onChange={(event) =>
+                        updateGroup(groupIndex, {
+                          ...group,
+                          constraint_group: event.target.value
+                        })
+                      }
+                      disabled={disabled || approved}
+                    />
+                    {!approved && !disabled && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-slate-600 hover:text-slate-700"
+                        onClick={() => removeGroup(groupIndex)}
+                        disabled={disabled}
+                        aria-label="Remove constraint group"
+                      >
+                        <Trash2 />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <AccordionContent className="pt-2">
+                {group.constraints.map((constraint, constraintIndex) => (
+                  <div
+                    key={`${groupKey}-constraint-${constraintIndex}`}
+                    className="mt-3 rounded border border-slate-100 p-3"
+                  >
+                    <div>
+                      <label className="block text-xs text-gray-600">Constraint Name</label>
+                      <div className="mt-1 flex items-center gap-2">
+                        <input
+                          className="w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                          value={constraint.name}
+                          onChange={(event) =>
+                            updateConstraint(groupIndex, constraintIndex, {
+                              ...constraint,
+                              name: event.target.value
+                            })
+                          }
+                          disabled={disabled || approved}
+                        />
+                        {!approved && !disabled && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-slate-600 hover:text-slate-700"
+                            onClick={() => removeConstraint(groupIndex, constraintIndex)}
+                            disabled={disabled}
+                            aria-label="Remove constraint"
+                          >
+                            <Trash2 />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    <div className="mt-2">
+                      <label className="block text-xs text-gray-600">Description</label>
+                      <textarea
+                        className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                        rows={2}
+                        value={constraint.description}
+                        onChange={(event) =>
+                          updateConstraint(groupIndex, constraintIndex, {
+                            ...constraint,
+                            description: event.target.value
+                          })
+                        }
+                        disabled={disabled || approved}
+                      />
+                    </div>
+                  </div>
+                ))}
+                {!approved && (
+                  <button
+                    type="button"
+                    className="mt-3 text-xs text-blue-600 disabled:opacity-60"
+                    onClick={() => addConstraint(groupIndex)}
+                    disabled={disabled}
+                  >
+                    + Constraint
+                  </button>
+                )}
+              </AccordionContent>
+            </AccordionItem>
+          );
+        })}
+      </Accordion>
+
+      {!approved && (
+        <button
+          type="button"
+          className="mt-3 text-xs text-blue-600 disabled:opacity-60"
+          onClick={addGroup}
+          disabled={disabled}
+        >
+          + Constraint Group
+        </button>
+      )}
+
+      <div className="mt-3 flex items-center gap-2">
+        {!approved && !hideApprove && (
+          <button
+            type="button"
+            className="inline-flex min-w-[96px] items-center justify-center rounded border border-green-600 px-3 py-2 text-sm font-medium text-green-700 disabled:opacity-60"
+            onClick={onApprove}
+            disabled={disabled || approved || !hasGroups || isApproving}
+          >
+            {isApproving ? "Approving..." : "Approve and Proceed"}
           </button>
         )}
         {showRegenerate && (
@@ -4451,11 +4712,11 @@ type MarketLandscapeEditorProps = {
   disabled: boolean;
   isApproving: boolean;
   isRegenerating: boolean;
-    isClearing: boolean;
+  isClearing: boolean;
   showTitle?: boolean;
   showRegenerate?: boolean;
-    regenerateLabel?: string;
-    hideApprove?: boolean;
+  regenerateLabel?: string;
+  hideApprove?: boolean;
 };
 
 function MarketLandscapeEditor({
@@ -4469,188 +4730,34 @@ function MarketLandscapeEditor({
   disabled,
   isApproving,
   isRegenerating,
-    isClearing,
+  isClearing,
   showTitle = true,
   showRegenerate = true,
-    regenerateLabel,
-    hideApprove = false
+  regenerateLabel,
+  hideApprove = false
 }: MarketLandscapeEditorProps) {
   const safeValue = normalizeMarketLandscapeValue(value);
-
-  const hasContent =
-    safeValue.market_definition.description.trim().length > 0 ||
-    safeValue.market_definition.excluded_adjacent_spaces.some((item) => item.trim()) ||
-    safeValue.market_size.description.trim().length > 0 ||
-    safeValue.market_maturity.rationale.trim().length > 0 ||
-    safeValue.market_trends.length > 0 ||
-    safeValue.market_dynamics.length > 0 ||
-    safeValue.market_forces.length > 0 ||
-    safeValue.adoption_drivers.length > 0 ||
-    safeValue.adoption_barriers.length > 0;
-
-  const updateMarketDefinition = (next: MarketDefinition) => {
-    onChange({ ...safeValue, market_definition: next });
-  };
-
-  const updateMarketSize = (next: MarketSize) => {
-    onChange({ ...safeValue, market_size: next });
-  };
-
-  const updateMarketMaturity = (next: MarketMaturity) => {
-    onChange({ ...safeValue, market_maturity: next });
-  };
-
-  const [openTrends, setOpenTrends] = useOpenItems(
-    safeValue.market_trends,
-    "trend"
-  );
-  const [openDynamics, setOpenDynamics] = useOpenItems(
-    safeValue.market_dynamics,
-    "dynamic"
-  );
-  const [openForces, setOpenForces] = useOpenItems(
-    safeValue.market_forces,
-    "force"
-  );
-  const [openDrivers, setOpenDrivers] = useOpenItems(
-    safeValue.adoption_drivers,
-    "driver"
-  );
-  const [openBarriers, setOpenBarriers] = useOpenItems(
-    safeValue.adoption_barriers,
-    "barrier"
+  const hasContent = Boolean(
+    safeValue.market_definition.trim() ||
+      safeValue.alternatives.direct_competitor_segments.length > 0 ||
+      safeValue.alternatives.indirect_competitor_segments.length > 0 ||
+      safeValue.alternatives.substitute_segments.length > 0 ||
+      safeValue.market_norms.length > 0 ||
+      safeValue.adoption_drivers.length > 0 ||
+      safeValue.adoption_barriers.length > 0
   );
 
-  const updateTrend = (index: number, nextItem: MarketTrend) => {
-    const next = safeValue.market_trends.slice();
-    next[index] = nextItem;
-    onChange({ ...safeValue, market_trends: next });
-  };
-
-  const addTrend = () => {
+  const updateAlternatives = (
+    key: keyof MarketAlternatives,
+    nextValue: string
+  ) => {
     onChange({
       ...safeValue,
-      market_trends: safeValue.market_trends.concat([
-        {
-          name: "",
-          description: "",
-          time_horizon: "short",
-          affected_target_segments: [""],
-          basis: "domain_generic_assumption",
-          confidence: "medium"
-        }
-      ])
+      alternatives: {
+        ...safeValue.alternatives,
+        [key]: toLineItems(nextValue)
+      }
     });
-  };
-
-  const removeTrend = (index: number) => {
-    const next = safeValue.market_trends.slice();
-    next.splice(index, 1);
-    onChange({ ...safeValue, market_trends: next });
-  };
-
-  const updateDynamic = (index: number, nextItem: MarketDynamic) => {
-    const next = safeValue.market_dynamics.slice();
-    next[index] = nextItem;
-    onChange({ ...safeValue, market_dynamics: next });
-  };
-
-  const addDynamic = () => {
-    onChange({
-      ...safeValue,
-      market_dynamics: safeValue.market_dynamics.concat([
-        {
-          name: "",
-          description: "",
-          affected_target_segments: [""],
-          basis: "domain_generic_assumption",
-          confidence: "medium"
-        }
-      ])
-    });
-  };
-
-  const removeDynamic = (index: number) => {
-    const next = safeValue.market_dynamics.slice();
-    next.splice(index, 1);
-    onChange({ ...safeValue, market_dynamics: next });
-  };
-
-  const updateForce = (index: number, nextItem: MarketForce) => {
-    const next = safeValue.market_forces.slice();
-    next[index] = nextItem;
-    onChange({ ...safeValue, market_forces: next });
-  };
-
-  const addForce = () => {
-    onChange({
-      ...safeValue,
-      market_forces: safeValue.market_forces.concat([
-        {
-          name: "",
-          description: "",
-          affected_target_segments: [""],
-          basis: "domain_generic_assumption",
-          confidence: "medium"
-        }
-      ])
-    });
-  };
-
-  const removeForce = (index: number) => {
-    const next = safeValue.market_forces.slice();
-    next.splice(index, 1);
-    onChange({ ...safeValue, market_forces: next });
-  };
-
-  const updateDriver = (index: number, nextItem: AdoptionDriver) => {
-    const next = safeValue.adoption_drivers.slice();
-    next[index] = nextItem;
-    onChange({ ...safeValue, adoption_drivers: next });
-  };
-
-  const addDriver = () => {
-    onChange({
-      ...safeValue,
-      adoption_drivers: safeValue.adoption_drivers.concat([
-        {
-          name: "",
-          description: "",
-          affected_target_segments: [""]
-        }
-      ])
-    });
-  };
-
-  const removeDriver = (index: number) => {
-    const next = safeValue.adoption_drivers.slice();
-    next.splice(index, 1);
-    onChange({ ...safeValue, adoption_drivers: next });
-  };
-
-  const updateBarrier = (index: number, nextItem: AdoptionBarrier) => {
-    const next = safeValue.adoption_barriers.slice();
-    next[index] = nextItem;
-    onChange({ ...safeValue, adoption_barriers: next });
-  };
-
-  const addBarrier = () => {
-    onChange({
-      ...safeValue,
-      adoption_barriers: safeValue.adoption_barriers.concat([
-        {
-          name: "",
-          description: "",
-          affected_target_segments: [""]
-        }
-      ])
-    });
-  };
-
-  const removeBarrier = (index: number) => {
-    const next = safeValue.adoption_barriers.slice();
-    next.splice(index, 1);
-    onChange({ ...safeValue, adoption_barriers: next });
   };
 
   return (
@@ -4668,803 +4775,129 @@ function MarketLandscapeEditor({
               onClick={onClear}
               disabled={isClearing}
             >
-              {isClearing ? "Clearing…" : "Clear block"}
+              {isClearing ? "Clearing..." : "Clear block"}
             </button>
           )}
         </div>
       )}
 
-      <Accordion type="multiple" defaultValue={["market-definition"]}>
-        <AccordionItem value="market-definition" className="border-0">
-          <AccordionTrigger className="py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 hover:no-underline">
-            Market definition
-          </AccordionTrigger>
-          <AccordionContent className="pt-2">
-            <div className="mt-2">
-              <label className="block text-xs text-gray-600">Description</label>
-              <textarea
-                className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                rows={1}
-                value={safeValue.market_definition.description}
-                onChange={(event) =>
-                  updateMarketDefinition({
-                    ...safeValue.market_definition,
-                    description: event.target.value
-                  })
-                }
-                disabled={disabled || approved}
-              />
-            </div>
-            <div className="mt-2">
-              <label className="block text-xs text-gray-600">
-                Excluded adjacent spaces (one per line)
-              </label>
-              <textarea
-                className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                rows={1}
-                value={safeValue.market_definition.excluded_adjacent_spaces.join("\n")}
-                onChange={(event) =>
-                  updateMarketDefinition({
-                    ...safeValue.market_definition,
-                    excluded_adjacent_spaces: event.target.value.split("\n")
-                  })
-                }
-                disabled={disabled || approved}
-              />
-            </div>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
+      <div className="mt-3">
+        <label className="block text-xs text-gray-600">Market definition</label>
+        <textarea
+          className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+          rows={2}
+          value={safeValue.market_definition}
+          onChange={(event) =>
+            onChange({ ...safeValue, market_definition: event.target.value })
+          }
+          disabled={disabled || approved}
+        />
+      </div>
 
-      <Accordion type="multiple" defaultValue={["market-size"]}>
-        <AccordionItem value="market-size" className="border-0">
-          <AccordionTrigger className="py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 hover:no-underline">
-            Market size
-          </AccordionTrigger>
-          <AccordionContent className="pt-2">
-            <div className="mt-2">
-              <label className="block text-xs text-gray-600">Description</label>
-              <textarea
-                className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                rows={1}
-                value={safeValue.market_size.description}
-                onChange={(event) =>
-                  updateMarketSize({ description: event.target.value })
-                }
-                disabled={disabled || approved}
-              />
-            </div>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
+      <div className="mt-3 grid gap-3 md:grid-cols-3">
+        <div>
+          <label className="block text-xs text-gray-600">
+            Direct competitor segments (one per line)
+          </label>
+          <textarea
+            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+            rows={3}
+            value={toLineValue(safeValue.alternatives.direct_competitor_segments)}
+            onChange={(event) =>
+              updateAlternatives("direct_competitor_segments", event.target.value)
+            }
+            disabled={disabled || approved}
+          />
+        </div>
+        <div>
+          <label className="block text-xs text-gray-600">
+            Indirect competitor segments (one per line)
+          </label>
+          <textarea
+            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+            rows={3}
+            value={toLineValue(safeValue.alternatives.indirect_competitor_segments)}
+            onChange={(event) =>
+              updateAlternatives("indirect_competitor_segments", event.target.value)
+            }
+            disabled={disabled || approved}
+          />
+        </div>
+        <div>
+          <label className="block text-xs text-gray-600">
+            Substitutes (one per line)
+          </label>
+          <textarea
+            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+            rows={3}
+            value={toLineValue(safeValue.alternatives.substitute_segments)}
+            onChange={(event) =>
+              updateAlternatives("substitute_segments", event.target.value)
+            }
+            disabled={disabled || approved}
+          />
+        </div>
+      </div>
 
-      <Accordion type="multiple" defaultValue={["market-maturity"]}>
-        <AccordionItem value="market-maturity" className="border-0">
-          <AccordionTrigger className="py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 hover:no-underline">
-            Market maturity
-          </AccordionTrigger>
-          <AccordionContent className="pt-2">
-            <div className="mt-2 grid gap-2 md:grid-cols-2">
-              <div>
-                <label className="block text-xs text-gray-600">Classification</label>
-                <select
-                  className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                  value={safeValue.market_maturity.classification}
-                  onChange={(event) =>
-                    updateMarketMaturity({
-                      ...safeValue.market_maturity,
-                      classification: event.target.value as MarketMaturity["classification"]
-                    })
-                  }
-                  disabled={disabled || approved}
-                >
-                  {MARKET_MATURITY_OPTIONS.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs text-gray-600">Rationale</label>
-                <textarea
-                  className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                  rows={1}
-                  value={safeValue.market_maturity.rationale}
-                  onChange={(event) =>
-                    updateMarketMaturity({
-                      ...safeValue.market_maturity,
-                      rationale: event.target.value
-                    })
-                  }
-                  disabled={disabled || approved}
-                />
-              </div>
-            </div>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
+      <div className="mt-3">
+        <label className="block text-xs text-gray-600">Market norms (one per line)</label>
+        <textarea
+          className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+          rows={3}
+          value={toLineValue(safeValue.market_norms)}
+          onChange={(event) =>
+            onChange({ ...safeValue, market_norms: toLineItems(event.target.value) })
+          }
+          disabled={disabled || approved}
+        />
+      </div>
 
-      <Accordion type="multiple" defaultValue={["market-trends"]}>
-        <AccordionItem value="market-trends" className="border-0">
-          <AccordionTrigger className="py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 hover:no-underline">
-            Market trends
-          </AccordionTrigger>
-          <AccordionContent className="pt-2">
-            <Accordion
-              type="multiple"
-              value={openTrends}
-              onValueChange={setOpenTrends}
-              className="space-y-3"
-            >
-              {safeValue.market_trends.map((trend, index) => {
-                const trendKey = `trend-${index}`;
-                return (
-                  <AccordionItem
-                    key={trendKey}
-                    value={trendKey}
-                    className="rounded border border-slate-100 p-2"
-                  >
-                    <div className="grid items-start gap-2 md:grid-cols-[1fr_auto]">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <AccordionTrigger className="flex-none justify-center gap-0 py-0 text-slate-600 hover:no-underline [&>svg]:h-3 [&>svg]:w-3">
-                            <span className="sr-only">Toggle trend</span>
-                          </AccordionTrigger>
-                          <label className="block text-xs text-gray-600">Trend name</label>
-                        </div>
-                        <input
-                          className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                          value={trend.name}
-                          onChange={(event) =>
-                            updateTrend(index, { ...trend, name: event.target.value })
-                          }
-                          disabled={disabled || approved}
-                        />
-                      </div>
-                      <div className="flex items-start">
-                        {!approved && !disabled && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-slate-600 hover:text-slate-700"
-                            onClick={() => removeTrend(index)}
-                            disabled={disabled}
-                            aria-label="Remove trend"
-                          >
-                            <Trash2 />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                    <AccordionContent className="pt-0">
-                      <div className="mt-2">
-                        <label className="block text-xs text-gray-600">Description</label>
-                        <textarea
-                          className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                          rows={1}
-                          value={trend.description}
-                          onChange={(event) =>
-                            updateTrend(index, {
-                              ...trend,
-                              description: event.target.value
-                            })
-                          }
-                          disabled={disabled || approved}
-                        />
-                      </div>
-                      <div className="mt-2 grid gap-2 md:grid-cols-3">
-                        <div>
-                          <label className="block text-xs text-gray-600">Time horizon</label>
-                          <select
-                            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                            value={trend.time_horizon}
-                            onChange={(event) =>
-                              updateTrend(index, {
-                                ...trend,
-                                time_horizon: event.target.value as MarketTrend["time_horizon"]
-                              })
-                            }
-                            disabled={disabled || approved}
-                          >
-                            {TIME_HORIZON_OPTIONS.map((option) => (
-                              <option key={option} value={option}>
-                                {option}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-xs text-gray-600">Basis</label>
-                          <select
-                            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                            value={trend.basis}
-                            onChange={(event) =>
-                              updateTrend(index, {
-                                ...trend,
-                                basis: event.target.value as MarketTrend["basis"]
-                              })
-                            }
-                            disabled={disabled || approved}
-                          >
-                            {BASIS_OPTIONS.map((option) => (
-                              <option key={option} value={option}>
-                                {option}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-xs text-gray-600">Confidence</label>
-                          <select
-                            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                            value={trend.confidence}
-                            onChange={(event) =>
-                              updateTrend(index, {
-                                ...trend,
-                                confidence: event.target.value as MarketTrend["confidence"]
-                              })
-                            }
-                            disabled={disabled || approved}
-                          >
-                            {CONFIDENCE_OPTIONS.map((option) => (
-                              <option key={option} value={option}>
-                                {option}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-                      <div className="mt-2">
-                        <label className="block text-xs text-gray-600">
-                          Affected target segments (one per line)
-                        </label>
-                        <textarea
-                          className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                          rows={1}
-                          value={trend.affected_target_segments.join("\n")}
-                          onChange={(event) =>
-                            updateTrend(index, {
-                              ...trend,
-                              affected_target_segments: event.target.value.split("\n")
-                            })
-                          }
-                          disabled={disabled || approved}
-                        />
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                );
-              })}
-            </Accordion>
-            {!approved && (
-              <button
-                type="button"
-                className="mt-2 text-xs text-blue-600 disabled:opacity-60"
-                onClick={addTrend}
-                disabled={disabled}
-              >
-                + Trend
-              </button>
-            )}
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
+      <div className="mt-3 grid gap-3 md:grid-cols-2">
+        <div>
+          <label className="block text-xs text-gray-600">
+            Adoption drivers (one per line)
+          </label>
+          <textarea
+            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+            rows={3}
+            value={toLineValue(safeValue.adoption_drivers)}
+            onChange={(event) =>
+              onChange({
+                ...safeValue,
+                adoption_drivers: toLineItems(event.target.value)
+              })
+            }
+            disabled={disabled || approved}
+          />
+        </div>
+        <div>
+          <label className="block text-xs text-gray-600">
+            Adoption barriers (one per line)
+          </label>
+          <textarea
+            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+            rows={3}
+            value={toLineValue(safeValue.adoption_barriers)}
+            onChange={(event) =>
+              onChange({
+                ...safeValue,
+                adoption_barriers: toLineItems(event.target.value)
+              })
+            }
+            disabled={disabled || approved}
+          />
+        </div>
+      </div>
 
-      <Accordion type="multiple" defaultValue={["market-dynamics"]}>
-        <AccordionItem value="market-dynamics" className="border-0">
-          <AccordionTrigger className="py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 hover:no-underline">
-            Market dynamics
-          </AccordionTrigger>
-          <AccordionContent className="pt-2">
-            <Accordion
-              type="multiple"
-              value={openDynamics}
-              onValueChange={setOpenDynamics}
-              className="space-y-3"
-            >
-              {safeValue.market_dynamics.map((item, index) => {
-                const dynamicKey = `dynamic-${index}`;
-                return (
-                  <AccordionItem
-                    key={dynamicKey}
-                    value={dynamicKey}
-                    className="rounded border border-slate-100 p-2"
-                  >
-                    <div className="grid items-start gap-2 md:grid-cols-[1fr_auto]">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <AccordionTrigger className="flex-none justify-center gap-0 py-0 text-slate-600 hover:no-underline [&>svg]:h-3 [&>svg]:w-3">
-                            <span className="sr-only">Toggle dynamic</span>
-                          </AccordionTrigger>
-                          <label className="block text-xs text-gray-600">Name</label>
-                        </div>
-                        <input
-                          className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                          value={item.name}
-                          onChange={(event) =>
-                            updateDynamic(index, { ...item, name: event.target.value })
-                          }
-                          disabled={disabled || approved}
-                        />
-                      </div>
-                      <div className="flex items-start">
-                        {!approved && !disabled && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-slate-600 hover:text-slate-700"
-                            onClick={() => removeDynamic(index)}
-                            disabled={disabled}
-                            aria-label="Remove dynamic"
-                          >
-                            <Trash2 />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                    <AccordionContent className="pt-0">
-                      <div className="mt-2">
-                        <label className="block text-xs text-gray-600">Description</label>
-                        <textarea
-                          className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                          rows={1}
-                          value={item.description}
-                          onChange={(event) =>
-                            updateDynamic(index, {
-                              ...item,
-                              description: event.target.value
-                            })
-                          }
-                          disabled={disabled || approved}
-                        />
-                      </div>
-                      <div className="mt-2 grid gap-2 md:grid-cols-2">
-                        <div>
-                          <label className="block text-xs text-gray-600">Basis</label>
-                          <select
-                            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                            value={item.basis}
-                            onChange={(event) =>
-                              updateDynamic(index, {
-                                ...item,
-                                basis: event.target.value as MarketDynamic["basis"]
-                              })
-                            }
-                            disabled={disabled || approved}
-                          >
-                            {BASIS_OPTIONS.map((option) => (
-                              <option key={option} value={option}>
-                                {option}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-xs text-gray-600">Confidence</label>
-                          <select
-                            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                            value={item.confidence}
-                            onChange={(event) =>
-                              updateDynamic(index, {
-                                ...item,
-                                confidence: event.target.value as MarketDynamic["confidence"]
-                              })
-                            }
-                            disabled={disabled || approved}
-                          >
-                            {CONFIDENCE_OPTIONS.map((option) => (
-                              <option key={option} value={option}>
-                                {option}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-                      <div className="mt-2">
-                        <label className="block text-xs text-gray-600">
-                          Affected target segments (one per line)
-                        </label>
-                        <textarea
-                          className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                          rows={1}
-                          value={item.affected_target_segments.join("\n")}
-                          onChange={(event) =>
-                            updateDynamic(index, {
-                              ...item,
-                              affected_target_segments: event.target.value.split("\n")
-                            })
-                          }
-                          disabled={disabled || approved}
-                        />
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                );
-              })}
-            </Accordion>
-            {!approved && (
-              <button
-                type="button"
-                className="mt-2 text-xs text-blue-600 disabled:opacity-60"
-                onClick={addDynamic}
-                disabled={disabled}
-              >
-                + Dynamic
-              </button>
-            )}
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
-
-      <Accordion type="multiple" defaultValue={["market-forces"]}>
-        <AccordionItem value="market-forces" className="border-0">
-          <AccordionTrigger className="py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 hover:no-underline">
-            Market forces
-          </AccordionTrigger>
-          <AccordionContent className="pt-2">
-            <Accordion
-              type="multiple"
-              value={openForces}
-              onValueChange={setOpenForces}
-              className="space-y-3"
-            >
-              {safeValue.market_forces.map((item, index) => {
-                const forceKey = `force-${index}`;
-                return (
-                  <AccordionItem
-                    key={forceKey}
-                    value={forceKey}
-                    className="rounded border border-slate-100 p-2"
-                  >
-                    <div className="grid items-start gap-2 md:grid-cols-[1fr_auto]">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <AccordionTrigger className="flex-none justify-center gap-0 py-0 text-slate-600 hover:no-underline [&>svg]:h-3 [&>svg]:w-3">
-                            <span className="sr-only">Toggle force</span>
-                          </AccordionTrigger>
-                          <label className="block text-xs text-gray-600">Name</label>
-                        </div>
-                        <input
-                          className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                          value={item.name}
-                          onChange={(event) =>
-                            updateForce(index, { ...item, name: event.target.value })
-                          }
-                          disabled={disabled || approved}
-                        />
-                      </div>
-                      <div className="flex items-start">
-                        {!approved && !disabled && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-slate-600 hover:text-slate-700"
-                            onClick={() => removeForce(index)}
-                            disabled={disabled}
-                            aria-label="Remove force"
-                          >
-                            <Trash2 />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                    <AccordionContent className="pt-0">
-                      <div className="mt-2">
-                        <label className="block text-xs text-gray-600">Description</label>
-                        <textarea
-                          className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                          rows={1}
-                          value={item.description}
-                          onChange={(event) =>
-                            updateForce(index, {
-                              ...item,
-                              description: event.target.value
-                            })
-                          }
-                          disabled={disabled || approved}
-                        />
-                      </div>
-                      <div className="mt-2 grid gap-2 md:grid-cols-2">
-                        <div>
-                          <label className="block text-xs text-gray-600">Basis</label>
-                          <select
-                            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                            value={item.basis}
-                            onChange={(event) =>
-                              updateForce(index, {
-                                ...item,
-                                basis: event.target.value as MarketForce["basis"]
-                              })
-                            }
-                            disabled={disabled || approved}
-                          >
-                            {BASIS_OPTIONS.map((option) => (
-                              <option key={option} value={option}>
-                                {option}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-xs text-gray-600">Confidence</label>
-                          <select
-                            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                            value={item.confidence}
-                            onChange={(event) =>
-                              updateForce(index, {
-                                ...item,
-                                confidence: event.target.value as MarketForce["confidence"]
-                              })
-                            }
-                            disabled={disabled || approved}
-                          >
-                            {CONFIDENCE_OPTIONS.map((option) => (
-                              <option key={option} value={option}>
-                                {option}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-                      <div className="mt-2">
-                        <label className="block text-xs text-gray-600">
-                          Affected target segments (one per line)
-                        </label>
-                        <textarea
-                          className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                          rows={1}
-                          value={item.affected_target_segments.join("\n")}
-                          onChange={(event) =>
-                            updateForce(index, {
-                              ...item,
-                              affected_target_segments: event.target.value.split("\n")
-                            })
-                          }
-                          disabled={disabled || approved}
-                        />
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                );
-              })}
-            </Accordion>
-            {!approved && (
-              <button
-                type="button"
-                className="mt-2 text-xs text-blue-600 disabled:opacity-60"
-                onClick={addForce}
-                disabled={disabled}
-              >
-                + Force
-              </button>
-            )}
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
-
-      <Accordion type="multiple" defaultValue={["adoption-drivers"]}>
-        <AccordionItem value="adoption-drivers" className="border-0">
-          <AccordionTrigger className="py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 hover:no-underline">
-            Adoption drivers
-          </AccordionTrigger>
-          <AccordionContent className="pt-2">
-            <Accordion
-              type="multiple"
-              value={openDrivers}
-              onValueChange={setOpenDrivers}
-              className="space-y-3"
-            >
-              {safeValue.adoption_drivers.map((item, index) => {
-                const driverKey = `driver-${index}`;
-                return (
-                  <AccordionItem
-                    key={driverKey}
-                    value={driverKey}
-                    className="rounded border border-slate-100 p-2"
-                  >
-                    <div className="grid items-start gap-2 md:grid-cols-[1fr_auto]">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <AccordionTrigger className="flex-none justify-center gap-0 py-0 text-slate-600 hover:no-underline [&>svg]:h-3 [&>svg]:w-3">
-                            <span className="sr-only">Toggle driver</span>
-                          </AccordionTrigger>
-                          <label className="block text-xs text-gray-600">Name</label>
-                        </div>
-                        <input
-                          className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                          value={item.name}
-                          onChange={(event) =>
-                            updateDriver(index, { ...item, name: event.target.value })
-                          }
-                          disabled={disabled || approved}
-                        />
-                      </div>
-                      <div className="flex items-start">
-                        {!approved && !disabled && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-slate-600 hover:text-slate-700"
-                            onClick={() => removeDriver(index)}
-                            disabled={disabled}
-                            aria-label="Remove driver"
-                          >
-                            <Trash2 />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                    <AccordionContent className="pt-0">
-                      <div className="mt-2">
-                        <label className="block text-xs text-gray-600">Description</label>
-                        <textarea
-                          className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                          rows={1}
-                          value={item.description}
-                          onChange={(event) =>
-                            updateDriver(index, {
-                              ...item,
-                              description: event.target.value
-                            })
-                          }
-                          disabled={disabled || approved}
-                        />
-                      </div>
-                      <div className="mt-2">
-                        <label className="block text-xs text-gray-600">
-                          Affected target segments (one per line)
-                        </label>
-                        <textarea
-                          className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                          rows={1}
-                          value={item.affected_target_segments.join("\n")}
-                          onChange={(event) =>
-                            updateDriver(index, {
-                              ...item,
-                              affected_target_segments: event.target.value.split("\n")
-                            })
-                          }
-                          disabled={disabled || approved}
-                        />
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                );
-              })}
-            </Accordion>
-            {!approved && (
-              <button
-                type="button"
-                className="mt-2 text-xs text-blue-600 disabled:opacity-60"
-                onClick={addDriver}
-                disabled={disabled}
-              >
-                + Driver
-              </button>
-            )}
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
-
-      <Accordion type="multiple" defaultValue={["adoption-barriers"]}>
-        <AccordionItem value="adoption-barriers" className="border-0">
-          <AccordionTrigger className="py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 hover:no-underline">
-            Adoption barriers
-          </AccordionTrigger>
-          <AccordionContent className="pt-2">
-            <Accordion
-              type="multiple"
-              value={openBarriers}
-              onValueChange={setOpenBarriers}
-              className="space-y-3"
-            >
-              {safeValue.adoption_barriers.map((item, index) => {
-                const barrierKey = `barrier-${index}`;
-                return (
-                  <AccordionItem
-                    key={barrierKey}
-                    value={barrierKey}
-                    className="rounded border border-slate-100 p-2"
-                  >
-                    <div className="grid items-start gap-2 md:grid-cols-[1fr_auto]">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <AccordionTrigger className="flex-none justify-center gap-0 py-0 text-slate-600 hover:no-underline [&>svg]:h-3 [&>svg]:w-3">
-                            <span className="sr-only">Toggle barrier</span>
-                          </AccordionTrigger>
-                          <label className="block text-xs text-gray-600">Name</label>
-                        </div>
-                        <input
-                          className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                          value={item.name}
-                          onChange={(event) =>
-                            updateBarrier(index, { ...item, name: event.target.value })
-                          }
-                          disabled={disabled || approved}
-                        />
-                      </div>
-                      <div className="flex items-start">
-                        {!approved && !disabled && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-slate-600 hover:text-slate-700"
-                            onClick={() => removeBarrier(index)}
-                            disabled={disabled}
-                            aria-label="Remove barrier"
-                          >
-                            <Trash2 />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                    <AccordionContent className="pt-0">
-                      <div className="mt-2">
-                        <label className="block text-xs text-gray-600">Description</label>
-                        <textarea
-                          className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                          rows={1}
-                          value={item.description}
-                          onChange={(event) =>
-                            updateBarrier(index, {
-                              ...item,
-                              description: event.target.value
-                            })
-                          }
-                          disabled={disabled || approved}
-                        />
-                      </div>
-                      <div className="mt-2">
-                        <label className="block text-xs text-gray-600">
-                          Affected target segments (one per line)
-                        </label>
-                        <textarea
-                          className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                          rows={1}
-                          value={item.affected_target_segments.join("\n")}
-                          onChange={(event) =>
-                            updateBarrier(index, {
-                              ...item,
-                              affected_target_segments: event.target.value.split("\n")
-                            })
-                          }
-                          disabled={disabled || approved}
-                        />
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                );
-              })}
-            </Accordion>
-            {!approved && (
-              <button
-                type="button"
-                className="mt-2 text-xs text-blue-600 disabled:opacity-60"
-                onClick={addBarrier}
-                disabled={disabled}
-              >
-                + Barrier
-              </button>
-            )}
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
-
-      <div className="mt-4 flex items-center gap-2">
+      <div className="mt-3 flex items-center gap-2">
         {!approved && !hideApprove && (
           <button
             type="button"
             className="inline-flex min-w-[96px] items-center justify-center rounded border border-green-600 px-3 py-2 text-sm font-medium text-green-700 disabled:opacity-60"
             onClick={onApprove}
-            disabled={disabled || !hasContent || isApproving}
+            disabled={disabled || approved || !hasContent || isApproving}
           >
-            {isApproving ? "Approving…" : "Approve and Proceed"}
+            {isApproving ? "Approving..." : "Approve and Proceed"}
           </button>
         )}
         {showRegenerate && (
@@ -5493,12 +4926,21 @@ type CompetitorInventoryEditorProps = {
   disabled: boolean;
   isApproving: boolean;
   isRegenerating: boolean;
-    isClearing: boolean;
+  isClearing: boolean;
   showTitle?: boolean;
   showRegenerate?: boolean;
-    regenerateLabel?: string;
-    hideApprove?: boolean;
+  regenerateLabel?: string;
+  hideApprove?: boolean;
 };
+
+const COMPETITOR_GROUPS: Array<{
+  key: keyof CompetitorInventory["competitors"];
+  label: string;
+}> = [
+  { key: "direct", label: "Direct competitors" },
+  { key: "indirect", label: "Indirect competitors" },
+  { key: "substitute", label: "Substitutes" }
+];
 
 function CompetitorInventoryEditor({
   title,
@@ -5511,44 +4953,99 @@ function CompetitorInventoryEditor({
   disabled,
   isApproving,
   isRegenerating,
-    isClearing,
+  isClearing,
   showTitle = true,
   showRegenerate = true,
-    regenerateLabel,
-    hideApprove = false
+  regenerateLabel,
+  hideApprove = false
 }: CompetitorInventoryEditorProps) {
   const safeValue = normalizeCompetitorInventoryValue(value);
-  const hasCompetitors = safeValue.competitors.length > 0;
-  const [openCompetitors, setOpenCompetitors] = useOpenItems(
-    safeValue.competitors,
-    "competitor"
+  const hasCompetitors = Boolean(
+    safeValue.competitors.direct.length ||
+      safeValue.competitors.indirect.length ||
+      safeValue.competitors.substitute.length
   );
+  const [openGroups, setOpenGroups] = useState<string[]>(
+    COMPETITOR_GROUPS.map((group) => group.key)
+  );
+  const [openCompetitorsByGroup, setOpenCompetitorsByGroup] = useState<
+    Record<string, string[]>
+  >({});
+  const competitorCountsRef = useRef<Record<string, number>>({});
+  const competitorCountsKey = COMPETITOR_GROUPS.map(
+    (group) => safeValue.competitors[group.key].length
+  ).join("|");
 
-  const updateCompetitor = (index: number, nextItem: CompetitorEntry) => {
-    const next = safeValue.competitors.slice();
-    next[index] = nextItem;
-    onChange({ competitors: next });
-  };
-
-  const addCompetitor = () => {
-    onChange({
-      competitors: safeValue.competitors.concat([
-        {
-          name: "",
-          url: "",
-          category: "direct",
-          description: "",
-          target_audience: "",
-          positioning: ""
+  useEffect(() => {
+    setOpenCompetitorsByGroup((prev) => {
+      const next: Record<string, string[]> = { ...prev };
+      COMPETITOR_GROUPS.forEach((group) => {
+        const groupKey = group.key;
+        const keys = safeValue.competitors[groupKey].map(
+          (_item, index) => `competitor-${groupKey}-${index}`
+        );
+        const current = next[groupKey] || [];
+        const filtered = current.filter((key) => keys.includes(key));
+        const prevCount = competitorCountsRef.current[groupKey];
+        if (typeof prevCount === "number" && keys.length > prevCount) {
+          const addedKeys = keys.slice(prevCount);
+          next[groupKey] = filtered.concat(addedKeys);
+        } else {
+          next[groupKey] = filtered;
         }
-      ])
+        competitorCountsRef.current[groupKey] = keys.length;
+      });
+      Object.keys(next).forEach((key) => {
+        if (!COMPETITOR_GROUPS.some((group) => group.key === key)) {
+          delete next[key];
+        }
+      });
+      return next;
+    });
+  }, [competitorCountsKey]);
+
+  const updateGroup = (
+    key: keyof CompetitorInventory["competitors"],
+    nextItems: CompetitorEntry[]
+  ) => {
+    onChange({
+      competitors: {
+        ...safeValue.competitors,
+        [key]: nextItems
+      }
     });
   };
 
-  const removeCompetitor = (index: number) => {
-    const next = safeValue.competitors.slice();
+  const addCompetitor = (key: keyof CompetitorInventory["competitors"]) => {
+    updateGroup(key, [
+      ...safeValue.competitors[key],
+      {
+        product_name: "",
+        url: "",
+        description: "",
+        target_audience: "",
+        positioning: ""
+      }
+    ]);
+  };
+
+  const updateCompetitor = (
+    key: keyof CompetitorInventory["competitors"],
+    index: number,
+    nextItem: CompetitorEntry
+  ) => {
+    const next = safeValue.competitors[key].slice();
+    next[index] = nextItem;
+    updateGroup(key, next);
+  };
+
+  const removeCompetitor = (
+    key: keyof CompetitorInventory["competitors"],
+    index: number
+  ) => {
+    const next = safeValue.competitors[key].slice();
     next.splice(index, 1);
-    onChange({ competitors: next });
+    updateGroup(key, next);
   };
 
   return (
@@ -5566,162 +5063,175 @@ function CompetitorInventoryEditor({
               onClick={onClear}
               disabled={isClearing}
             >
-              {isClearing ? "Clearing…" : "Clear block"}
+              {isClearing ? "Clearing..." : "Clear block"}
             </button>
           )}
         </div>
       )}
 
-      {safeValue.competitors.length === 0 && (
-        <p className="mt-3 text-xs text-gray-500">
-          No competitors yet. Add one to begin.
-        </p>
-      )}
-
       <Accordion
         type="multiple"
-        value={openCompetitors}
-        onValueChange={setOpenCompetitors}
+        value={openGroups}
+        onValueChange={setOpenGroups}
         className="mt-3 space-y-3"
       >
-        {safeValue.competitors.map((competitor, index) => {
-          const itemKey = `competitor-${index}`;
-          return (
-            <AccordionItem
-              key={itemKey}
-              value={itemKey}
-              className="rounded border border-slate-100 p-2"
-            >
-              <div className="grid items-start gap-2 md:grid-cols-[1fr_auto]">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <AccordionTrigger className="flex-none justify-center gap-0 py-0 text-slate-600 hover:no-underline [&>svg]:h-3 [&>svg]:w-3">
-                      <span className="sr-only">Toggle competitor</span>
-                    </AccordionTrigger>
-                    <label className="block text-xs text-gray-600">Competitor name</label>
-                  </div>
-                  <input
-                    className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                    value={competitor.name}
-                    onChange={(event) =>
-                      updateCompetitor(index, { ...competitor, name: event.target.value })
-                    }
-                    disabled={disabled || approved}
-                  />
-                </div>
-                <div className="flex items-start">
-                  {!approved && !disabled && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-slate-600 hover:text-slate-700"
-                      onClick={() => removeCompetitor(index)}
-                      disabled={disabled}
-                      aria-label="Remove competitor"
+        {COMPETITOR_GROUPS.map((group) => (
+          <AccordionItem
+            key={group.key}
+            value={group.key}
+            className="rounded border border-slate-100 p-2"
+          >
+            <AccordionTrigger className="py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 hover:no-underline">
+              {group.label}
+            </AccordionTrigger>
+            <AccordionContent className="pt-2">
+              {safeValue.competitors[group.key].length === 0 && (
+                <p className="text-xs text-gray-500">
+                  No competitors yet in this group.
+                </p>
+              )}
+              <Accordion
+                type="multiple"
+                value={openCompetitorsByGroup[group.key] || []}
+                onValueChange={(nextItems) =>
+                  setOpenCompetitorsByGroup((prev) => ({
+                    ...prev,
+                    [group.key]: nextItems
+                  }))
+                }
+                className="space-y-3"
+              >
+                {safeValue.competitors[group.key].map((item, index) => {
+                  const itemKey = `competitor-${group.key}-${index}`;
+                  return (
+                    <AccordionItem
+                      key={itemKey}
+                      value={itemKey}
+                      className="rounded border border-slate-100 p-2"
                     >
-                      <Trash2 />
-                    </Button>
-                  )}
-                </div>
-              </div>
-              <AccordionContent className="pt-0">
-                <div className="mt-2 grid gap-2 md:grid-cols-2">
-                  <div>
-                    <label className="block text-xs text-gray-600">URL</label>
-                    <input
-                      className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                      value={competitor.url}
-                      onChange={(event) =>
-                        updateCompetitor(index, { ...competitor, url: event.target.value })
-                      }
-                      disabled={disabled || approved}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-600">Category</label>
-                    <select
-                      className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                      value={competitor.category}
-                      onChange={(event) =>
-                        updateCompetitor(index, {
-                          ...competitor,
-                          category: event.target.value as CompetitorEntry["category"]
-                        })
-                      }
-                      disabled={disabled || approved}
-                    >
-                      {COMPETITOR_CATEGORY_OPTIONS.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <div className="mt-2">
-                  <label className="block text-xs text-gray-600">Description</label>
-                  <textarea
-                    className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                    rows={1}
-                    value={competitor.description}
-                    onChange={(event) =>
-                      updateCompetitor(index, {
-                        ...competitor,
-                        description: event.target.value
-                      })
-                    }
-                    disabled={disabled || approved}
-                  />
-                </div>
-                <div className="mt-2 grid gap-2 md:grid-cols-2">
-                  <div>
-                    <label className="block text-xs text-gray-600">Target audience</label>
-                    <textarea
-                      className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                      rows={1}
-                      value={competitor.target_audience}
-                      onChange={(event) =>
-                        updateCompetitor(index, {
-                          ...competitor,
-                          target_audience: event.target.value
-                        })
-                      }
-                      disabled={disabled || approved}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-600">Positioning</label>
-                    <textarea
-                      className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                      rows={1}
-                      value={competitor.positioning}
-                      onChange={(event) =>
-                        updateCompetitor(index, {
-                          ...competitor,
-                          positioning: event.target.value
-                        })
-                      }
-                      disabled={disabled || approved}
-                    />
-                  </div>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-          );
-        })}
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <AccordionTrigger className="flex-none justify-center gap-0 py-0 text-slate-600 hover:no-underline [&>svg]:h-3 [&>svg]:w-3">
+                            <span className="sr-only">Toggle competitor details</span>
+                          </AccordionTrigger>
+                          <label className="block text-xs text-gray-600">
+                            Product name
+                          </label>
+                        </div>
+                        <div className="mt-1 flex items-center gap-2">
+                          <input
+                            className="w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                            value={item.product_name}
+                            onChange={(event) =>
+                              updateCompetitor(group.key, index, {
+                                ...item,
+                                product_name: event.target.value
+                              })
+                            }
+                            disabled={disabled || approved}
+                          />
+                          {!approved && !disabled && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-slate-600 hover:text-slate-700"
+                              onClick={() => removeCompetitor(group.key, index)}
+                              disabled={disabled}
+                              aria-label="Remove competitor"
+                            >
+                              <Trash2 />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                      <AccordionContent className="pt-2">
+                        <div className="space-y-3">
+                          <div>
+                            <label className="block text-xs text-gray-600">URL</label>
+                            <input
+                              className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                              value={item.url}
+                              onChange={(event) =>
+                                updateCompetitor(group.key, index, {
+                                  ...item,
+                                  url: event.target.value
+                                })
+                              }
+                              disabled={disabled || approved}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-600">
+                              Description
+                            </label>
+                            <textarea
+                              className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                              rows={2}
+                              value={item.description}
+                              onChange={(event) =>
+                                updateCompetitor(group.key, index, {
+                                  ...item,
+                                  description: event.target.value
+                                })
+                              }
+                              disabled={disabled || approved}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-600">
+                              Target audience
+                            </label>
+                            <textarea
+                              className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                              rows={2}
+                              value={item.target_audience}
+                              onChange={(event) =>
+                                updateCompetitor(group.key, index, {
+                                  ...item,
+                                  target_audience: event.target.value
+                                })
+                              }
+                              disabled={disabled || approved}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-600">
+                              Positioning
+                            </label>
+                            <textarea
+                              className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                              rows={2}
+                              value={item.positioning}
+                              onChange={(event) =>
+                                updateCompetitor(group.key, index, {
+                                  ...item,
+                                  positioning: event.target.value
+                                })
+                              }
+                              disabled={disabled || approved}
+                            />
+                          </div>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  );
+                })}
+              </Accordion>
+              {!approved && (
+                <button
+                  type="button"
+                  className="mt-3 text-xs text-blue-600 disabled:opacity-60"
+                  onClick={() => addCompetitor(group.key)}
+                  disabled={disabled}
+                >
+                  + Competitor
+                </button>
+              )}
+            </AccordionContent>
+          </AccordionItem>
+        ))}
       </Accordion>
-
-      {!approved && (
-        <button
-          type="button"
-          className="mt-3 inline-flex items-center rounded border border-slate-300 px-3 py-1 text-xs text-slate-700 disabled:opacity-60"
-          onClick={addCompetitor}
-          disabled={disabled}
-        >
-          + Competitor
-        </button>
-      )}
 
       <div className="mt-3 flex items-center gap-2">
         {!approved && !hideApprove && (
@@ -5729,9 +5239,9 @@ function CompetitorInventoryEditor({
             type="button"
             className="inline-flex min-w-[96px] items-center justify-center rounded border border-green-600 px-3 py-2 text-sm font-medium text-green-700 disabled:opacity-60"
             onClick={onApprove}
-            disabled={disabled || !hasCompetitors || isApproving}
+            disabled={disabled || approved || !hasCompetitors || isApproving}
           >
-            {isApproving ? "Approving…" : "Approve and Proceed"}
+            {isApproving ? "Approving..." : "Approve and Proceed"}
           </button>
         )}
         {showRegenerate && (
@@ -5760,12 +5270,18 @@ type CompetitorCapabilitiesEditorProps = {
   disabled: boolean;
   isApproving: boolean;
   isRegenerating: boolean;
-    isClearing: boolean;
+  isClearing: boolean;
   showTitle?: boolean;
   showRegenerate?: boolean;
-    regenerateLabel?: string;
-    hideApprove?: boolean;
+  regenerateLabel?: string;
+  hideApprove?: boolean;
 };
+
+const CAPABILITY_GROUPS: Array<keyof CompetitorCapabilities["competitor_capabilities"]> = [
+  "Functional",
+  "Technical",
+  "Business"
+];
 
 function CompetitorCapabilitiesEditor({
   title,
@@ -5778,75 +5294,93 @@ function CompetitorCapabilitiesEditor({
   disabled,
   isApproving,
   isRegenerating,
-    isClearing,
+  isClearing,
   showTitle = true,
   showRegenerate = true,
-    regenerateLabel,
-    hideApprove = false
+  regenerateLabel,
+  hideApprove = false
 }: CompetitorCapabilitiesEditorProps) {
   const safeValue = normalizeCompetitorCapabilitiesValue(value);
-  const hasCompetitors = safeValue.competitor_capabilities.length > 0;
-  const hasPatterns = safeValue.industry_capability_patterns.length > 0;
-  const [openCompetitors, setOpenCompetitors] = useOpenItems(
-    safeValue.competitor_capabilities,
-    "competitor-capability"
+  const hasItems = CAPABILITY_GROUPS.some(
+    (key) => safeValue.competitor_capabilities[key].length > 0
   );
-  const [openPatterns, setOpenPatterns] = useOpenItems(
-    safeValue.industry_capability_patterns,
-    "industry-pattern"
+  const [openCapabilities, setOpenCapabilities] = useState<Record<string, string[]>>(
+    CAPABILITY_GROUPS.reduce<Record<string, string[]>>((acc, key) => {
+      acc[key] = [];
+      return acc;
+    }, {})
   );
+  const capabilityCountsRef = useRef<Record<string, number>>({});
 
-  const updateCompetitor = (
+  useEffect(() => {
+    setOpenCapabilities((prev) => {
+      const next = { ...prev };
+      CAPABILITY_GROUPS.forEach((groupKey) => {
+        const keys = safeValue.competitor_capabilities[groupKey].map(
+          (_item, index) => `capability-${groupKey}-${index}`
+        );
+        const existing = prev[groupKey] || [];
+        const filtered = existing.filter((key) => keys.includes(key));
+        const prevCount = capabilityCountsRef.current[groupKey];
+        if (typeof prevCount === "number" && keys.length > prevCount) {
+          const addedKeys = keys.slice(prevCount);
+          next[groupKey] = filtered.concat(addedKeys);
+        } else {
+          next[groupKey] = filtered;
+        }
+        capabilityCountsRef.current[groupKey] = keys.length;
+      });
+      return next;
+    });
+  }, [
+    safeValue.competitor_capabilities.Functional.length,
+    safeValue.competitor_capabilities.Technical.length,
+    safeValue.competitor_capabilities.Business.length
+  ]);
+
+  const updateGroup = (
+    key: keyof CompetitorCapabilities["competitor_capabilities"],
+    nextItems: CompetitorCapabilityEntry[]
+  ) => {
+    onChange({
+      competitor_capabilities: {
+        ...safeValue.competitor_capabilities,
+        [key]: nextItems
+      }
+    });
+  };
+
+  const addCapability = (
+    key: keyof CompetitorCapabilities["competitor_capabilities"]
+  ) => {
+    updateGroup(key, [
+      ...safeValue.competitor_capabilities[key],
+      {
+        capability: "",
+        alignment_with_user_needs: "",
+        owning_competitors: [],
+        gaps_and_limitations: []
+      }
+    ]);
+  };
+
+  const updateCapability = (
+    key: keyof CompetitorCapabilities["competitor_capabilities"],
     index: number,
     nextItem: CompetitorCapabilityEntry
   ) => {
-    const next = safeValue.competitor_capabilities.slice();
+    const next = safeValue.competitor_capabilities[key].slice();
     next[index] = nextItem;
-    onChange({ ...safeValue, competitor_capabilities: next });
+    updateGroup(key, next);
   };
 
-  const addCompetitor = () => {
-    onChange({
-      ...safeValue,
-      competitor_capabilities: safeValue.competitor_capabilities.concat([
-        {
-          competitor_name: "",
-          functional_capabilities: [""],
-          technical_capabilities: [""],
-          business_capabilities: [""],
-          strengths: [""],
-          limitations: [""],
-          alignment_with_user_needs: ""
-        }
-      ])
-    });
-  };
-
-  const removeCompetitor = (index: number) => {
-    const next = safeValue.competitor_capabilities.slice();
+  const removeCapability = (
+    key: keyof CompetitorCapabilities["competitor_capabilities"],
+    index: number
+  ) => {
+    const next = safeValue.competitor_capabilities[key].slice();
     next.splice(index, 1);
-    onChange({ ...safeValue, competitor_capabilities: next });
-  };
-
-  const updatePattern = (index: number, nextItem: IndustryCapabilityPattern) => {
-    const next = safeValue.industry_capability_patterns.slice();
-    next[index] = nextItem;
-    onChange({ ...safeValue, industry_capability_patterns: next });
-  };
-
-  const addPattern = () => {
-    onChange({
-      ...safeValue,
-      industry_capability_patterns: safeValue.industry_capability_patterns.concat([
-        { pattern_name: "", description: "" }
-      ])
-    });
-  };
-
-  const removePattern = (index: number) => {
-    const next = safeValue.industry_capability_patterns.slice();
-    next.splice(index, 1);
-    onChange({ ...safeValue, industry_capability_patterns: next });
+    updateGroup(key, next);
   };
 
   return (
@@ -5864,296 +5398,157 @@ function CompetitorCapabilitiesEditor({
               onClick={onClear}
               disabled={isClearing}
             >
-              {isClearing ? "Clearing…" : "Clear block"}
+              {isClearing ? "Clearing..." : "Clear block"}
             </button>
           )}
         </div>
       )}
 
-      <Accordion type="multiple" defaultValue={["competitor_capabilities"]}>
-        <AccordionItem value="competitor_capabilities" className="border-0">
-          <AccordionTrigger className="py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 hover:no-underline">
-            Competitor capabilities
-          </AccordionTrigger>
-          <AccordionContent className="pt-2">
-            <Accordion
-              type="multiple"
-              value={openCompetitors}
-              onValueChange={setOpenCompetitors}
-              className="space-y-3"
-            >
-              {safeValue.competitor_capabilities.map((item, index) => {
-                const itemKey = `competitor-capability-${index}`;
-                return (
-                  <AccordionItem
-                    key={itemKey}
-                    value={itemKey}
-                    className="rounded border border-slate-100 p-2"
+      {CAPABILITY_GROUPS.map((groupKey) => {
+        const openItems = openCapabilities[groupKey] || [];
+        const setOpenItems = (nextItems: string[]) => {
+          setOpenCapabilities((prev) => ({
+            ...prev,
+            [groupKey]: nextItems
+          }));
+        };
+        return (
+          <Accordion key={groupKey} type="multiple" defaultValue={[groupKey]}>
+            <AccordionItem value={groupKey} className="border-0">
+              <AccordionTrigger className="py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 hover:no-underline">
+                {groupKey} capabilities
+              </AccordionTrigger>
+              <AccordionContent className="pt-2">
+                <Accordion
+                  type="multiple"
+                  value={openItems}
+                  onValueChange={setOpenItems}
+                  className="space-y-3"
+                >
+                  {safeValue.competitor_capabilities[groupKey].map((item, index) => {
+                    const itemKey = `capability-${groupKey}-${index}`;
+                    return (
+                      <AccordionItem
+                        key={itemKey}
+                        value={itemKey}
+                        className="rounded border border-slate-100 p-2"
+                      >
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <AccordionTrigger className="flex-none justify-center gap-0 py-0 text-slate-600 hover:no-underline [&>svg]:h-3 [&>svg]:w-3">
+                              <span className="sr-only">Toggle capability details</span>
+                            </AccordionTrigger>
+                            <label className="block text-xs text-gray-600">Capability</label>
+                          </div>
+                          <div className="mt-1 flex items-center gap-2">
+                            <input
+                              className="w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                              value={item.capability}
+                              onChange={(event) =>
+                                updateCapability(groupKey, index, {
+                                  ...item,
+                                  capability: event.target.value
+                                })
+                              }
+                              disabled={disabled || approved}
+                            />
+                            {!approved && !disabled && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-slate-600 hover:text-slate-700"
+                                onClick={() => removeCapability(groupKey, index)}
+                                disabled={disabled}
+                                aria-label="Remove capability"
+                              >
+                                <Trash2 />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                        <AccordionContent className="pt-2">
+                          <div className="mt-2">
+                            <label className="block text-xs text-gray-600">
+                              Alignment with User Needs
+                            </label>
+                            <textarea
+                              className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                              rows={2}
+                              value={item.alignment_with_user_needs}
+                              onChange={(event) =>
+                                updateCapability(groupKey, index, {
+                                  ...item,
+                                  alignment_with_user_needs: event.target.value
+                                })
+                              }
+                              disabled={disabled || approved}
+                            />
+                          </div>
+                          <div className="mt-2">
+                            <label className="block text-xs text-gray-600">
+                              Owning Competitors (one per line)
+                            </label>
+                            <textarea
+                              className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                              rows={2}
+                              value={toLineValue(item.owning_competitors)}
+                              onChange={(event) =>
+                                updateCapability(groupKey, index, {
+                                  ...item,
+                                  owning_competitors: toLineItems(event.target.value)
+                                })
+                              }
+                              disabled={disabled || approved}
+                            />
+                          </div>
+                          <div className="mt-2">
+                            <label className="block text-xs text-gray-600">
+                              Gaps and Limitations (one per line)
+                            </label>
+                            <textarea
+                              className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                              rows={2}
+                              value={toLineValue(item.gaps_and_limitations)}
+                              onChange={(event) =>
+                                updateCapability(groupKey, index, {
+                                  ...item,
+                                  gaps_and_limitations: toLineItems(event.target.value)
+                                })
+                              }
+                              disabled={disabled || approved}
+                            />
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    );
+                  })}
+                </Accordion>
+                {!approved && (
+                  <button
+                    type="button"
+                    className="mt-3 text-xs text-blue-600 disabled:opacity-60"
+                    onClick={() => addCapability(groupKey)}
+                    disabled={disabled}
                   >
-                    <div className="grid items-start gap-2 md:grid-cols-[1fr_auto]">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <AccordionTrigger className="flex-none justify-center gap-0 py-0 text-slate-600 hover:no-underline [&>svg]:h-3 [&>svg]:w-3">
-                            <span className="sr-only">Toggle competitor</span>
-                          </AccordionTrigger>
-                          <label className="block text-xs text-gray-600">Competitor name</label>
-                        </div>
-                        <input
-                          className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                          value={item.competitor_name}
-                          onChange={(event) =>
-                            updateCompetitor(index, {
-                              ...item,
-                              competitor_name: event.target.value
-                            })
-                          }
-                          disabled={disabled || approved}
-                        />
-                      </div>
-                      <div className="flex items-start">
-                        {!approved && !disabled && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-slate-600 hover:text-slate-700"
-                            onClick={() => removeCompetitor(index)}
-                            disabled={disabled}
-                            aria-label="Remove competitor capability"
-                          >
-                            <Trash2 />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                    <AccordionContent className="pt-0">
-                      <div className="mt-2 grid gap-2 md:grid-cols-2">
-                        <div>
-                          <label className="block text-xs text-gray-600">
-                            Functional capabilities (one per line)
-                          </label>
-                          <textarea
-                            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                            rows={2}
-                            value={item.functional_capabilities.join("\n")}
-                            onChange={(event) =>
-                              updateCompetitor(index, {
-                                ...item,
-                                functional_capabilities: event.target.value.split("\n")
-                              })
-                            }
-                            disabled={disabled || approved}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs text-gray-600">
-                            Technical capabilities (one per line)
-                          </label>
-                          <textarea
-                            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                            rows={2}
-                            value={item.technical_capabilities.join("\n")}
-                            onChange={(event) =>
-                              updateCompetitor(index, {
-                                ...item,
-                                technical_capabilities: event.target.value.split("\n")
-                              })
-                            }
-                            disabled={disabled || approved}
-                          />
-                        </div>
-                      </div>
-                      <div className="mt-2 grid gap-2 md:grid-cols-2">
-                        <div>
-                          <label className="block text-xs text-gray-600">
-                            Business capabilities (one per line)
-                          </label>
-                          <textarea
-                            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                            rows={2}
-                            value={item.business_capabilities.join("\n")}
-                            onChange={(event) =>
-                              updateCompetitor(index, {
-                                ...item,
-                                business_capabilities: event.target.value.split("\n")
-                              })
-                            }
-                            disabled={disabled || approved}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs text-gray-600">
-                            Strengths (one per line)
-                          </label>
-                          <textarea
-                            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                            rows={2}
-                            value={item.strengths.join("\n")}
-                            onChange={(event) =>
-                              updateCompetitor(index, {
-                                ...item,
-                                strengths: event.target.value.split("\n")
-                              })
-                            }
-                            disabled={disabled || approved}
-                          />
-                        </div>
-                      </div>
-                      <div className="mt-2 grid gap-2 md:grid-cols-2">
-                        <div>
-                          <label className="block text-xs text-gray-600">
-                            Limitations (one per line)
-                          </label>
-                          <textarea
-                            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                            rows={2}
-                            value={item.limitations.join("\n")}
-                            onChange={(event) =>
-                              updateCompetitor(index, {
-                                ...item,
-                                limitations: event.target.value.split("\n")
-                              })
-                            }
-                            disabled={disabled || approved}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs text-gray-600">
-                            Alignment with user needs
-                          </label>
-                          <textarea
-                            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                            rows={2}
-                            value={item.alignment_with_user_needs}
-                            onChange={(event) =>
-                              updateCompetitor(index, {
-                                ...item,
-                                alignment_with_user_needs: event.target.value
-                              })
-                            }
-                            disabled={disabled || approved}
-                          />
-                        </div>
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                );
-              })}
-            </Accordion>
-            {!approved && (
-              <button
-                type="button"
-                className="mt-3 text-xs text-blue-600 disabled:opacity-60"
-                onClick={addCompetitor}
-                disabled={disabled}
-              >
-                + Competitor
-              </button>
-            )}
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
+                    + Capability
+                  </button>
+                )}
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        );
+      })}
 
-      <Accordion type="multiple" defaultValue={["industry_capability_patterns"]}>
-        <AccordionItem value="industry_capability_patterns" className="border-0">
-          <AccordionTrigger className="py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 hover:no-underline">
-            Industry capability patterns
-          </AccordionTrigger>
-          <AccordionContent className="pt-2">
-            <Accordion
-              type="multiple"
-              value={openPatterns}
-              onValueChange={setOpenPatterns}
-              className="space-y-3"
-            >
-              {safeValue.industry_capability_patterns.map((item, index) => {
-                const itemKey = `industry-pattern-${index}`;
-                return (
-                  <AccordionItem
-                    key={itemKey}
-                    value={itemKey}
-                    className="rounded border border-slate-100 p-2"
-                  >
-                    <div className="grid items-start gap-2 md:grid-cols-[1fr_auto]">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <AccordionTrigger className="flex-none justify-center gap-0 py-0 text-slate-600 hover:no-underline [&>svg]:h-3 [&>svg]:w-3">
-                            <span className="sr-only">Toggle pattern</span>
-                          </AccordionTrigger>
-                          <label className="block text-xs text-gray-600">Pattern name</label>
-                        </div>
-                        <input
-                          className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                          value={item.pattern_name}
-                          onChange={(event) =>
-                            updatePattern(index, {
-                              ...item,
-                              pattern_name: event.target.value
-                            })
-                          }
-                          disabled={disabled || approved}
-                        />
-                      </div>
-                      <div className="flex items-start">
-                        {!approved && !disabled && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-slate-600 hover:text-slate-700"
-                            onClick={() => removePattern(index)}
-                            disabled={disabled}
-                            aria-label="Remove capability pattern"
-                          >
-                            <Trash2 />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                    <AccordionContent className="pt-0">
-                      <div className="mt-2">
-                        <label className="block text-xs text-gray-600">Description</label>
-                        <textarea
-                          className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                          rows={1}
-                          value={item.description}
-                          onChange={(event) =>
-                            updatePattern(index, {
-                              ...item,
-                              description: event.target.value
-                            })
-                          }
-                          disabled={disabled || approved}
-                        />
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                );
-              })}
-            </Accordion>
-            {!approved && (
-              <button
-                type="button"
-                className="mt-3 text-xs text-blue-600 disabled:opacity-60"
-                onClick={addPattern}
-                disabled={disabled}
-              >
-                + Pattern
-              </button>
-            )}
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
-
-      <div className="mt-4 flex items-center gap-2">
+      <div className="mt-3 flex items-center gap-2">
         {!approved && !hideApprove && (
           <button
             type="button"
             className="inline-flex min-w-[96px] items-center justify-center rounded border border-green-600 px-3 py-2 text-sm font-medium text-green-700 disabled:opacity-60"
             onClick={onApprove}
-            disabled={disabled || !hasCompetitors || !hasPatterns || isApproving}
+            disabled={disabled || approved || !hasItems || isApproving}
           >
-            {isApproving ? "Approving…" : "Approve and Proceed"}
+            {isApproving ? "Approving..." : "Approve and Proceed"}
           </button>
         )}
         {showRegenerate && (
@@ -6171,10 +5566,10 @@ function CompetitorCapabilitiesEditor({
   );
 }
 
-type GapsOpportunitiesEditorProps = {
+type OpportunitiesEditorProps = {
   title: string;
-  value: GapsOpportunities;
-  onChange: (value: GapsOpportunities) => void;
+  value: Opportunities;
+  onChange: (value: Opportunities) => void;
   onApprove: () => void;
   onRegenerate: () => void;
   onClear: () => void;
@@ -6182,20 +5577,14 @@ type GapsOpportunitiesEditorProps = {
   disabled: boolean;
   isApproving: boolean;
   isRegenerating: boolean;
-    isClearing: boolean;
+  isClearing: boolean;
   showTitle?: boolean;
   showRegenerate?: boolean;
-    regenerateLabel?: string;
-    hideApprove?: boolean;
+  regenerateLabel?: string;
+  hideApprove?: boolean;
 };
 
-const GAP_IMPACT_OPTIONS: GapOpportunity["user_value_potential"][] = [
-  "low",
-  "medium",
-  "high"
-];
-
-function GapsOpportunitiesEditor({
+function OpportunitiesEditor({
   title,
   value,
   onChange,
@@ -6206,74 +5595,54 @@ function GapsOpportunitiesEditor({
   disabled,
   isApproving,
   isRegenerating,
-    isClearing,
+  isClearing,
   showTitle = true,
   showRegenerate = true,
-    regenerateLabel,
-    hideApprove = false
-}: GapsOpportunitiesEditorProps) {
+  regenerateLabel,
+  hideApprove = false
+}: OpportunitiesEditorProps) {
   const safeValue = normalizeGapsOpportunitiesValue(value);
-  const hasItems =
-    safeValue.gaps_and_opportunities.functional.length > 0 &&
-    safeValue.gaps_and_opportunities.technical.length > 0 &&
-    safeValue.gaps_and_opportunities.business.length > 0;
-  const [openFunctional, setOpenFunctional] = useOpenItems(
-    safeValue.gaps_and_opportunities.functional,
-    "gap-functional"
-  );
-  const [openTechnical, setOpenTechnical] = useOpenItems(
-    safeValue.gaps_and_opportunities.technical,
-    "gap-technical"
-  );
-  const [openBusiness, setOpenBusiness] = useOpenItems(
-    safeValue.gaps_and_opportunities.business,
-    "gap-business"
-  );
+  const hasItems = safeValue.opportunities.length > 0;
+  const [openOpportunities, setOpenOpportunities] = useState<string[]>([]);
+  const opportunityCountsRef = useRef<number>(0);
+  const opportunityCount = safeValue.opportunities.length;
 
-  const updateGap = (
-    key: keyof GapsOpportunities["gaps_and_opportunities"],
-    index: number,
-    nextItem: GapOpportunity
-  ) => {
-    const next = safeValue.gaps_and_opportunities[key].slice();
+  useEffect(() => {
+    setOpenOpportunities((prev) => {
+      const keys = safeValue.opportunities.map((_item, index) => `opportunity-${index}`);
+      const filtered = prev.filter((key) => keys.includes(key));
+      if (opportunityCountsRef.current && opportunityCount > opportunityCountsRef.current) {
+        const addedKeys = keys.slice(opportunityCountsRef.current);
+        opportunityCountsRef.current = opportunityCount;
+        return filtered.concat(addedKeys);
+      }
+      opportunityCountsRef.current = opportunityCount;
+      return filtered;
+    });
+  }, [opportunityCount, safeValue.opportunities]);
+
+  const updateOpportunity = (index: number, nextItem: OpportunityItem) => {
+    const next = safeValue.opportunities.slice();
     next[index] = nextItem;
+    onChange({ opportunities: next });
+  };
+
+  const addOpportunity = () => {
     onChange({
-      gaps_and_opportunities: {
-        ...safeValue.gaps_and_opportunities,
-        [key]: next
-      }
+      opportunities: safeValue.opportunities.concat([
+        {
+          opportunity: "",
+          why_it_remains_unaddressed: "",
+          user_value_potential: ""
+        }
+      ])
     });
   };
 
-  const addGap = (key: keyof GapsOpportunities["gaps_and_opportunities"]) => {
-    onChange({
-      gaps_and_opportunities: {
-        ...safeValue.gaps_and_opportunities,
-        [key]: safeValue.gaps_and_opportunities[key].concat([
-          {
-            gap_description: "",
-            affected_user_segments: [""],
-            opportunity_description: "",
-            user_value_potential: "medium",
-            feasibility: "medium"
-          }
-        ])
-      }
-    });
-  };
-
-  const removeGap = (
-    key: keyof GapsOpportunities["gaps_and_opportunities"],
-    index: number
-  ) => {
-    const next = safeValue.gaps_and_opportunities[key].slice();
+  const removeOpportunity = (index: number) => {
+    const next = safeValue.opportunities.slice();
     next.splice(index, 1);
-    onChange({
-      gaps_and_opportunities: {
-        ...safeValue.gaps_and_opportunities,
-        [key]: next
-      }
-    });
+    onChange({ opportunities: next });
   };
 
   return (
@@ -6291,183 +5660,119 @@ function GapsOpportunitiesEditor({
               onClick={onClear}
               disabled={isClearing}
             >
-              {isClearing ? "Clearing…" : "Clear block"}
+              {isClearing ? "Clearing..." : "Clear block"}
             </button>
           )}
         </div>
       )}
 
-      {safeValue.gaps_and_opportunities.functional.length === 0 &&
-        safeValue.gaps_and_opportunities.technical.length === 0 &&
-        safeValue.gaps_and_opportunities.business.length === 0 && (
-        <p className="mt-3 text-xs text-gray-500">
-          No gaps yet. Add one to begin.
-        </p>
+      {safeValue.opportunities.length === 0 && (
+        <p className="mt-3 text-xs text-gray-500">No opportunities yet.</p>
       )}
 
-      {([
-        ["Functional", "functional", openFunctional, setOpenFunctional],
-        ["Technical", "technical", openTechnical, setOpenTechnical],
-        ["Business", "business", openBusiness, setOpenBusiness]
-      ] as const).map(([label, key, openItems, setOpenItems]) => (
-        <Accordion key={key} type="multiple" defaultValue={[key]}>
-          <AccordionItem value={key} className="border-0">
-            <AccordionTrigger className="py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 hover:no-underline">
-              {label}
-            </AccordionTrigger>
-            <AccordionContent className="pt-2">
-              <Accordion
-                type="multiple"
-                value={openItems}
-                onValueChange={setOpenItems}
-                className="space-y-3"
-              >
-                {safeValue.gaps_and_opportunities[key].map((item, index) => {
-                  const itemKey = `gap-${key}-${index}`;
-                  return (
-                    <AccordionItem
-                      key={itemKey}
-                      value={itemKey}
-                      className="rounded border border-slate-100 p-2"
+      <Accordion
+        type="multiple"
+        value={openOpportunities}
+        onValueChange={setOpenOpportunities}
+        className="mt-3 space-y-3"
+      >
+        {safeValue.opportunities.map((item, index) => {
+          const itemKey = `opportunity-${index}`;
+          return (
+            <AccordionItem
+              key={itemKey}
+              value={itemKey}
+              className="rounded border border-slate-100 p-2"
+            >
+              <div>
+                <div className="flex items-center gap-2">
+                  <AccordionTrigger className="flex-none justify-center gap-0 py-0 text-slate-600 hover:no-underline [&>svg]:h-3 [&>svg]:w-3">
+                    <span className="sr-only">Toggle opportunity details</span>
+                  </AccordionTrigger>
+                  <label className="block text-xs text-gray-600">Opportunity</label>
+                </div>
+                <div className="mt-1 flex items-center gap-2">
+                  <textarea
+                    className="w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                    rows={2}
+                    value={item.opportunity}
+                    onChange={(event) =>
+                      updateOpportunity(index, {
+                        ...item,
+                        opportunity: event.target.value
+                      })
+                    }
+                    disabled={disabled || approved}
+                  />
+                  {!approved && !disabled && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-slate-600 hover:text-slate-700"
+                      onClick={() => removeOpportunity(index)}
+                      disabled={disabled}
+                      aria-label="Remove opportunity"
                     >
-                      <div className="grid items-start gap-2 md:grid-cols-[1fr_auto]">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <AccordionTrigger className="flex-none justify-center gap-0 py-0 text-slate-600 hover:no-underline [&>svg]:h-3 [&>svg]:w-3">
-                              <span className="sr-only">Toggle gap</span>
-                            </AccordionTrigger>
-                            <label className="block text-xs text-gray-600">
-                              Gap description
-                            </label>
-                          </div>
-                          <textarea
-                            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                            rows={1}
-                            value={item.gap_description}
-                            onChange={(event) =>
-                              updateGap(key, index, {
-                                ...item,
-                                gap_description: event.target.value
-                              })
-                            }
-                            disabled={disabled || approved}
-                          />
-                        </div>
-                        <div className="flex items-start">
-                          {!approved && !disabled && (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-slate-600 hover:text-slate-700"
-                              onClick={() => removeGap(key, index)}
-                              disabled={disabled}
-                              aria-label="Remove gap"
-                            >
-                              <Trash2 />
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                      <AccordionContent className="pt-0">
-                        <div className="mt-2">
-                          <label className="block text-xs text-gray-600">
-                            Affected user segments (one per line)
-                          </label>
-                          <textarea
-                            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                            rows={2}
-                            value={item.affected_user_segments.join("\n")}
-                            onChange={(event) =>
-                              updateGap(key, index, {
-                                ...item,
-                                affected_user_segments: event.target.value.split("\n")
-                              })
-                            }
-                            disabled={disabled || approved}
-                          />
-                        </div>
-                        <div className="mt-2">
-                          <label className="block text-xs text-gray-600">
-                            Opportunity description
-                          </label>
-                          <textarea
-                            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                            rows={1}
-                            value={item.opportunity_description}
-                            onChange={(event) =>
-                              updateGap(key, index, {
-                                ...item,
-                                opportunity_description: event.target.value
-                              })
-                            }
-                            disabled={disabled || approved}
-                          />
-                        </div>
-                        <div className="mt-2 grid gap-2 md:grid-cols-2">
-                          <div>
-                            <label className="block text-xs text-gray-600">
-                              User value potential
-                            </label>
-                            <select
-                              className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                              value={item.user_value_potential}
-                              onChange={(event) =>
-                                updateGap(key, index, {
-                                  ...item,
-                                  user_value_potential:
-                                    event.target.value as GapOpportunity["user_value_potential"]
-                                })
-                              }
-                              disabled={disabled || approved}
-                            >
-                              {GAP_IMPACT_OPTIONS.map((option) => (
-                                <option key={option} value={option}>
-                                  {option}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-xs text-gray-600">Feasibility</label>
-                            <select
-                              className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                              value={item.feasibility}
-                              onChange={(event) =>
-                                updateGap(key, index, {
-                                  ...item,
-                                  feasibility: event.target.value as GapOpportunity["feasibility"]
-                                })
-                              }
-                              disabled={disabled || approved}
-                            >
-                              {GAP_IMPACT_OPTIONS.map((option) => (
-                                <option key={option} value={option}>
-                                  {option}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  );
-                })}
-              </Accordion>
-              {!approved && (
-                <button
-                  type="button"
-                  className="mt-3 text-xs text-blue-600 disabled:opacity-60"
-                  onClick={() => addGap(key)}
-                  disabled={disabled}
-                >
-                  + Gap
-                </button>
-              )}
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
-      ))}
+                      <Trash2 />
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              <AccordionContent className="pt-2">
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs text-gray-600">
+                      Why it remains unaddressed
+                    </label>
+                    <textarea
+                      className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                      rows={2}
+                      value={item.why_it_remains_unaddressed}
+                      onChange={(event) =>
+                        updateOpportunity(index, {
+                          ...item,
+                          why_it_remains_unaddressed: event.target.value
+                        })
+                      }
+                      disabled={disabled || approved}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-600">
+                      User value potential
+                    </label>
+                    <textarea
+                      className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                      rows={2}
+                      value={item.user_value_potential}
+                      onChange={(event) =>
+                        updateOpportunity(index, {
+                          ...item,
+                          user_value_potential: event.target.value
+                        })
+                      }
+                      disabled={disabled || approved}
+                    />
+                  </div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          );
+        })}
+      </Accordion>
+
+      {!approved && (
+        <button
+          type="button"
+          className="mt-3 text-xs text-blue-600 disabled:opacity-60"
+          onClick={addOpportunity}
+          disabled={disabled}
+        >
+          + Opportunity
+        </button>
+      )}
 
       <div className="mt-3 flex items-center gap-2">
         {!approved && !hideApprove && (
@@ -6475,9 +5780,9 @@ function GapsOpportunitiesEditor({
             type="button"
             className="inline-flex min-w-[96px] items-center justify-center rounded border border-green-600 px-3 py-2 text-sm font-medium text-green-700 disabled:opacity-60"
             onClick={onApprove}
-            disabled={disabled || !hasItems || isApproving}
+            disabled={disabled || approved || !hasItems || isApproving}
           >
-            {isApproving ? "Approving…" : "Approve and Proceed"}
+            {isApproving ? "Approving..." : "Approve and Proceed"}
           </button>
         )}
         {showRegenerate && (
@@ -6506,18 +5811,12 @@ type ValueDriversEditorProps = {
   disabled: boolean;
   isApproving: boolean;
   isRegenerating: boolean;
-    isClearing: boolean;
+  isClearing: boolean;
   showTitle?: boolean;
   showRegenerate?: boolean;
-    regenerateLabel?: string;
-    hideApprove?: boolean;
+  regenerateLabel?: string;
+  hideApprove?: boolean;
 };
-
-const VALUE_IMPACT_OPTIONS: ValueDriver["user_value_impact"][] = [
-  "low",
-  "medium",
-  "high"
-];
 
 function ValueDriversEditor({
   title,
@@ -6530,38 +5829,23 @@ function ValueDriversEditor({
   disabled,
   isApproving,
   isRegenerating,
-    isClearing,
+  isClearing,
   showTitle = true,
   showRegenerate = true,
-    regenerateLabel,
-    hideApprove = false
+  regenerateLabel,
+  hideApprove = false
 }: ValueDriversEditorProps) {
   const safeValue = normalizeValueDriversValue(value);
   const hasDrivers = safeValue.value_drivers.length > 0;
-  const [openDrivers, setOpenDrivers] = useOpenItems(
-    safeValue.value_drivers,
-    "value-driver"
-  );
 
-  const updateDriver = (index: number, nextItem: ValueDriver) => {
+  const updateDriver = (index: number, nextValue: string) => {
     const next = safeValue.value_drivers.slice();
-    next[index] = nextItem;
+    next[index] = nextValue;
     onChange({ value_drivers: next });
   };
 
   const addDriver = () => {
-    onChange({
-      value_drivers: safeValue.value_drivers.concat([
-        {
-          name: "",
-          user_need_or_pain: "",
-          user_value_impact: "medium",
-          business_value_lever: "",
-          business_value_impact: "medium",
-          priority: "medium"
-        }
-      ])
-    });
+    onChange({ value_drivers: safeValue.value_drivers.concat([""]) });
   };
 
   const removeDriver = (index: number) => {
@@ -6585,7 +5869,7 @@ function ValueDriversEditor({
               onClick={onClear}
               disabled={isClearing}
             >
-              {isClearing ? "Clearing…" : "Clear block"}
+              {isClearing ? "Clearing..." : "Clear block"}
             </button>
           )}
         </div>
@@ -6597,172 +5881,43 @@ function ValueDriversEditor({
         </p>
       )}
 
-      <Accordion
-        type="multiple"
-        value={openDrivers}
-        onValueChange={setOpenDrivers}
-        className="mt-3 space-y-3"
-      >
-        {safeValue.value_drivers.map((driver, index) => {
-          const itemKey = `value-driver-${index}`;
-          return (
-            <AccordionItem
-              key={itemKey}
-              value={itemKey}
-              className="rounded border border-slate-100 p-2"
-            >
-              <div className="grid items-start gap-2 md:grid-cols-[1fr_auto]">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <AccordionTrigger className="flex-none justify-center gap-0 py-0 text-slate-600 hover:no-underline [&>svg]:h-3 [&>svg]:w-3">
-                      <span className="sr-only">Toggle value driver</span>
-                    </AccordionTrigger>
-                    <label className="block text-xs text-gray-600">Name</label>
-                  </div>
-                  <input
-                    className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                    value={driver.name}
-                    onChange={(event) =>
-                      updateDriver(index, { ...driver, name: event.target.value })
-                    }
-                    disabled={disabled || approved}
-                  />
-                </div>
-                <div className="flex items-start">
-                  {!approved && !disabled && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-slate-600 hover:text-slate-700"
-                      onClick={() => removeDriver(index)}
-                      disabled={disabled}
-                      aria-label="Remove value driver"
-                    >
-                      <Trash2 />
-                    </Button>
-                  )}
-                </div>
-              </div>
-              <AccordionContent className="pt-0">
-                <div className="mt-2">
-                  <label className="block text-xs text-gray-600">
-                    User need or pain
-                  </label>
-                  <textarea
-                    className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                    rows={1}
-                    value={driver.user_need_or_pain}
-                    onChange={(event) =>
-                      updateDriver(index, {
-                        ...driver,
-                        user_need_or_pain: event.target.value
-                      })
-                    }
-                    disabled={disabled || approved}
-                  />
-                </div>
-                <div className="mt-2 grid gap-2 md:grid-cols-2">
-                  <div>
-                    <label className="block text-xs text-gray-600">
-                      User value impact
-                    </label>
-                    <select
-                      className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                      value={driver.user_value_impact}
-                      onChange={(event) =>
-                        updateDriver(index, {
-                          ...driver,
-                          user_value_impact:
-                            event.target.value as ValueDriver["user_value_impact"]
-                        })
-                      }
-                      disabled={disabled || approved}
-                    >
-                      {VALUE_IMPACT_OPTIONS.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-600">
-                      Business value impact
-                    </label>
-                    <select
-                      className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                      value={driver.business_value_impact}
-                      onChange={(event) =>
-                        updateDriver(index, {
-                          ...driver,
-                          business_value_impact:
-                            event.target.value as ValueDriver["business_value_impact"]
-                        })
-                      }
-                      disabled={disabled || approved}
-                    >
-                      {VALUE_IMPACT_OPTIONS.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <div className="mt-2 grid gap-2 md:grid-cols-2">
-                  <div>
-                    <label className="block text-xs text-gray-600">
-                      Business value lever
-                    </label>
-                    <textarea
-                      className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                      rows={1}
-                      value={driver.business_value_lever}
-                      onChange={(event) =>
-                        updateDriver(index, {
-                          ...driver,
-                          business_value_lever: event.target.value
-                        })
-                      }
-                      disabled={disabled || approved}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-600">Priority</label>
-                    <select
-                      className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                      value={driver.priority}
-                      onChange={(event) =>
-                        updateDriver(index, {
-                          ...driver,
-                          priority: event.target.value as ValueDriver["priority"]
-                        })
-                      }
-                      disabled={disabled || approved}
-                    >
-                      {VALUE_IMPACT_OPTIONS.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-          );
-        })}
-      </Accordion>
+      <div className="mt-3 space-y-3">
+        {safeValue.value_drivers.map((driver, index) => (
+          <div key={`value-driver-${index}`} className="rounded border border-slate-100 p-3">
+            <label className="block text-xs text-gray-600">Value driver</label>
+            <div className="mt-1 flex items-center gap-2">
+              <input
+                className="w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                value={driver}
+                onChange={(event) => updateDriver(index, event.target.value)}
+                disabled={disabled || approved}
+              />
+              {!approved && !disabled && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-slate-600 hover:text-slate-700"
+                  onClick={() => removeDriver(index)}
+                  disabled={disabled}
+                  aria-label="Remove value driver"
+                >
+                  <Trash2 />
+                </Button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
 
       {!approved && (
         <button
           type="button"
-          className="mt-3 inline-flex items-center rounded border border-slate-300 px-3 py-1 text-xs text-slate-700 disabled:opacity-60"
+          className="mt-3 text-xs text-blue-600 disabled:opacity-60"
           onClick={addDriver}
           disabled={disabled}
         >
-          + Driver
+          + Value Driver
         </button>
       )}
 
@@ -6772,9 +5927,9 @@ function ValueDriversEditor({
             type="button"
             className="inline-flex min-w-[96px] items-center justify-center rounded border border-green-600 px-3 py-2 text-sm font-medium text-green-700 disabled:opacity-60"
             onClick={onApprove}
-            disabled={disabled || !hasDrivers || isApproving}
+            disabled={disabled || approved || !hasDrivers || isApproving}
           >
-            {isApproving ? "Approving…" : "Approve and Proceed"}
+            {isApproving ? "Approving..." : "Approve and Proceed"}
           </button>
         )}
         {showRegenerate && (
@@ -6792,10 +5947,10 @@ function ValueDriversEditor({
   );
 }
 
-type MarketFitHypothesisEditorProps = {
+type FeasibilityRisksEditorProps = {
   title: string;
-  value: MarketFitHypothesis;
-  onChange: (value: MarketFitHypothesis) => void;
+  value: FeasibilityRisks;
+  onChange: (value: FeasibilityRisks) => void;
   onApprove: () => void;
   onRegenerate: () => void;
   onClear: () => void;
@@ -6803,280 +5958,20 @@ type MarketFitHypothesisEditorProps = {
   disabled: boolean;
   isApproving: boolean;
   isRegenerating: boolean;
-    isClearing: boolean;
+  isClearing: boolean;
   showTitle?: boolean;
   showRegenerate?: boolean;
-    regenerateLabel?: string;
-    hideApprove?: boolean;
+  regenerateLabel?: string;
+  hideApprove?: boolean;
 };
 
-function MarketFitHypothesisEditor({
-  title,
-  value,
-  onChange,
-  onApprove,
-  onRegenerate,
-  onClear,
-  approved,
-  disabled,
-  isApproving,
-  isRegenerating,
-    isClearing,
-  showTitle = true,
-  showRegenerate = true,
-    regenerateLabel,
-    hideApprove = false
-}: MarketFitHypothesisEditorProps) {
-  const safeValue = normalizeMarketFitHypothesisValue(value);
-  const hasItems =
-    safeValue.market_fit_hypothesis.desirability.length > 0 &&
-    safeValue.market_fit_hypothesis.viability.length > 0;
-  const [openDesirability, setOpenDesirability] = useOpenItems(
-    safeValue.market_fit_hypothesis.desirability,
-    "hypothesis-desirability"
-  );
-  const [openViability, setOpenViability] = useOpenItems(
-    safeValue.market_fit_hypothesis.viability,
-    "hypothesis-viability"
-  );
-
-  const updateItem = (
-    key: keyof MarketFitHypothesis["market_fit_hypothesis"],
-    index: number,
-    nextItem: MarketFitHypothesisItem
-  ) => {
-    const next = safeValue.market_fit_hypothesis[key].slice();
-    next[index] = nextItem;
-    onChange({
-      market_fit_hypothesis: {
-        ...safeValue.market_fit_hypothesis,
-        [key]: next
-      }
-    });
-  };
-
-  const addItem = (key: keyof MarketFitHypothesis["market_fit_hypothesis"]) => {
-    onChange({
-      market_fit_hypothesis: {
-        ...safeValue.market_fit_hypothesis,
-        [key]: safeValue.market_fit_hypothesis[key].concat([
-          {
-            hypothesis: "",
-            rationale: "",
-            key_risks_or_unknowns: [""]
-          }
-        ])
-      }
-    });
-  };
-
-  const removeItem = (
-    key: keyof MarketFitHypothesis["market_fit_hypothesis"],
-    index: number
-  ) => {
-    const next = safeValue.market_fit_hypothesis[key].slice();
-    next.splice(index, 1);
-    onChange({
-      market_fit_hypothesis: {
-        ...safeValue.market_fit_hypothesis,
-        [key]: next
-      }
-    });
-  };
-
-  return (
-    <div className="rounded border bg-white p-4">
-      {showTitle && (
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <p className="text-sm font-semibold text-gray-800">{title}</p>
-            {approved && <span className="text-xs font-medium text-green-600">Ready</span>}
-          </div>
-          {!approved && (
-            <button
-              type="button"
-              className="rounded border px-3 py-2 text-sm disabled:opacity-60"
-              onClick={onClear}
-              disabled={isClearing}
-            >
-              {isClearing ? "Clearing…" : "Clear block"}
-            </button>
-          )}
-        </div>
-      )}
-
-      {safeValue.market_fit_hypothesis.desirability.length === 0 &&
-        safeValue.market_fit_hypothesis.viability.length === 0 && (
-        <p className="mt-3 text-xs text-gray-500">
-          No hypotheses yet. Add one to begin.
-        </p>
-      )}
-
-      {([
-        ["Desirability", "desirability", openDesirability, setOpenDesirability],
-        ["Viability", "viability", openViability, setOpenViability]
-      ] as const).map(([label, key, openItems, setOpenItems]) => (
-        <Accordion key={key} type="multiple" defaultValue={[key]}>
-          <AccordionItem value={key} className="border-0">
-            <AccordionTrigger className="py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 hover:no-underline">
-              {label}
-            </AccordionTrigger>
-            <AccordionContent className="pt-2">
-              <Accordion
-                type="multiple"
-                value={openItems}
-                onValueChange={setOpenItems}
-                className="space-y-3"
-              >
-                {safeValue.market_fit_hypothesis[key].map((item, index) => {
-                  const itemKey = `hypothesis-${key}-${index}`;
-                  return (
-                    <AccordionItem
-                      key={itemKey}
-                      value={itemKey}
-                      className="rounded border border-slate-100 p-2"
-                    >
-                      <div className="grid items-start gap-2 md:grid-cols-[1fr_auto]">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <AccordionTrigger className="flex-none justify-center gap-0 py-0 text-slate-600 hover:no-underline [&>svg]:h-3 [&>svg]:w-3">
-                              <span className="sr-only">Toggle hypothesis</span>
-                            </AccordionTrigger>
-                            <label className="block text-xs text-gray-600">Hypothesis</label>
-                          </div>
-                          <textarea
-                            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                            rows={1}
-                            value={item.hypothesis}
-                            onChange={(event) =>
-                              updateItem(key, index, {
-                                ...item,
-                                hypothesis: event.target.value
-                              })
-                            }
-                            disabled={disabled || approved}
-                          />
-                        </div>
-                        <div className="flex items-start">
-                          {!approved && !disabled && (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-slate-600 hover:text-slate-700"
-                              onClick={() => removeItem(key, index)}
-                              disabled={disabled}
-                              aria-label="Remove hypothesis"
-                            >
-                              <Trash2 />
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                      <AccordionContent className="pt-0">
-                        <div className="mt-2">
-                          <label className="block text-xs text-gray-600">Rationale</label>
-                          <textarea
-                            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                            rows={1}
-                            value={item.rationale}
-                            onChange={(event) =>
-                              updateItem(key, index, {
-                                ...item,
-                                rationale: event.target.value
-                              })
-                            }
-                            disabled={disabled || approved}
-                          />
-                        </div>
-                        <div className="mt-2">
-                          <label className="block text-xs text-gray-600">
-                            Key risks or unknowns (one per line)
-                          </label>
-                          <textarea
-                            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                            rows={2}
-                            value={item.key_risks_or_unknowns.join("\n")}
-                            onChange={(event) =>
-                              updateItem(key, index, {
-                                ...item,
-                                key_risks_or_unknowns: event.target.value.split("\n")
-                              })
-                            }
-                            disabled={disabled || approved}
-                          />
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  );
-                })}
-              </Accordion>
-              {!approved && (
-                <button
-                  type="button"
-                  className="mt-3 text-xs text-blue-600 disabled:opacity-60"
-                  onClick={() => addItem(key)}
-                  disabled={disabled}
-                >
-                  + Hypothesis
-                </button>
-              )}
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
-      ))}
-
-      <div className="mt-3 flex items-center gap-2">
-        {!approved && !hideApprove && (
-          <button
-            type="button"
-            className="inline-flex min-w-[96px] items-center justify-center rounded border border-green-600 px-3 py-2 text-sm font-medium text-green-700 disabled:opacity-60"
-            onClick={onApprove}
-            disabled={disabled || !hasItems || isApproving}
-          >
-            {isApproving ? "Approving…" : "Approve and Proceed"}
-          </button>
-        )}
-        {showRegenerate && (
-          <button
-            type="button"
-            className="inline-flex min-w-[108px] items-center justify-center rounded border border-blue-600 px-3 py-2 text-sm font-medium text-blue-700 disabled:opacity-60"
-            onClick={onRegenerate}
-            disabled={isRegenerating}
-          >
-            {isRegenerating ? (regenerateLabel ?? "Regenerating...") : "Regenerate"}
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-type FeasibilityAssessmentEditorProps = {
-  title: string;
-  value: FeasibilityAssessment;
-  onChange: (value: FeasibilityAssessment) => void;
-  onApprove: () => void;
-  onRegenerate: () => void;
-  onClear: () => void;
-  approved: boolean;
-  disabled: boolean;
-  isApproving: boolean;
-  isRegenerating: boolean;
-    isClearing: boolean;
-  showTitle?: boolean;
-  showRegenerate?: boolean;
-    regenerateLabel?: string;
-    hideApprove?: boolean;
-};
-
-const READINESS_OPTIONS: FeasibilityConstraintItem["readiness"][] = [
-  "low",
-  "medium",
-  "high"
+const FEASIBILITY_RISK_TYPES: FeasibilityRisk["feasibility_risk_type"][] = [
+  "business",
+  "user",
+  "technical"
 ];
 
-function FeasibilityAssessmentEditor({
+function FeasibilityRisksEditor({
   title,
   value,
   onChange,
@@ -7087,72 +5982,37 @@ function FeasibilityAssessmentEditor({
   disabled,
   isApproving,
   isRegenerating,
-    isClearing,
+  isClearing,
   showTitle = true,
   showRegenerate = true,
-    regenerateLabel,
-    hideApprove = false
-}: FeasibilityAssessmentEditorProps) {
-  const safeValue = normalizeFeasibilityAssessmentValue(value);
-  const hasItems =
-    safeValue.feasibility_assessment.business_constraints.length > 0 &&
-    safeValue.feasibility_assessment.user_constraints.length > 0 &&
-    safeValue.feasibility_assessment.technical_concerns.length > 0;
-  const [openBusiness, setOpenBusiness] = useOpenItems(
-    safeValue.feasibility_assessment.business_constraints,
-    "feasibility-business"
-  );
-  const [openUser, setOpenUser] = useOpenItems(
-    safeValue.feasibility_assessment.user_constraints,
-    "feasibility-user"
-  );
-  const [openTechnical, setOpenTechnical] = useOpenItems(
-    safeValue.feasibility_assessment.technical_concerns,
-    "feasibility-technical"
-  );
+  regenerateLabel,
+  hideApprove = false
+}: FeasibilityRisksEditorProps) {
+  const safeValue = normalizeFeasibilityRisksValue(value);
+  const hasItems = safeValue.feasibility_risks.length > 0;
 
-  const updateItem = (
-    key: keyof FeasibilityAssessment["feasibility_assessment"],
-    index: number,
-    nextItem: FeasibilityConstraintItem
-  ) => {
-    const next = safeValue.feasibility_assessment[key].slice();
-    next[index] = nextItem;
+  const updateRisk = (index: number, nextRisk: FeasibilityRisk) => {
+    const next = safeValue.feasibility_risks.slice();
+    next[index] = nextRisk;
+    onChange({ feasibility_risks: next });
+  };
+
+  const addRisk = () => {
     onChange({
-      feasibility_assessment: {
-        ...safeValue.feasibility_assessment,
-        [key]: next
-      }
+      feasibility_risks: safeValue.feasibility_risks.concat([
+        {
+          feasibility_risk_type: "business",
+          feasibility_risk: "",
+          why_it_matters: ""
+        }
+      ])
     });
   };
 
-  const addItem = (key: keyof FeasibilityAssessment["feasibility_assessment"]) => {
-    onChange({
-      feasibility_assessment: {
-        ...safeValue.feasibility_assessment,
-        [key]: safeValue.feasibility_assessment[key].concat([
-          {
-            name: "",
-            description: "",
-            readiness: "medium"
-          }
-        ])
-      }
-    });
-  };
-
-  const removeItem = (
-    key: keyof FeasibilityAssessment["feasibility_assessment"],
-    index: number
-  ) => {
-    const next = safeValue.feasibility_assessment[key].slice();
+  const removeRisk = (index: number) => {
+    const next = safeValue.feasibility_risks.slice();
     next.splice(index, 1);
-    onChange({
-      feasibility_assessment: {
-        ...safeValue.feasibility_assessment,
-        [key]: next
-      }
-    });
+    onChange({ feasibility_risks: next });
   };
 
   return (
@@ -7170,137 +6030,102 @@ function FeasibilityAssessmentEditor({
               onClick={onClear}
               disabled={isClearing}
             >
-              {isClearing ? "Clearing…" : "Clear block"}
+              {isClearing ? "Clearing..." : "Clear block"}
             </button>
           )}
         </div>
       )}
 
-      {safeValue.feasibility_assessment.business_constraints.length === 0 &&
-        safeValue.feasibility_assessment.user_constraints.length === 0 &&
-        safeValue.feasibility_assessment.technical_concerns.length === 0 && (
+      {safeValue.feasibility_risks.length === 0 && (
         <p className="mt-3 text-xs text-gray-500">
-          No constraints yet. Add one to begin.
+          No feasibility risks yet. Add one to begin.
         </p>
       )}
 
-      {([
-        ["Business constraints", "business_constraints", openBusiness, setOpenBusiness],
-        ["User constraints", "user_constraints", openUser, setOpenUser],
-        ["Technical concerns", "technical_concerns", openTechnical, setOpenTechnical]
-      ] as const).map(([label, key, openItems, setOpenItems]) => (
-        <Accordion key={key} type="multiple" defaultValue={[key]}>
-          <AccordionItem value={key} className="border-0">
-            <AccordionTrigger className="py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 hover:no-underline">
-              {label}
-            </AccordionTrigger>
-            <AccordionContent className="pt-2">
-              <Accordion
-                type="multiple"
-                value={openItems}
-                onValueChange={setOpenItems}
-                className="space-y-3"
-              >
-                {safeValue.feasibility_assessment[key].map((item, index) => {
-                  const itemKey = `feasibility-${key}-${index}`;
-                  return (
-                    <AccordionItem
-                      key={itemKey}
-                      value={itemKey}
-                      className="rounded border border-slate-100 p-2"
-                    >
-                      <div className="grid items-start gap-2 md:grid-cols-[1fr_auto]">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <AccordionTrigger className="flex-none justify-center gap-0 py-0 text-slate-600 hover:no-underline [&>svg]:h-3 [&>svg]:w-3">
-                              <span className="sr-only">Toggle constraint</span>
-                            </AccordionTrigger>
-                            <label className="block text-xs text-gray-600">Name</label>
-                          </div>
-                          <input
-                            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                            value={item.name}
-                            onChange={(event) =>
-                              updateItem(key, index, { ...item, name: event.target.value })
-                            }
-                            disabled={disabled || approved}
-                          />
-                        </div>
-                        <div className="flex items-start">
-                          {!approved && !disabled && (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-slate-600 hover:text-slate-700"
-                              onClick={() => removeItem(key, index)}
-                              disabled={disabled}
-                              aria-label="Remove constraint"
-                            >
-                              <Trash2 />
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                      <AccordionContent className="pt-0">
-                        <div className="mt-2 grid gap-2 md:grid-cols-2">
-                          <div>
-                            <label className="block text-xs text-gray-600">
-                              Description
-                            </label>
-                            <textarea
-                              className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                              rows={1}
-                              value={item.description}
-                              onChange={(event) =>
-                                updateItem(key, index, {
-                                  ...item,
-                                  description: event.target.value
-                                })
-                              }
-                              disabled={disabled || approved}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs text-gray-600">Readiness</label>
-                            <select
-                              className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                              value={item.readiness}
-                              onChange={(event) =>
-                                updateItem(key, index, {
-                                  ...item,
-                                  readiness: event.target.value as FeasibilityConstraintItem["readiness"]
-                                })
-                              }
-                              disabled={disabled || approved}
-                            >
-                              {READINESS_OPTIONS.map((option) => (
-                                <option key={option} value={option}>
-                                  {option}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  );
-                })}
-              </Accordion>
-              {!approved && (
-                <button
-                  type="button"
-                  className="mt-3 text-xs text-blue-600 disabled:opacity-60"
-                  onClick={() => addItem(key)}
-                  disabled={disabled}
+      <div className="mt-3 space-y-3">
+        {safeValue.feasibility_risks.map((risk, index) => (
+          <div key={`risk-${index}`} className="rounded border border-slate-100 p-3">
+            <div className="grid gap-3 md:grid-cols-[160px_1fr_auto]">
+              <div>
+                <label className="block text-xs text-gray-600">Risk type</label>
+                <select
+                  className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                  value={risk.feasibility_risk_type}
+                  onChange={(event) =>
+                    updateRisk(index, {
+                      ...risk,
+                      feasibility_risk_type:
+                        event.target.value as FeasibilityRisk["feasibility_risk_type"]
+                    })
+                  }
+                  disabled={disabled || approved}
                 >
-                  + Constraint
-                </button>
-              )}
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
-      ))}
+                  {FEASIBILITY_RISK_TYPES.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-600">Feasibility risk</label>
+                <div className="mt-1 flex items-center gap-2">
+                  <input
+                    className="w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                    value={risk.feasibility_risk}
+                    onChange={(event) =>
+                      updateRisk(index, {
+                        ...risk,
+                        feasibility_risk: event.target.value
+                      })
+                    }
+                    disabled={disabled || approved}
+                  />
+                  {!approved && !disabled && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-slate-600 hover:text-slate-700"
+                      onClick={() => removeRisk(index)}
+                      disabled={disabled}
+                      aria-label="Remove risk"
+                    >
+                      <Trash2 />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="mt-2">
+              <label className="block text-xs text-gray-600">Why it matters</label>
+              <textarea
+                className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                rows={2}
+                value={risk.why_it_matters}
+                onChange={(event) =>
+                  updateRisk(index, {
+                    ...risk,
+                    why_it_matters: event.target.value
+                  })
+                }
+                disabled={disabled || approved}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {!approved && (
+        <button
+          type="button"
+          className="mt-3 text-xs text-blue-600 disabled:opacity-60"
+          onClick={addRisk}
+          disabled={disabled}
+        >
+          + Feasibility Risk
+        </button>
+      )}
 
       <div className="mt-3 flex items-center gap-2">
         {!approved && !hideApprove && (
@@ -7308,9 +6133,9 @@ function FeasibilityAssessmentEditor({
             type="button"
             className="inline-flex min-w-[96px] items-center justify-center rounded border border-green-600 px-3 py-2 text-sm font-medium text-green-700 disabled:opacity-60"
             onClick={onApprove}
-            disabled={disabled || !hasItems || isApproving}
+            disabled={disabled || approved || !hasItems || isApproving}
           >
-            {isApproving ? "Approving…" : "Approve and Proceed"}
+            {isApproving ? "Approving..." : "Approve and Proceed"}
           </button>
         )}
         {showRegenerate && (
@@ -7327,24 +6152,3 @@ function FeasibilityAssessmentEditor({
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

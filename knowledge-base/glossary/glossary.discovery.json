@@ -1,188 +1,171 @@
 {
-    "domains": [
-        {
-            "id": "D1",
-            "name": "Discovery",
-            "description": "Activities and artifacts used to understand the problem, users, market context, existing alternatives, and the opportunity before defining strategic product commitments."
-        }
-    ],
-    "terms": [
-        {
-            "id": "T1.1",
-            "name": "Problem Statement",
-            "domain_id": "D1",
-            "definition": "A structured articulation of the negative current state affecting Target Users that the Product is intended to change.",
-            "description": "Captures what is wrong today, who is impacted, and why it matters, creating a stable reference point for all later decisions and preventing solution drift.",
-            "relates_to": [
-                "T1.2",
-                "T1.3",
-                "T1.4"
-            ],
-            "produces": "decision"
-        },
-        {
-            "id": "T1.2",
-            "name": "Target Users",
-            "domain_id": "D1",
-            "definition": "Explicitly defined user groups whose needs, behaviors, and constraints are directly addressed by the Product.",
-            "description": "Defines which user groups are in scope for research and decision-making, guiding prioritization and preventing conflicting audience assumptions.",
-            "relates_to": [
-                "T1.1",
-                "T1.3"
-            ],
-            "produces": "structure"
-        },
-        {
-            "id": "T1.3",
-            "name": "Pain Points",
-            "domain_id": "D1",
-            "definition": "Explicit difficulties, frustrations, or unmet needs experienced by Target Users in the current state.",
-            "description": "Lists concrete user problems and unmet needs to validate the necessity of a solution and to anchor opportunity exploration in real user evidence.",
-            "relates_to": [
-                "T1.2",
-                "T1.1"
-            ],
-            "produces": "structure"
-        },
-        {
-            "id": "T1.4",
-            "name": "Context and Constraints",
-            "domain_id": "D1",
-            "definition": "Environmental, regulatory, operational, or situational conditions that define feasibility boundaries for the Product.",
-            "description": "Defines limiting conditions and external factors that shape what is possible, including rules, environments, dependencies, and operational realities.",
-            "relates_to": [
-                "T1.1",
-                "T1.14"
-            ],
-            "produces": "constraint"
-        },
-        {
-            "id": "T1.5",
-            "name": "Market Landscape",
-            "domain_id": "D1",
-            "definition": "An overview of market segments, trends, dynamics, and forces relevant to the Product context.",
-            "description": "Summarizes how the market is structured and changing, including segments and trends, to ground opportunity identification in external reality.",
-            "relates_to": [
-                "T1.8",
-                "T1.9"
-            ],
-            "produces": "structure"
-        },
-        {
-            "id": "T1.6",
-            "name": "Competitor Inventory",
-            "domain_id": "D1",
-            "definition": "A structured list of existing alternatives, solutions, or providers addressing similar user needs in the same market.",
-            "description": "Catalogs relevant alternatives to ensure coverage of the real competitive set and to avoid false differentiation assumptions.",
-            "relates_to": [
-                "T1.5",
-                "T1.7"
-            ],
-            "produces": "artifact"
-        },
-        {
-            "id": "T1.7",
-            "name": "Competitor Capability",
-            "domain_id": "D1",
-            "definition": "A summary of competitor offerings expressed as capabilities, strengths, weaknesses, and differentiators.",
-            "description": "Analyzes what alternatives actually provide, highlighting patterns, strengths, weaknesses, and gaps that affect competitive viability.",
-            "relates_to": [
-                "T1.6",
-                "T1.9"
-            ],
-            "produces": "artifact"
-        },
-        {
-            "id": "T1.8",
-            "name": "Market Opportunities",
-            "domain_id": "D1",
-            "definition": "Specific gaps, needs, or trends in the market environment that can be leveraged to create value.",
-            "description": "Identifies where the market environment enables new value creation, driven by unmet demand, trends, structural inefficiencies, or emerging conditions.",
-            "relates_to": [
-                "T1.5",
-                "T1.10"
-            ],
-            "produces": "decision"
-        },
-        {
-            "id": "T1.9",
-            "name": "Gaps and Opportunities",
-            "domain_id": "D1",
-            "definition": "Areas where existing solutions fail to address user needs or where improvement can create competitive advantage.",
-            "description": "Synthesizes where alternatives underperform against user needs, producing concrete openings that can be turned into a differentiated approach.",
-            "relates_to": [
-                "T1.3",
-                "T1.7",
-                "T1.10"
-            ],
-            "produces": "decision"
-        },
-        {
-            "id": "T1.10",
-            "name": "Opportunity Statement",
-            "domain_id": "D1",
-            "definition": "A formal articulation of the product opportunity derived from user needs, market conditions, and competitive gaps.",
-            "description": "States the actionable opportunity to pursue, tying together user evidence, market conditions, and alternative shortcomings into one directionally clear focus.",
-            "relates_to": [
-                "T1.1",
-                "T1.8",
-                "T1.9",
-                "T1.11"
-            ],
-            "produces": "decision"
-        },
-        {
-            "id": "T1.11",
-            "name": "Value Drivers",
-            "domain_id": "D1",
-            "definition": "Specific sources of user or business value the Product can generate (e.g., convenience, cost savings, trust, speed, accuracy).",
-            "description": "Lists the main levers that create value, enabling prioritization and later translation into requirements, experience decisions, and success measurement.",
-            "relates_to": [
-                "T1.3",
-                "T1.12",
-                "T1.13"
-            ],
-            "produces": "structure"
-        },
-        {
-            "id": "T1.12",
-            "name": "Customer Value",
-            "domain_id": "D1",
-            "definition": "The concrete benefit delivered to users that explains why they would choose the Product.",
-            "description": "Describes the user benefit in practical terms, clarifying what improves for users and why adoption is rational compared to current alternatives.",
-            "relates_to": [
-                "T1.2",
-                "T1.3",
-                "T1.11"
-            ],
-            "produces": "decision"
-        },
-        {
-            "id": "T1.13",
-            "name": "Market Fit",
-            "domain_id": "D1",
-            "definition": "An early qualitative assessment of how well the proposed Product aligns with Target Users’ needs and behavior in the market context.",
-            "description": "Assesses whether the proposed direction is likely to be adopted and sustained, considering user behavior patterns and market realities.",
-            "relates_to": [
-                "T1.2",
-                "T1.5",
-                "T1.12",
-                "T1.14"
-            ],
-            "produces": "decision"
-        },
-        {
-            "id": "T1.14",
-            "name": "Feasibility Considerations",
-            "domain_id": "D1",
-            "definition": "High-level indicators of viability across technical, operational, commercial, or regulatory dimensions.",
-            "description": "Evaluates whether the opportunity can realistically be executed within constraints, highlighting major risks, unknowns, and boundary conditions.",
-            "relates_to": [
-                "T1.4",
-                "T1.10",
-                "T1.13"
-            ],
-            "produces": "constraint"
-        }
-    ]
+  "domains": [
+    {
+      "id": "D1",
+      "name": "Discovery",
+      "description": "Activities and artifacts used to understand the problem, users, market context, existing alternatives, and the opportunity before defining strategic product commitments."
+    }
+  ],
+  "terms": [
+    {
+      "id": "T1.1",
+      "name": "Problem Statement",
+      "domain_id": "D1",
+      "definition": "A structured articulation of the negative current state affecting Target Users that the Product is intended to change.",
+      "description": "Captures what is wrong today, who is impacted, and why it matters, creating a stable reference point for all later decisions and preventing solution drift.",
+      "relates_to": [
+        "T1.2",
+        "T1.3",
+        "T1.4"
+      ],
+      "produces": "decision"
+    },
+    {
+      "id": "T1.2",
+      "name": "Target Users",
+      "domain_id": "D1",
+      "definition": "Explicitly defined user groups whose needs, behaviors, and constraints are directly addressed by the Product.",
+      "description": "Defines which user groups are in scope for research and decision-making, guiding prioritization and preventing conflicting audience assumptions.",
+      "relates_to": [
+        "T1.1",
+        "T1.3"
+      ],
+      "produces": "structure"
+    },
+    {
+      "id": "T1.3",
+      "name": "Pain Points",
+      "domain_id": "D1",
+      "definition": "Explicit difficulties, frustrations, or unmet needs experienced by Target Users in the current state.",
+      "description": "Lists concrete user problems and unmet needs to validate the necessity of a solution and to anchor opportunity exploration in real user evidence.",
+      "relates_to": [
+        "T1.2",
+        "T1.1"
+      ],
+      "produces": "structure"
+    },
+    {
+      "id": "T1.4",
+      "name": "Context and Constraints",
+      "domain_id": "D1",
+      "definition": "Environmental, regulatory, operational, or situational conditions that define feasibility boundaries for the Product.",
+      "description": "Defines limiting conditions and external factors that shape what is possible, including rules, environments, dependencies, and operational realities.",
+      "relates_to": [
+        "T1.1",
+        "T1.14"
+      ],
+      "produces": "constraint"
+    },
+    {
+      "id": "T1.5",
+      "name": "Market Landscape",
+      "domain_id": "D1",
+      "definition": "An overview of market segments, trends, dynamics, and forces relevant to the Product context.",
+      "description": "Summarizes how the market is structured and changing, including segments and trends, to ground opportunity identification in external reality.",
+      "relates_to": [
+        "T1.8",
+        "T1.9"
+      ],
+      "produces": "structure"
+    },
+    {
+      "id": "T1.6",
+      "name": "Competitors",
+      "domain_id": "D1",
+      "definition": "A structured list of existing alternatives, solutions, or providers addressing similar user needs in the same market.",
+      "description": "Catalogs relevant alternatives to ensure coverage of the real competitive set and to avoid false differentiation assumptions.",
+      "relates_to": [
+        "T1.5",
+        "T1.7"
+      ],
+      "produces": "artifact"
+    },
+    {
+      "id": "T1.7",
+      "name": "Competitor Capability",
+      "domain_id": "D1",
+      "definition": "A summary of competitor offerings expressed as capabilities, strengths, weaknesses, and differentiators.",
+      "description": "Analyzes what alternatives actually provide, highlighting patterns, strengths, weaknesses, and gaps that affect competitive viability.",
+      "relates_to": [
+        "T1.6",
+        "T1.9"
+      ],
+      "produces": "artifact"
+    },
+    {
+      "id": "T1.8",
+      "name": "Market Opportunities",
+      "domain_id": "D1",
+      "definition": "Specific gaps, needs, or trends in the market environment that can be leveraged to create value.",
+      "description": "Identifies where the market environment enables new value creation, driven by unmet demand, trends, structural inefficiencies, or emerging conditions.",
+      "relates_to": [
+        "T1.5"
+      ],
+      "produces": "decision"
+    },
+    {
+      "id": "T1.9",
+      "name": "Opportunities",
+      "domain_id": "D1",
+      "definition": "Clear areas where existing solutions fail to address user needs or where improvement can create meaningful value.",
+      "description": "Synthesizes where alternatives underperform against user needs, producing concrete openings grounded in user evidence and market context.",
+      "relates_to": [
+        "T1.3",
+        "T1.7"
+      ],
+      "produces": "decision"
+    },
+    {
+      "id": "T1.11",
+      "name": "Value Drivers",
+      "domain_id": "D1",
+      "definition": "Specific sources of user or business value the Product can generate (e.g., convenience, cost savings, trust, speed, accuracy).",
+      "description": "Lists the main levers that create value, enabling prioritization and later translation into requirements, experience decisions, and success measurement.",
+      "relates_to": [
+        "T1.3",
+        "T1.12",
+        "T1.13"
+      ],
+      "produces": "structure"
+    },
+    {
+      "id": "T1.12",
+      "name": "Customer Value",
+      "domain_id": "D1",
+      "definition": "The concrete benefit delivered to users that explains why they would choose the Product.",
+      "description": "Describes the user benefit in practical terms, clarifying what improves for users and why adoption is rational compared to current alternatives.",
+      "relates_to": [
+        "T1.2",
+        "T1.3",
+        "T1.11"
+      ],
+      "produces": "decision"
+    },
+    {
+      "id": "T1.13",
+      "name": "Market Fit",
+      "domain_id": "D1",
+      "definition": "An early qualitative assessment of how well the proposed Product aligns with Target Users\u2019 needs and behavior in the market context.",
+      "description": "Assesses whether the proposed direction is likely to be adopted and sustained, considering user behavior patterns and market realities.",
+      "relates_to": [
+        "T1.2",
+        "T1.5",
+        "T1.12",
+        "T1.14"
+      ],
+      "produces": "decision"
+    },
+    {
+      "id": "T1.14",
+      "name": "Feasibility Considerations",
+      "domain_id": "D1",
+      "definition": "High-level indicators of viability across technical, operational, commercial, or regulatory dimensions.",
+      "description": "Evaluates whether the opportunity can realistically be executed within constraints, highlighting major risks, unknowns, and boundary conditions.",
+      "relates_to": [
+        "T1.4",
+        "T1.13"
+      ],
+      "produces": "constraint"
+    }
+  ]
 }

@@ -19,4 +19,4 @@ Rules:
 - Each sentence must focus on a different dimension: user context, core mechanic, emergent value.
 - Explicitly avoid common startup patterns, repeated structures, and familiar metaphors.
 - Penalize ideas that could be rephrased versions of earlier outputs.
-  No extra keys or commentary.
+- Ensure that all ideas you've generated in this section could be created with current web technologies.

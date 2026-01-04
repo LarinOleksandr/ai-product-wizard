@@ -1,33 +1,39 @@
-# Section prompt
+﻿# Section prompt
 
 ## Task
-Produce **Competitor Capabilities** for a Competitor Capabilities section that describes functional, technical, and business capabilities of relevant competitors, based on external research and verifiable public information.
 
-The goal is to understand capability patterns and industry norms, not to benchmark performance or define differentiation.
+Produce **Competitor Capabilities** grouped by **Capability Group** using this exact JSON structure:
+
+competitor_capabilities: {
+Functional: [ ... ],
+Technical: [ ... ],
+Business: [ ... ]
+}
+
+Each capability entry must include:
+
+- capability
+- alignment_with_user_needs
+- owning_competitors
+- gaps_and_limitations
 
 ## Workflow
-1. Analyze core functional capabilities:
-   - Identify the main functions and feature groups competitors provide.
-   - Focus on what problems they enable users to address.
-2. Analyze technical capabilities:
-   - Identify visible technical characteristics such as platform type, delivery model, integrations, or scalability indicators.
-   - Use only information that can be reasonably inferred from public sources.
-3. Analyze business capabilities:
-   - Identify business-side capabilities such as monetization approach, distribution channels, ecosystem participation, or partnership models.
-4. Assess strengths and weaknesses:
-   - Describe high-level strengths and limitations implied by the capabilities.
-   - Avoid judgments; focus on observable scope and gaps.
-5. Compare capabilities to user needs:
-   - Relate identified capabilities to user needs and pain points at a general level.
-   - Do not claim unmet needs unless clearly implied.
-6. Identify competitive patterns and industry standards:
-   - Extract recurring capability patterns across competitors.
-   - Identify commonly expected capabilities that appear to form an industry baseline.
+
+1. Analyze Functional group capabilities.
+2. Analyze Technical group capabilities.
+3. Analyze Business group capabilities.
+4. For each group, list distinct capabilities competitors provide.
+   - Expressed as an ability, not a feature
+   - Described in neutral, functional terms
+5. For each capability, add:
+   - Alignment with User Needs: 1-2 sentences tied to existing User Pain Points.
+   - Owning Competitors: named products only.
+   - Gaps and Limitations: observed capability constraits: delivery, scalability, usability, integration, cost etc. (at least one item required).
+6. Validate and filter for relevance and clarity.
 
 ## Generation Rules
-- Actively use external tools and web search to gather information.
-- Use only publicly available, verifiable information.
-- Do NOT propose solutions or product strategies.
-- Keep all descriptions high-level, neutral, and factual.
-- Use clear, simple, non-technical language.
-- Capabilities must be grounded in observable product or company behavior.
+
+- Use neutral, functional language.
+- Refer only to existing User Pain Points.
+- No scoring, ranking, or judgment.
+- No invented facts; rely on public information only.

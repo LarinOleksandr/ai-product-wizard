@@ -43,148 +43,130 @@ export function createExportService({
           return;
         }
         if (field.key === "problemUnderstanding.targetUsersSegments") {
-          const segments = value?.target_segments || [];
+          const segments = value?.user_segments || value?.target_segments || [];
           segments.forEach((segment) => {
             parts.push(`- Segment: ${escapeMarkdown(segment.segment_name || "")}`);
-            if (segment.business_relevance) {
-              parts.push(`  - Business relevance: ${escapeMarkdown(segment.business_relevance)}`);
+            if (segment.segment_type) {
+              parts.push(`  - Segment type: ${escapeMarkdown(segment.segment_type)}`);
             }
-            if (Array.isArray(segment.user_groups)) {
-              segment.user_groups.forEach((group) => {
-                parts.push(`  - Group: ${escapeMarkdown(group.name || "")}`);
-                const characteristics = formatMarkdownList(group.characteristics || []);
-                if (characteristics) {
-                  parts.push("    - Characteristics:");
-                  parts.push(
-                    characteristics
-                      .split("\n")
-                      .map((line) => `    ${line}`)
-                      .join("\n")
-                  );
-                }
+            const usageContexts = Array.isArray(segment.usage_contexts)
+              ? segment.usage_contexts
+              : Array.isArray(segment.usage_context)
+                ? segment.usage_context
+                : [];
+            if (usageContexts.length) {
+              parts.push(`  - Usage contexts:`);
+              usageContexts.forEach((item) => {
+                parts.push(`    - ${escapeMarkdown(String(item))}`);
               });
+            }
+            const segmentCharacteristics = Array.isArray(segment.characteristics)
+              ? segment.characteristics
+              : Array.isArray(segment.user_groups)
+                ? segment.user_groups.flatMap((group) => group?.characteristics || [])
+                : [];
+            if (Array.isArray(segmentCharacteristics)) {
+              const characteristics = formatMarkdownList(segmentCharacteristics);
+              if (characteristics) {
+                parts.push("  - Characteristics:");
+                parts.push(
+                  characteristics
+                    .split("\n")
+                    .map((line) => `    ${line}`)
+                    .join("\n")
+                );
+              }
             }
           });
           return;
         }
         if (field.key === "problemUnderstanding.userPainPoints") {
-          const themes = value?.pain_point_themes || [];
-          themes.forEach((theme) => {
-            parts.push(`- Theme: ${escapeMarkdown(theme.theme_name || "")}`);
-            (theme.pain_points || []).forEach((pain) => {
+          const userGroups = Array.isArray(value?.user_segments)
+            ? value.user_segments
+            : Array.isArray(value?.pain_point_themes)
+              ? value.pain_point_themes.map((theme) => ({
+                  user_segment: theme?.theme_name || "",
+                  pain_points: Array.isArray(theme?.pain_points) ? theme.pain_points : []
+                }))
+              : [];
+          userGroups.forEach((group) => {
+            parts.push(`- User segment: ${escapeMarkdown(group.user_segment || "")}`);
+            (group.pain_points || []).forEach((pain) => {
               parts.push(`  - Pain point: ${escapeMarkdown(pain.name || "")}`);
               if (pain.description) {
                 parts.push(`    - Description: ${escapeMarkdown(pain.description)}`);
               }
-              if (Array.isArray(pain.affected_user_groups)) {
-                const groups = formatMarkdownList(pain.affected_user_groups);
-                if (groups) {
-                  parts.push(
-                    groups
-                      .split("\n")
-                      .map((line) => `    ${line}`)
-                      .join("\n")
-                  );
-                }
-              }
               parts.push(`    - Severity: ${pain.severity || ""}`);
               parts.push(`    - Frequency: ${pain.frequency || ""}`);
-              parts.push(`    - Business importance: ${pain.business_importance || ""}`);
             });
           });
           return;
         }
-        if (field.key === "problemUnderstanding.contextConstraints") {
-          const contextual = value?.contextual_factors || [];
-          if (contextual.length) {
-            parts.push("#### Contextual factors");
-            contextual.forEach((item) => {
-              parts.push(`- ${escapeMarkdown(item.name || "")}`);
-              parts.push(`  - Description: ${escapeMarkdown(item.description || "")}`);
-              parts.push(
-                `  - Impact on user needs: ${escapeMarkdown(item.impact_on_user_needs || "")}`
-              );
-              parts.push(
-                `  - Business implications: ${escapeMarkdown(item.business_implications || "")}`
-              );
+        if (field.key === "problemUnderstanding.contextualFactors") {
+          const contextualGroups = Array.isArray(value?.contextual_factors)
+            ? value.contextual_factors
+            : [];
+          contextualGroups.forEach((group) => {
+            parts.push(`- ${escapeMarkdown(group.factor_group || "")}`);
+            (group.factors || []).forEach((item) => {
+              parts.push(`  - ${escapeMarkdown(item.name || "")}`);
+              parts.push(`    - Description: ${escapeMarkdown(item.description || "")}`);
             });
-          }
-          const constraints = value?.constraints || [];
-          if (constraints.length) {
-            parts.push("#### Constraints");
-            constraints.forEach((item) => {
-              parts.push(`- ${escapeMarkdown(item.name || "")}`);
-              parts.push(`  - Description: ${escapeMarkdown(item.description || "")}`);
-              parts.push(
-                `  - Impact on user needs: ${escapeMarkdown(item.impact_on_user_needs || "")}`
-              );
-              parts.push(
-                `  - Business implications: ${escapeMarkdown(item.business_implications || "")}`
-              );
+          });
+          return;
+        }
+        if (field.key === "problemUnderstanding.constraints") {
+          const constraintGroups = Array.isArray(value?.constraints)
+            ? value.constraints
+            : [];
+          constraintGroups.forEach((group) => {
+            parts.push(`- ${escapeMarkdown(group.constraint_group || "")}`);
+            (group.constraints || []).forEach((item) => {
+              parts.push(`  - ${escapeMarkdown(item.name || "")}`);
+              parts.push(`    - Description: ${escapeMarkdown(item.description || "")}`);
             });
-          }
+          });
           return;
         }
         if (field.key === "marketAndCompetitorAnalysis.marketLandscape") {
-          parts.push(
-            `- Market definition: ${escapeMarkdown(value.market_definition?.description || "")}`
-          );
-          if (Array.isArray(value.market_definition?.excluded_adjacent_spaces)) {
-            const excluded = formatMarkdownList(value.market_definition.excluded_adjacent_spaces);
-            if (excluded) {
-              parts.push("  - Excluded adjacent spaces:");
-              parts.push(
-                excluded
-                  .split("\n")
-                  .map((line) => `    ${line}`)
-                  .join("\n")
-              );
-            }
+          if (typeof value === "string") {
+            parts.push(escapeMarkdown(value));
+            return;
           }
-          parts.push(`- Market size: ${escapeMarkdown(value.market_size?.description || "")}`);
-          parts.push(
-            `- Market maturity: ${escapeMarkdown(value.market_maturity?.classification || "")}`
-          );
-          if (value.market_maturity?.rationale) {
-            parts.push(`  - Rationale: ${escapeMarkdown(value.market_maturity.rationale)}`);
+          const definition =
+            typeof value.market_definition === "string"
+              ? value.market_definition
+              : value.market_definition?.description || "";
+          parts.push(`- Market definition: ${escapeMarkdown(definition)}`);
+          if (
+            value.alternatives &&
+            (value.alternatives.direct_competitor_segments?.length ||
+              value.alternatives.indirect_competitor_segments?.length ||
+              value.alternatives.substitute_segments?.length)
+          ) {
+            const addAltList = (label, items) => {
+              if (!Array.isArray(items) || !items.length) {
+                return;
+              }
+              parts.push(`  - ${label}:`);
+              items.forEach((item) => {
+                parts.push(`    - ${escapeMarkdown(String(item))}`);
+              });
+            };
+            parts.push("- Alternatives:");
+            addAltList(
+              "Direct competitor segments",
+              value.alternatives.direct_competitor_segments
+            );
+            addAltList(
+              "Indirect competitor segments",
+              value.alternatives.indirect_competitor_segments
+            );
+            addAltList("Substitutes segments", value.alternatives.substitute_segments);
           }
-          const listSection = (label, items) => {
-            if (!Array.isArray(items) || !items.length) {
-              return;
-            }
-            parts.push(`- ${label}:`);
-            items.forEach((item) => {
-              parts.push(`  - ${escapeMarkdown(item.name || "")}`);
-              if (item.description) {
-                parts.push(`    - Description: ${escapeMarkdown(item.description)}`);
-              }
-              if (item.time_horizon) {
-                parts.push(`    - Time horizon: ${item.time_horizon}`);
-              }
-              if (Array.isArray(item.affected_target_segments)) {
-                const segments = formatMarkdownList(item.affected_target_segments);
-                if (segments) {
-                  parts.push(
-                    segments
-                      .split("\n")
-                      .map((line) => `    ${line}`)
-                      .join("\n")
-                  );
-                }
-              }
-              if (item.basis) {
-                parts.push(`    - Basis: ${item.basis}`);
-              }
-              if (item.confidence) {
-                parts.push(`    - Confidence: ${item.confidence}`);
-              }
-            });
-          };
-          listSection("Trends", value.market_trends);
-          listSection("Dynamics", value.market_dynamics);
-          listSection("Forces", value.market_forces);
-          listSection("Adoption drivers", value.adoption_drivers);
-          listSection("Adoption barriers", value.adoption_barriers);
+          pushNamedList(parts, "Market norms", value.market_norms);
+          pushNamedList(parts, "Adoption drivers", value.adoption_drivers);
+          pushNamedList(parts, "Adoption barriers", value.adoption_barriers);
           return;
         }
         if (field.key === "marketAndCompetitorAnalysis.competitorInventory") {
@@ -195,159 +177,103 @@ export function createExportService({
             }
             return;
           }
-          const competitors = value?.competitors || [];
-          competitors.forEach((competitor) => {
-            parts.push(`- Competitor: ${escapeMarkdown(competitor.name || "")}`);
-            if (competitor.url) {
-              parts.push(`  - URL: ${escapeMarkdown(competitor.url)}`);
+          const competitors = value?.competitors;
+          const renderGroup = (label, items) => {
+            if (!Array.isArray(items) || !items.length) {
+              return;
             }
-            if (competitor.category) {
-              parts.push(`  - Category: ${escapeMarkdown(competitor.category)}`);
-            }
-            if (competitor.description) {
-              parts.push(`  - Description: ${escapeMarkdown(competitor.description)}`);
-            }
-            if (competitor.positioning) {
-              parts.push(`  - Positioning: ${escapeMarkdown(competitor.positioning)}`);
-            }
-            if (competitor.target_audience) {
-              parts.push(`  - Target audience: ${escapeMarkdown(competitor.target_audience)}`);
-            }
-          });
+            parts.push(`- ${label}:`);
+            items.forEach((competitor) => {
+              parts.push(
+                `  - ${escapeMarkdown(competitor.product_name || competitor.name || "")}`
+              );
+              if (competitor.url) {
+                parts.push(`    - URL: ${escapeMarkdown(competitor.url)}`);
+              }
+              if (competitor.description) {
+                parts.push(`    - Description: ${escapeMarkdown(competitor.description)}`);
+              }
+              if (competitor.positioning) {
+                parts.push(`    - Positioning: ${escapeMarkdown(competitor.positioning)}`);
+              }
+              if (competitor.target_audience) {
+                parts.push(
+                  `    - Target audience: ${escapeMarkdown(competitor.target_audience)}`
+                );
+              }
+            });
+          };
+          renderGroup("Direct competitors", competitors?.direct);
+          renderGroup("Indirect competitors", competitors?.indirect);
+          renderGroup("Substitutes", competitors?.substitute);
           return;
         }
         if (field.key === "marketAndCompetitorAnalysis.competitorCapabilities") {
-          const capabilities = value?.competitor_capabilities || [];
-          capabilities.forEach((capability) => {
-            parts.push(`- Competitor: ${escapeMarkdown(capability.competitor_name || "")}`);
-            pushNamedList(parts, "  Functional capabilities", capability.functional_capabilities);
-            pushNamedList(parts, "  Technical capabilities", capability.technical_capabilities);
-            pushNamedList(parts, "  Business capabilities", capability.business_capabilities);
-            pushNamedList(parts, "  Strengths", capability.strengths);
-            pushNamedList(parts, "  Limitations", capability.limitations);
-            if (capability.alignment_with_user_needs) {
-              parts.push(
-                `  - Alignment with user needs: ${escapeMarkdown(
-                  capability.alignment_with_user_needs
-                )}`
-              );
-            }
-          });
-          const patterns = value?.industry_capability_patterns || [];
-          if (patterns.length) {
-            parts.push("#### Industry capability patterns");
-            patterns.forEach((pattern) => {
-              parts.push(`- Pattern: ${escapeMarkdown(pattern.pattern_name || "")}`);
-              if (pattern.description) {
-                parts.push(`  - Description: ${escapeMarkdown(pattern.description)}`);
-              }
-            });
-          }
-          return;
-        }
-        if (field.key === "marketAndCompetitorAnalysis.gapsOpportunities") {
-          const gaps = value?.gaps_and_opportunities || {};
-          const renderGapList = (label, items) => {
+          const capabilities = value?.competitor_capabilities || {};
+          const renderGroup = (label, items) => {
             if (!Array.isArray(items) || !items.length) {
               return;
             }
             parts.push(`#### ${label}`);
-            items.forEach((item) => {
-              parts.push(`- Gap: ${escapeMarkdown(item.gap_description || "")}`);
-              if (Array.isArray(item.affected_user_segments)) {
-                const segments = item.affected_user_segments.map((segment) => segment).join(", ");
-                if (segments) {
-                  parts.push(`  - Affected user segments: ${escapeMarkdown(segments)}`);
-                }
+            items.forEach((capability) => {
+              parts.push(`- Capability: ${escapeMarkdown(capability.capability || "")}`);
+              if (capability.alignment_with_user_needs) {
+                parts.push(
+                  `  - Alignment with user needs: ${escapeMarkdown(
+                    capability.alignment_with_user_needs
+                  )}`
+                );
               }
-              parts.push(
-                `  - Opportunity: ${escapeMarkdown(item.opportunity_description || "")}`
-              );
-              if (item.user_value_potential) {
-                parts.push(`  - User value potential: ${item.user_value_potential}`);
-              }
-              if (item.feasibility) {
-                parts.push(`  - Feasibility: ${item.feasibility}`);
-              }
+              pushNamedList(parts, "  Owning competitors", capability.owning_competitors);
+              pushNamedList(parts, "  Gaps and limitations", capability.gaps_and_limitations);
             });
           };
-          renderGapList("Functional gaps", gaps.functional);
-          renderGapList("Technical gaps", gaps.technical);
-          renderGapList("Business gaps", gaps.business);
+          renderGroup("Functional", capabilities.Functional);
+          renderGroup("Technical", capabilities.Technical);
+          renderGroup("Business", capabilities.Business);
           return;
         }
-        if (field.key === "opportunityDefinition.opportunityStatement") {
-          if (value.opportunity_statement) {
-            parts.push(escapeMarkdown(value.opportunity_statement));
+        if (field.key === "marketAndCompetitorAnalysis.gapsOpportunities") {
+          const opportunities = value?.opportunities || [];
+          if (!Array.isArray(opportunities) || opportunities.length === 0) {
+            return;
           }
+          opportunities.forEach((item) => {
+            parts.push(`- Opportunity: ${escapeMarkdown(item.opportunity || "")}`);
+            if (item.why_it_remains_unaddressed) {
+              parts.push(
+                `  - Why it remains unaddressed: ${escapeMarkdown(
+                  item.why_it_remains_unaddressed
+                )}`
+              );
+            }
+            if (item.user_value_potential) {
+              parts.push(`  - User value potential: ${item.user_value_potential}`);
+            }
+          });
           return;
         }
         if (field.key === "opportunityDefinition.valueDrivers") {
           const drivers = value?.value_drivers || [];
           drivers.forEach((driver) => {
-            parts.push(`- Driver: ${escapeMarkdown(driver.name || "")}`);
-            if (driver.user_need_or_pain) {
-              parts.push(`  - User need or pain: ${escapeMarkdown(driver.user_need_or_pain)}`);
-            }
-            if (driver.user_value_impact) {
-              parts.push(`  - User value impact: ${driver.user_value_impact}`);
-            }
-            if (driver.business_value_lever) {
-              parts.push(`  - Business value lever: ${escapeMarkdown(driver.business_value_lever)}`);
-            }
-            if (driver.business_value_impact) {
-              parts.push(`  - Business value impact: ${driver.business_value_impact}`);
-            }
-            if (driver.priority) {
-              parts.push(`  - Priority: ${driver.priority}`);
-            }
+            parts.push(`- ${escapeMarkdown(String(driver || ""))}`);
           });
           return;
         }
-        if (field.key === "opportunityDefinition.marketFitHypothesis") {
-          const hypothesis = value?.market_fit_hypothesis || {};
-          const renderHypothesis = (label, items) => {
-            if (!Array.isArray(items) || !items.length) {
-              return;
+        if (field.key === "opportunityDefinition.feasibilityRisks") {
+          const risks = value?.feasibility_risks || [];
+          if (!Array.isArray(risks) || !risks.length) {
+            return;
+          }
+          risks.forEach((item) => {
+            parts.push(`- Risk type: ${escapeMarkdown(item.feasibility_risk_type || "")}`);
+            parts.push(`  - Risk: ${escapeMarkdown(item.feasibility_risk || "")}`);
+            if (item.why_it_matters) {
+              parts.push(
+                `  - Why it matters: ${escapeMarkdown(item.why_it_matters)}`
+              );
             }
-            parts.push(`#### ${label}`);
-            items.forEach((item) => {
-              parts.push(`- Hypothesis: ${escapeMarkdown(item.hypothesis || "")}`);
-              if (item.rationale) {
-                parts.push(`  - Rationale: ${escapeMarkdown(item.rationale)}`);
-              }
-              if (Array.isArray(item.key_risks_or_unknowns)) {
-                const risks = item.key_risks_or_unknowns.map((risk) => risk).join(", ");
-                if (risks) {
-                  parts.push(`  - Key risks or unknowns: ${escapeMarkdown(risks)}`);
-                }
-              }
-            });
-          };
-          renderHypothesis("Desirability", hypothesis.desirability);
-          renderHypothesis("Viability", hypothesis.viability);
-          return;
-        }
-        if (field.key === "opportunityDefinition.feasibilityAssessment") {
-          const assessment = value?.feasibility_assessment || {};
-          const renderConstraints = (label, items) => {
-            if (!Array.isArray(items) || !items.length) {
-              return;
-            }
-            parts.push(`#### ${label}`);
-            items.forEach((item) => {
-              parts.push(`- Constraint: ${escapeMarkdown(item.name || "")}`);
-              if (item.description) {
-                parts.push(`  - Description: ${escapeMarkdown(item.description)}`);
-              }
-              if (item.readiness) {
-                parts.push(`  - Readiness: ${item.readiness}`);
-              }
-            });
-          };
-          renderConstraints("Business constraints", assessment.business_constraints);
-          renderConstraints("User constraints", assessment.user_constraints);
-          renderConstraints("Technical concerns", assessment.technical_concerns);
+          });
           return;
         }
         parts.push(JSON.stringify(value, null, 2));

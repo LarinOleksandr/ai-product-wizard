@@ -10,11 +10,6 @@ const combineStringArrays = (left, right) => {
 
 const DiscoveryState = Annotation.Root({
   productIdea: Annotation(),
-  targetUser: Annotation(),
-  userMessages: Annotation({
-    reducer: combineStringArrays,
-    default: () => []
-  }),
   currentStage: Annotation(),
   decisions: Annotation({
     reducer: combineStringArrays,
@@ -53,14 +48,11 @@ async function orchestratorNode(state) {
 async function discoveryAgentNode(state) {
   const { produceDiscoveryDocument } = await import("./index.js");
   const result = await produceDiscoveryDocument({
-    productIdea: state.productIdea,
-    targetUser: state.targetUser,
-    userMessages: state.userMessages
+    productIdea: state.productIdea
   });
 
   return {
     discoveryDocument: result.discoveryDocument,
-    targetUser: state.targetUser,
     decisions: [
       `Discovery document drafted at ${new Date().toISOString()}`
     ],

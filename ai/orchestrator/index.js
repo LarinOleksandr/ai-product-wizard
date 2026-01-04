@@ -108,25 +108,31 @@ const FIELD_DEFINITIONS = [
   },
   {
     key: "problemUnderstanding.targetUsersSegments",
-    section: "target-users-segments",
+    section: "user-segments",
     type: "object",
-    outputKey: "target_segments",
+    outputKey: "user_segments",
     wrapOutputKey: true,
-    label: "Target Users & Segments"
+    label: "User Segments"
   },
   {
     key: "problemUnderstanding.userPainPoints",
     section: "user-pain-points",
     type: "object",
-    outputKey: "pain_point_themes",
+    outputKey: "user_pain_points",
     wrapOutputKey: true,
     label: "User Pain Points"
   },
   {
-    key: "problemUnderstanding.contextConstraints",
-    section: "context-constraints",
+    key: "problemUnderstanding.contextualFactors",
+    section: "contextual-factors",
     type: "object",
-    label: "Context & Constraints"
+    label: "Contextual Factors"
+  },
+  {
+    key: "problemUnderstanding.constraints",
+    section: "constraints",
+    type: "object",
+    label: "Constraints"
   },
   {
     key: "marketAndCompetitorAnalysis.marketLandscape",
@@ -136,9 +142,9 @@ const FIELD_DEFINITIONS = [
   },
   {
     key: "marketAndCompetitorAnalysis.competitorInventory",
-    section: "competitor-inventory",
+    section: "competitors",
     type: "object",
-    label: "Competitor Inventory"
+    label: "Competitors"
   },
   {
     key: "marketAndCompetitorAnalysis.competitorCapabilities",
@@ -148,19 +154,11 @@ const FIELD_DEFINITIONS = [
   },
   {
     key: "marketAndCompetitorAnalysis.gapsOpportunities",
-    section: "gaps-opportunities",
+    section: "opportunities",
     type: "object",
-    outputKey: "gaps_and_opportunities",
+    outputKey: "opportunities",
     wrapOutputKey: true,
-    label: "Gaps & Opportunities"
-  },
-  {
-    key: "opportunityDefinition.opportunityStatement",
-    section: "opportunity-statement",
-    type: "object",
-    outputKey: "opportunity_statement",
-    wrapOutputKey: true,
-    label: "Opportunity Statement"
+    label: "Opportunities"
   },
   {
     key: "opportunityDefinition.valueDrivers",
@@ -171,38 +169,23 @@ const FIELD_DEFINITIONS = [
     label: "Value Drivers"
   },
   {
-    key: "opportunityDefinition.marketFitHypothesis",
-    section: "market-fit-hypothesis",
+    key: "opportunityDefinition.feasibilityRisks",
+    section: "feasibility-risks",
     type: "object",
-    outputKey: "market_fit_hypothesis",
+    outputKey: "feasibility_risks",
     wrapOutputKey: true,
-    label: "Market Fit Hypothesis"
-  },
-  {
-    key: "opportunityDefinition.feasibilityAssessment",
-    section: "feasibility-assessment",
-    type: "object",
-    outputKey: "feasibility_assessment",
-    wrapOutputKey: true,
-    label: "Feasibility Assessment"
+    label: "Feasibility Risks"
   }
 ];
 
 const emptyMarketLandscape = {
-  market_definition: {
-    description: "",
-    excluded_adjacent_spaces: []
+  market_definition: "",
+  alternatives: {
+    direct_competitor_segments: [],
+    indirect_competitor_segments: [],
+    substitute_segments: []
   },
-  market_size: {
-    description: ""
-  },
-  market_maturity: {
-    classification: "emerging",
-    rationale: ""
-  },
-  market_trends: [],
-  market_dynamics: [],
-  market_forces: [],
+  market_norms: [],
   adoption_drivers: [],
   adoption_barriers: []
 };
@@ -212,29 +195,30 @@ const emptyCompetitorInventory = {
 };
 
 const emptyCompetitorCapabilities = {
-  competitor_capabilities: [],
-  industry_capability_patterns: []
+  competitor_capabilities: {
+    Functional: [],
+    Technical: [],
+    Business: []
+  }
 };
 
 const emptyGapsOpportunities = {
-  gaps_and_opportunities: {
-    functional: [],
-    technical: [],
-    business: []
-  }
+  opportunities: []
 };
 
 const emptyDocument = {
   problemUnderstanding: {
     problemStatement: "",
     targetUsersSegments: {
-      target_segments: []
+      user_segments: []
     },
     userPainPoints: {
-      pain_point_themes: []
+      user_segments: []
     },
-    contextConstraints: {
-      contextual_factors: [],
+    contextualFactors: {
+      contextual_factors: []
+    },
+    constraints: {
       constraints: []
     }
   },
@@ -245,24 +229,11 @@ const emptyDocument = {
     gapsOpportunities: emptyGapsOpportunities
   },
   opportunityDefinition: {
-    opportunityStatement: {
-      opportunity_statement: ""
-    },
     valueDrivers: {
       value_drivers: []
     },
-    marketFitHypothesis: {
-      market_fit_hypothesis: {
-        desirability: [],
-        viability: []
-      }
-    },
-    feasibilityAssessment: {
-      feasibility_assessment: {
-        business_constraints: [],
-        user_constraints: [],
-        technical_concerns: []
-      }
+    feasibilityRisks: {
+      feasibility_risks: []
     }
   }
 };
@@ -328,8 +299,11 @@ function emptyValueForField(field) {
   if (field.type === "array") {
     return [];
   }
-  if (field.key === "problemUnderstanding.contextConstraints") {
-    return { contextual_factors: [], constraints: [] };
+  if (field.key === "problemUnderstanding.contextualFactors") {
+    return { contextual_factors: [] };
+  }
+  if (field.key === "problemUnderstanding.constraints") {
+    return { constraints: [] };
   }
   if (field.key === "marketAndCompetitorAnalysis.marketLandscape") {
     return emptyMarketLandscape;
@@ -343,41 +317,15 @@ function emptyValueForField(field) {
   if (field.key === "marketAndCompetitorAnalysis.gapsOpportunities") {
     return emptyGapsOpportunities;
   }
-  if (field.key === "opportunityDefinition.opportunityStatement") {
-    return { opportunity_statement: "" };
-  }
   if (field.key === "opportunityDefinition.valueDrivers") {
     return { value_drivers: [] };
   }
-  if (field.key === "opportunityDefinition.marketFitHypothesis") {
-    return { market_fit_hypothesis: { desirability: [], viability: [] } };
-  }
-  if (field.key === "opportunityDefinition.feasibilityAssessment") {
+  if (field.key === "opportunityDefinition.feasibilityRisks") {
     return {
-      feasibility_assessment: {
-        business_constraints: [],
-        user_constraints: [],
-        technical_concerns: []
-      }
+      feasibility_risks: []
     };
   }
   return {};
-}
-
-function normalizeUserMessages(messages) {
-  if (!messages) {
-    return [];
-  }
-  if (Array.isArray(messages)) {
-    return messages.map((item) => item.toString().trim()).filter(Boolean);
-  }
-  if (typeof messages === "string") {
-    return messages
-      .split("\n")
-      .map((item) => item.trim())
-      .filter(Boolean);
-  }
-  return [];
 }
 
 async function loadGlossary() {
@@ -450,27 +398,26 @@ const EXPORT_STRUCTURE = [
     title: "Problem Understanding",
     fields: [
       { key: "problemUnderstanding.problemStatement", label: "Problem Statement" },
-      { key: "problemUnderstanding.targetUsersSegments", label: "Target Users & Segments" },
+      { key: "problemUnderstanding.targetUsersSegments", label: "User Segments" },
       { key: "problemUnderstanding.userPainPoints", label: "User Pain Points" },
-      { key: "problemUnderstanding.contextConstraints", label: "Context & Constraints" }
+      { key: "problemUnderstanding.contextualFactors", label: "Contextual Factors" },
+      { key: "problemUnderstanding.constraints", label: "Constraints" }
     ]
   },
   {
     title: "Market and Competitor Analysis",
     fields: [
       { key: "marketAndCompetitorAnalysis.marketLandscape", label: "Market Landscape" },
-      { key: "marketAndCompetitorAnalysis.competitorInventory", label: "Competitor Inventory" },
+      { key: "marketAndCompetitorAnalysis.competitorInventory", label: "Competitors" },
       { key: "marketAndCompetitorAnalysis.competitorCapabilities", label: "Competitor Capabilities" },
-      { key: "marketAndCompetitorAnalysis.gapsOpportunities", label: "Gaps & Opportunities" }
+      { key: "marketAndCompetitorAnalysis.gapsOpportunities", label: "Opportunities" }
     ]
   },
   {
     title: "Opportunity Definition",
     fields: [
-      { key: "opportunityDefinition.opportunityStatement", label: "Opportunity Statement" },
       { key: "opportunityDefinition.valueDrivers", label: "Value Drivers" },
-      { key: "opportunityDefinition.marketFitHypothesis", label: "Market Fit Hypothesis" },
-      { key: "opportunityDefinition.feasibilityAssessment", label: "Feasibility Assessment" }
+      { key: "opportunityDefinition.feasibilityRisks", label: "Feasibility Risks" }
     ]
   }
 ];
@@ -511,11 +458,6 @@ const REQUIRED_FIELDS = [
     key: "productIdea",
     question: "What is the product idea or main problem we are solving?",
     description: "Product idea"
-  },
-  {
-    key: "targetUser",
-    question: "Who is the primary user or customer for this product?",
-    description: "Target user"
   }
 ];
 
@@ -534,7 +476,6 @@ const workflowService = createWorkflowService({
   setNestedValue,
   getNestedValue,
   generateFieldValueWithOutput,
-  normalizeUserMessages
 });
 
   const {
@@ -601,11 +542,14 @@ const server = http.createServer(async (req, res) => {
     if (error.lastPrompt) {
       payload.lastPrompt = error.lastPrompt;
     }
-    if (typeof error.lastOutput === "string") {
+    if (typeof error.lastOutput !== "undefined") {
       payload.lastOutput = error.lastOutput;
     }
     if (error.lastOutputFieldKey) {
       payload.lastOutputFieldKey = error.lastOutputFieldKey;
+    }
+    if (Array.isArray(error.validationErrors)) {
+      payload.validationErrors = error.validationErrors;
     }
     sendJson(res, 400, payload);
     return;
@@ -614,7 +558,7 @@ const server = http.createServer(async (req, res) => {
   sendJson(res, 200, {
     status: "ok",
     message:
-      "POST /discovery with { productIdea, targetUser, userMessages?, changeReason? } to run the agent.",
+      "POST /discovery with { productIdea, changeReason? } to run the agent.",
     timestamp: new Date().toISOString()
   });
 });
