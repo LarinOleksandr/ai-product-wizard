@@ -11,9 +11,9 @@ Produce a **Market Landscape** section with a clear market definition, alternati
    - Provide a recognized market/category name that fits the Problem Statement and User Segments.
 
 2. List alternatives:
-   - Direct competitor segments
-   - Indirect competitor segments
-   - Substitutes segments
+   - Direct competitor segments. DO NOT use specific companies or products.
+   - Indirect competitor segments. DO NOT use specific companies or products.
+   - Substitutes segments. DO NOT use specific companies or products.
 3. Describe market norms:
    - Baseline capabilities users assume
    - Standard UX/service expectations

@@ -27,8 +27,12 @@ export function createExportService({
     });
   }
 
-  function renderDiscoveryMarkdown(document) {
+  function renderDiscoveryMarkdown(document, productIdea = "") {
     const parts = ["# Discovery Document"];
+    if (typeof productIdea === "string" && productIdea.trim()) {
+      parts.push("\n## Product Idea");
+      parts.push(escapeMarkdown(productIdea));
+    }
 
     exportStructure.forEach((section) => {
       parts.push(`\n## ${section.title}`);
@@ -261,18 +265,23 @@ export function createExportService({
           return;
         }
         if (field.key === "opportunityDefinition.feasibilityRisks") {
-          const risks = value?.feasibility_risks || [];
-          if (!Array.isArray(risks) || !risks.length) {
+          const groups = value?.feasibility_risks || [];
+          if (!Array.isArray(groups) || !groups.length) {
             return;
           }
-          risks.forEach((item) => {
-            parts.push(`- Risk type: ${escapeMarkdown(item.feasibility_risk_type || "")}`);
-            parts.push(`  - Risk: ${escapeMarkdown(item.feasibility_risk || "")}`);
-            if (item.why_it_matters) {
-              parts.push(
-                `  - Why it matters: ${escapeMarkdown(item.why_it_matters)}`
-              );
-            }
+          groups.forEach((group) => {
+            parts.push(
+              `- Risk type: ${escapeMarkdown(group.feasibility_risk_type || "")}`
+            );
+            const risks = Array.isArray(group.risks) ? group.risks : [];
+            risks.forEach((risk) => {
+              parts.push(`  - Risk: ${escapeMarkdown(risk.feasibility_risk || "")}`);
+              if (risk.why_it_matters) {
+                parts.push(
+                  `    - Why it matters: ${escapeMarkdown(risk.why_it_matters)}`
+                );
+              }
+            });
           });
           return;
         }

@@ -1,7 +1,9 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { Wand2 } from "lucide-react";
 
-import appIcon from "../assets/ai-product-wizard-app.png";
+import appIcon from "../assets/alchemia-big-logo.png";
+import textLogo from "../assets/alchemia-small-text-logo.png";
 import {
   Dialog,
   DialogContent,
@@ -28,7 +30,9 @@ const wizardCards = [
 ];
 
 const sampleIdea = `For students with dyslexia, our AI-powered 'Sensory Atlas' uses supportive graphics and personalized soundscapes to create an immersive learning environment.
+
 The core mechanic is a system adaptation to their individual reading patterns, fostering a deeper connection between the senses and the material being learned.
+
 By cultivating this multisensory awareness, students can develop a more intuitive understanding of complex concepts and retain information more effectively.`;
 
 export function HomePage() {
@@ -71,7 +75,7 @@ export function HomePage() {
       }
       const formattedIdea = data.productIdea
         .replace(/\r?\n+/g, " ")
-        .replace(/([.!?])\s+/g, "$1\n");
+        .replace(/([.!?])\s+/g, "$1\n\n");
       setIdea(formattedIdea);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to generate an idea.");
@@ -120,26 +124,23 @@ export function HomePage() {
       <section className="p-8 text-center">
         <img
           src={appIcon}
-          alt="AI Product Wizard"
+          alt="AlchemIA"
           className="mx-auto h-64 w-64"
         />
-        <h1 className="mt-4 text-5xl font-semibold text-gray-900">
-          AI Product Wizard
-        </h1>
         <p className="mt-3 text-gray-600">
           <span className="block text-2xl">
-            Transform your{" "}
+            Turn{" "}
             <span className="font-semibold" style={{ color: "#5F23C2" }}>
-              unique idea
+              Your Idea
             </span>{" "}
-            into a functional, scalable{" "}
+            into a{" "}
             <span className="font-semibold" style={{ color: "#426BDB" }}>
-              digital product
+              Digital Product
             </span>
-            .
+            {" "}specification
           </span>
           <span className="mt-2 block text-base">
-            Consistently, controlled, and with guaranteed results.
+            and then build it with full control and maximum speed
           </span>
         </p>
 
@@ -148,31 +149,32 @@ export function HomePage() {
             <p className="text-left text-sm text-gray-500">Use this idea, or bring your own</p>
             <button
               type="button"
-              className="rounded-lg border border-blue-600 px-4 py-2 text-sm font-medium text-blue-700 disabled:opacity-60"
+              className="inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium text-blue-700 disabled:opacity-60"
               onClick={() => generateIdea()}
               disabled={isGenerating}
             >
-              {isGenerating ? "Generating..." : "Another idea"}
+              <Wand2 className="h-4 w-4" />
+              <span className="ml-2">{isGenerating ? "Generating..." : "Another Great Idea"}</span>
             </button>
           </div>
-          <div className="mt-3">
+          <div className="mt-3 rounded-lg bg-gradient-to-br from-blue-600 to-violet-600 p-[3px]">
             <textarea
-              className="min-h-[160px] w-full resize-none overflow-hidden rounded-lg border-[3px] border-blue-500 bg-white px-4 py-3 text-base shadow-sm focus:border-blue-600 focus:outline-none"
-            value={idea}
-            onChange={(event) => {
-              setIdea(event.target.value);
-              resizeTextarea();
-            }}
-            onInput={resizeTextarea}
-            placeholder={isGenerating ? "Generating idea..." : undefined}
-            ref={textareaRef}
-          />
+              className="min-h-[160px] w-full resize-none overflow-hidden rounded-lg bg-white px-4 py-3 text-base leading-tight shadow-sm focus:outline-none"
+              value={idea}
+              onChange={(event) => {
+                setIdea(event.target.value);
+                resizeTextarea();
+              }}
+              onInput={resizeTextarea}
+              placeholder={isGenerating ? "Generating idea..." : undefined}
+              ref={textareaRef}
+            />
           </div>
           {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
           <div className="mt-6 flex justify-center">
             <Link
               to="/wizard"
-              className="w-full max-w-xs rounded-lg bg-blue-600 px-6 py-3 text-center text-base font-semibold text-white"
+              className="w-full max-w-xs rounded-lg bg-gradient-to-br from-blue-600 to-violet-600 px-6 py-3 text-center text-base font-semibold text-white hover:from-blue-700 hover:to-violet-700"
               onClick={() => {
                 if (idea.trim()) {
                   localStorage.setItem("discoveryWizard.productIdea", idea.trim());
@@ -183,45 +185,51 @@ export function HomePage() {
               Let the magic begin
             </Link>
           </div>
-          <div className="mt-4 text-sm text-gray-600">
-            To save results of your work you will need to register.
+          <div className="mt-4 text-center text-sm text-gray-600">
+            To save your work{" "}
             <button
               type="button"
-              className="ml-2 text-sm font-semibold text-blue-600 hover:underline"
+              className="font-semibold text-blue-600 hover:underline"
+              onClick={() => {
+                setAuthMode("sign-in");
+                setIsAuthOpen(true);
+              }}
+            >
+              Sign in
+            </button>{" "}
+            or{" "}
+            <button
+              type="button"
+              className="font-semibold text-blue-600 hover:underline"
               onClick={() => {
                 setAuthMode("sign-up");
                 setIsAuthOpen(true);
               }}
             >
-              Sign up
+              Register
             </button>
+            .
           </div>
         </div>
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-xl font-semibold text-gray-800">Wizards</h2>
         <div className="grid gap-4 md:grid-cols-3">
           {wizardCards.map((card) => {
-            const cardClasses = `rounded-xl border bg-white p-4 shadow-sm ${
-              card.active ? "border-blue-200" : "border-gray-200 opacity-60"
+            const cardClasses = `rounded-xl p-4 shadow-sm ${
+              card.active
+                ? "bg-gradient-to-br from-blue-200/80 to-violet-200/80"
+                : "bg-gray-200 opacity-60"
             }`;
             const content = (
               <>
                 <div className="flex items-start justify-between">
-                  <h3 className="text-sm font-semibold text-gray-800">
+                  <h3 className="text-base font-semibold text-gray-800">
                     {card.title}
                   </h3>
-                  {!card.active && (
-                    <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500">
-                      Locked
-                    </span>
-                  )}
                 </div>
                 <p className="mt-2 text-xs text-gray-500">
-                  {card.active
-                    ? "Start building a discovery document."
-                    : "In Development"}
+                  {card.active ? "Start building a discovery document." : "Coming soon..."}
                 </p>
               </>
             );
@@ -245,12 +253,17 @@ export function HomePage() {
       <Dialog open={isAuthOpen} onOpenChange={setIsAuthOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>
-              {authMode === "sign-in" ? "Sign in" : "Create an account"}
-            </DialogTitle>
-            <DialogDescription>
-              Register to save documents and manage projects.
-            </DialogDescription>
+            <div className="flex flex-col items-center gap-3">
+              <img src={textLogo} alt="AlchemIA" className="h-6" />
+              <DialogTitle>
+                {authMode === "sign-in" ? "Sign in" : "Create your account"}
+              </DialogTitle>
+              <DialogDescription className="text-center">
+                {authMode === "sign-in"
+                  ? "Welcome back! Please sign in to continue."
+                  : "Welcome! Please fill in the details to get started."}
+              </DialogDescription>
+            </div>
           </DialogHeader>
           <form className="space-y-3" onSubmit={handleAuthSubmit}>
             <div>
@@ -301,7 +314,7 @@ export function HomePage() {
             </DialogFooter>
           </form>
           <div className="pt-2 text-xs text-slate-500">
-            {authMode === "sign-in" ? "No account yet?" : "Already have an account?"}{" "}
+            {authMode === "sign-in" ? "Don't have an account?" : "Already have an account?"}{" "}
             <button
               type="button"
               className="font-medium text-blue-600"
@@ -309,7 +322,7 @@ export function HomePage() {
                 setAuthMode((prev) => (prev === "sign-in" ? "sign-up" : "sign-in"))
               }
             >
-              {authMode === "sign-in" ? "Create one" : "Sign in"}
+              {authMode === "sign-in" ? "Register" : "Sign in"}
             </button>
           </div>
         </DialogContent>

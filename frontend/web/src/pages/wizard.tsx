@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { Trash2 } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { FileDown, FileText, Trash2 } from "lucide-react";
 import type { Session } from "@supabase/supabase-js";
 
 import { Button } from "../components/ui/button";
@@ -139,14 +140,18 @@ type ValueDrivers = {
   value_drivers: string[];
 };
 
-type FeasibilityRisk = {
-  feasibility_risk_type: "business" | "user" | "technical";
+type FeasibilityRiskItem = {
   feasibility_risk: string;
   why_it_matters: string;
 };
 
+type FeasibilityRiskGroup = {
+  feasibility_risk_type: "business" | "user" | "technical";
+  risks: FeasibilityRiskItem[];
+};
+
 type FeasibilityRisks = {
-  feasibility_risks: FeasibilityRisk[];
+  feasibility_risks: FeasibilityRiskGroup[];
 };
 
 type DiscoveryDocument = {
@@ -601,34 +606,71 @@ function normalizeValueDriversValue(value?: ValueDrivers | null): ValueDrivers {
 function normalizeFeasibilityRisksValue(
   value?: FeasibilityRisks | null
 ): FeasibilityRisks {
+  const buildGroups = (groups: FeasibilityRiskGroup[]) =>
+    FEASIBILITY_RISK_TYPES.map((riskType) => {
+      const match = groups.find((group) => group.feasibility_risk_type === riskType);
+      return {
+        feasibility_risk_type: riskType,
+        risks: Array.isArray(match?.risks) ? match?.risks || [] : []
+      };
+    });
+
   if (Array.isArray(value)) {
-    return { feasibility_risks: value as FeasibilityRisk[] };
+    return { feasibility_risks: buildGroups(value as FeasibilityRiskGroup[]) };
   }
   if (Array.isArray(value?.feasibility_risks)) {
-    return { feasibility_risks: value.feasibility_risks };
+    const items = value.feasibility_risks as any[];
+    const groups = items
+      .filter((item) => item && typeof item === "object" && Array.isArray(item.risks))
+      .map((item) => ({
+        feasibility_risk_type: item.feasibility_risk_type,
+        risks: item.risks
+      })) as FeasibilityRiskGroup[];
+    if (groups.length > 0) {
+      return { feasibility_risks: buildGroups(groups) };
+    }
+    const flatRisks = items
+      .filter((item) => item && typeof item === "object")
+      .map((item) => ({
+        feasibility_risk_type: item.feasibility_risk_type,
+        feasibility_risk: item.feasibility_risk,
+        why_it_matters: item.why_it_matters
+      }));
+    return {
+      feasibility_risks: FEASIBILITY_RISK_TYPES.map((riskType) => ({
+        feasibility_risk_type: riskType,
+        risks: flatRisks
+          .filter((risk) => risk.feasibility_risk_type === riskType)
+          .map((risk) => ({
+            feasibility_risk: risk.feasibility_risk || "",
+            why_it_matters: risk.why_it_matters || ""
+          }))
+      }))
+    };
   }
   const legacy = (value as any)?.feasibility_assessment;
   if (legacy && typeof legacy === "object") {
-    const mapLegacy = (
-      items: any[],
-      riskType: FeasibilityRisk["feasibility_risk_type"]
-    ) =>
+    const mapLegacy = (items: any[]) =>
       Array.isArray(items)
         ? items.map((item) => ({
-            feasibility_risk_type: riskType,
             feasibility_risk: item?.name || "",
             why_it_matters: item?.description || ""
           }))
         : [];
     return {
       feasibility_risks: [
-        ...mapLegacy(legacy.business_constraints, "business"),
-        ...mapLegacy(legacy.user_constraints, "user"),
-        ...mapLegacy(legacy.technical_concerns, "technical")
+        { feasibility_risk_type: "business", risks: mapLegacy(legacy.business_constraints) },
+        { feasibility_risk_type: "user", risks: mapLegacy(legacy.user_constraints) },
+        { feasibility_risk_type: "technical", risks: mapLegacy(legacy.technical_concerns) }
       ]
     };
   }
-  return { feasibility_risks: [] };
+  return {
+    feasibility_risks: FEASIBILITY_RISK_TYPES.map((riskType) => ({
+      feasibility_risk_type: riskType,
+      risks: []
+    }))
+  };
 }
 
 function hasFieldValue(field: FieldDefinition, value: unknown): boolean {
@@ -709,7 +751,10 @@ function hasFieldValue(field: FieldDefinition, value: unknown): boolean {
   }
   if (field.key === "opportunityDefinition.feasibilityRisks") {
     const risksValue = value as FeasibilityRisks;
-    return Array.isArray(risksValue.feasibility_risks) && risksValue.feasibility_risks.length > 0;
+    return Array.isArray(risksValue.feasibility_risks)
+      && risksValue.feasibility_risks.some(
+        (group) => Array.isArray(group?.risks) && group.risks.length > 0
+      );
   }
   if (field.outputKey) {
     const collection = (value as Record<string, unknown>)[field.outputKey];
@@ -727,6 +772,8 @@ function hasFieldValue(field: FieldDefinition, value: unknown): boolean {
 }
 
 export function WizardPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     productIdea: ""
   });
@@ -813,6 +860,23 @@ export function WizardPage() {
     resizeTextarea(llmPromptRef.current);
     resizeTextarea(llmOutputRef.current);
   }, [errorPromptText, errorOutputText, debugPrompt, debugOutput, latestRecord]);
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const authParam = params.get("auth");
+    if (authParam === "sign-in" || authParam === "sign-up") {
+      setAuthMode(authParam);
+      setIsAuthModalOpen(true);
+      params.delete("auth");
+      const nextSearch = params.toString();
+      navigate(
+        {
+          pathname: location.pathname,
+          search: nextSearch ? `?${nextSearch}` : ""
+        },
+        { replace: true }
+      );
+    }
+  }, [location.pathname, location.search, navigate]);
   const [draftFields, setDraftFields] = useState<
     Record<
       string,
@@ -2193,7 +2257,7 @@ export function WizardPage() {
               </button>
               <button
                 type="button"
-                className="rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white"
+                className="rounded border bg-white px-3 py-2 text-sm font-medium text-gray-700"
                 onClick={() => {
                   const fieldKey = confirmRegenerateFieldKey;
                   setConfirmRegenerateFieldKey(null);
@@ -2226,7 +2290,7 @@ export function WizardPage() {
               </button>
               <button
                 type="button"
-                className="rounded border border-red-600 bg-red-50 px-3 py-2 text-sm text-red-700"
+                className="rounded border bg-white px-3 py-2 text-sm font-medium text-gray-700"
                 onClick={confirmStartNewDocument}
               >
                 Yes, erase
@@ -2238,7 +2302,7 @@ export function WizardPage() {
       {confirmClearFieldKey && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
           <div className="w-full max-w-md rounded-lg border bg-white p-5 shadow-lg">
-            <p className="text-sm font-semibold text-gray-900">Clear block?</p>
+            <p className="text-sm font-semibold text-gray-900">Clear Block?</p>
             <p className="mt-2 text-sm text-gray-600">
               This will clear this block and all later blocks. Continue?
             </p>
@@ -2252,7 +2316,7 @@ export function WizardPage() {
               </button>
               <button
                 type="button"
-                className="rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white"
+                className="rounded border bg-white px-3 py-2 text-sm font-medium text-gray-700"
                 onClick={() => {
                   const fieldKey = confirmClearFieldKey;
                   setConfirmClearFieldKey(null);
@@ -2261,7 +2325,7 @@ export function WizardPage() {
                   }
                 }}
               >
-                Clear block
+                Clear Block
               </button>
             </div>
           </div>
@@ -2284,13 +2348,13 @@ export function WizardPage() {
               </button>
               <button
                 type="button"
-                className="rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white"
+                className="rounded border bg-white px-3 py-2 text-sm font-normal text-gray-700"
                 onClick={() => {
                   setConfirmClearDocument(false);
                   void confirmClearDocumentAction();
                 }}
               >
-                Clear document
+                Clear Document
               </button>
             </div>
           </div>
@@ -2298,13 +2362,8 @@ export function WizardPage() {
       )}
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-start gap-3">
-          <img
-            src={discoveryDocumentIcon}
-            alt=""
-            className="h-7 w-7"
-          />
           <div>
-            <h1 className="text-xl font-semibold">Discovery Document Wizard</h1>
+            <h1 className="text-2xl font-semibold">Discovery Wizard</h1>
             <p className="text-sm text-gray-600">
               Enter your idea, then generate the document section by section (recommended) or as a single complete run.
             </p>
@@ -2374,7 +2433,7 @@ By doing so, users experience a sense of control and empowerment over their well
 
     <button
       type="button"
-      className="rounded border px-3 py-2 text-sm disabled:opacity-60"
+      className="rounded border px-4 py-2 text-sm font-medium text-gray-700 disabled:opacity-60"
       onClick={handleGenerateEntireDocument}
       disabled={
         status === "running" ||
@@ -2386,13 +2445,13 @@ By doing so, users experience a sense of control and empowerment over their well
           !isDocumentCleared(latestRecord))
       }
     >
-      {isGeneratingAll ? "Generating…" : "Generate Entire Document"}
+      {isGeneratingAll ? "Generating..." : "Generate Entire Document"}
     </button>
 
     {isFullGenerationActive && (
       <button
         type="button"
-        className="rounded border px-3 py-2 text-sm text-red-600 disabled:opacity-60"
+        className="rounded border px-4 py-2 text-sm font-medium text-gray-700 disabled:opacity-60"
         onClick={cancelGenerateAll}
       >
         Cancel
@@ -2404,6 +2463,11 @@ By doing so, users experience a sense of control and empowerment over their well
           <section className="rounded-lg border bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3 whitespace-nowrap flex-nowrap">
+                <img
+                  src={discoveryDocumentIcon}
+                  alt=""
+                  className="h-7 w-7"
+                />
                 <h2 className="text-xl font-semibold">Discovery Document</h2>
                 <span
                   className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${statusClass}`}
@@ -2419,27 +2483,33 @@ By doing so, users experience a sense of control and empowerment over their well
                   <div className="flex flex-wrap items-center gap-2">
                     <button
                       type="button"
-                      className="rounded border px-3 py-2 text-sm disabled:opacity-60"
+                      className="inline-flex items-center rounded border px-3 py-2 text-sm disabled:opacity-60"
                       onClick={exportMarkdown}
                       disabled={!latestVersion || isGeneratingAll || isExportingMarkdown}
                     >
-                      {isExportingMarkdown ? "Preparing MD…" : "Export MD"}
+                      <span className="inline-flex items-center gap-2">
+                        <FileText className="h-4 w-4" />
+                        {isExportingMarkdown ? "Preparing MD..." : "Export MD"}
+                      </span>
                     </button>
                     <button
                       type="button"
-                      className="rounded border px-3 py-2 text-sm disabled:opacity-60"
+                      className="inline-flex items-center rounded border px-3 py-2 text-sm disabled:opacity-60"
                       onClick={exportPdf}
                       disabled={!latestVersion || isGeneratingAll || isExportingPdf}
                     >
-                      {isExportingPdf ? "Preparing PDF…" : "Export PDF"}
+                      <span className="inline-flex items-center gap-2">
+                        <FileDown className="h-4 w-4" />
+                        {isExportingPdf ? "Preparing PDF..." : "Export PDF"}
+                      </span>
                     </button>
                     <button
                       type="button"
-                      className="rounded border px-3 py-2 text-sm disabled:opacity-60"
+                      className="inline-flex items-center rounded border bg-white px-3 py-2 text-sm font-normal text-gray-700 disabled:opacity-60"
                       onClick={clearDocument}
                       disabled={!latestVersion || isClearing || isGeneratingAll}
                     >
-                      {isClearing ? "Clearing…" : "Clear Document"}
+                      {isClearing ? "Clearing..." : "Clear Document"}
                     </button>
                   </div>
                 )}
@@ -2606,7 +2676,7 @@ By doing so, users experience a sense of control and empowerment over their well
                                       onClick={() => clearField(field.key)}
                                       disabled={clearingFieldKey === field.key}
                                     >
-                                      {clearingFieldKey === field.key ? "Clearing…" : "Clear block"}
+                                      {clearingFieldKey === field.key ? "Clearing..." : "Clear Block"}
                                     </button>
                                   )}
                                 </div>
@@ -3360,17 +3430,17 @@ function FieldEditor({
           {!approved && (
             <button
               type="button"
-              className="rounded border px-3 py-2 text-sm disabled:opacity-60"
+              className="rounded border bg-white px-3 py-2 text-sm font-normal text-gray-700 disabled:opacity-60"
               onClick={onClear}
               disabled={isClearing}
             >
-              {isClearing ? "Clearing…" : "Clear block"}
+              {isClearing ? "Clearing..." : "Clear Block"}
             </button>
           )}
         </div>
       )}
       <textarea
-        className="mt-2 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+        className="mt-2 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-900 disabled:border-slate-200"
         rows={type === "array" ? 4 : 3}
         value={value}
         onChange={(event) => onChange(event.target.value)}
@@ -3385,7 +3455,7 @@ function FieldEditor({
             onClick={onApprove}
             disabled={disabled || approved || isApproving || isEmpty}
           >
-            {isApproving ? "Approving…" : "Approve and Proceed"}
+            {isApproving ? "Approving..." : "Approve and Proceed"}
           </button>
         )}
         {showRegenerate && (
@@ -3539,11 +3609,11 @@ function TargetSegmentsEditor({
           {!approved && (
             <button
               type="button"
-              className="rounded border px-3 py-2 text-sm disabled:opacity-60"
+              className="rounded border bg-white px-3 py-2 text-sm font-normal text-gray-700 disabled:opacity-60"
               onClick={onClear}
               disabled={isClearing}
             >
-              {isClearing ? "Clearing..." : "Clear block"}
+              {isClearing ? "Clearing..." : "Clear Block"}
             </button>
           )}
         </div>
@@ -3579,7 +3649,7 @@ function TargetSegmentsEditor({
                   </div>
                   <div className="mt-1 flex items-center gap-2">
                     <input
-                      className="w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                      className="w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-900 disabled:border-slate-200"
                       value={segment.segment_name}
                       onChange={(event) =>
                         updateSegment(index, {
@@ -3610,7 +3680,7 @@ function TargetSegmentsEditor({
                   <div>
                     <label className="block text-xs text-gray-600">Segment type</label>
                     <select
-                      className="mt-1 w-auto min-w-[9rem] max-w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                      className="mt-1 w-auto min-w-[9rem] max-w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-900 disabled:border-slate-200"
                       value={segment.segment_type}
                       onChange={(event) =>
                         updateSegment(index, {
@@ -3631,7 +3701,7 @@ function TargetSegmentsEditor({
                   <div>
                     <label className="block text-xs text-gray-600">Usage contexts</label>
                     <textarea
-                      className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                      className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-900 disabled:border-slate-200"
                       rows={2}
                       value={toLineValue(segment.usage_contexts)}
                       onChange={(event) =>
@@ -3648,7 +3718,7 @@ function TargetSegmentsEditor({
                       Characteristics (one per line)
                     </label>
                     <textarea
-                      className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                      className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-900 disabled:border-slate-200"
                       rows={2}
                       value={toLineValue(segment.characteristics)}
                       onChange={(event) =>
@@ -3894,11 +3964,11 @@ function PainPointsEditor({
           {!approved && (
             <button
               type="button"
-              className="rounded border px-3 py-2 text-sm disabled:opacity-60"
+              className="rounded border bg-white px-3 py-2 text-sm font-normal text-gray-700 disabled:opacity-60"
               onClick={onClear}
               disabled={isClearing}
             >
-              {isClearing ? "Clearing..." : "Clear block"}
+              {isClearing ? "Clearing..." : "Clear Block"}
             </button>
           )}
         </div>
@@ -3939,7 +4009,7 @@ function PainPointsEditor({
                   </div>
                   <div className="mt-1 flex items-center gap-2">
                     <select
-                      className="w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                      className="w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-900 disabled:border-slate-200"
                       value={group.user_segment}
                       onChange={(event) =>
                         updateGroup(groupIndex, {
@@ -4004,7 +4074,7 @@ function PainPointsEditor({
                           </div>
                           <div className="mt-1 flex items-center gap-2">
                             <input
-                              className="w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                              className="w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-900 disabled:border-slate-200"
                               value={point.name}
                               onChange={(event) =>
                                 updatePainPoint(groupIndex, pointIndex, {
@@ -4036,7 +4106,7 @@ function PainPointsEditor({
                                 Description (behavioral evidence)
                               </label>
                               <textarea
-                                className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                                className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-900 disabled:border-slate-200"
                                 rows={2}
                                 value={point.description}
                                 onChange={(event) =>
@@ -4054,7 +4124,7 @@ function PainPointsEditor({
                                   Severity
                                 </label>
                                 <select
-                                  className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                                  className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-900 disabled:border-slate-200"
                                   value={point.severity}
                                   onChange={(event) =>
                                     updatePainPoint(groupIndex, pointIndex, {
@@ -4074,7 +4144,7 @@ function PainPointsEditor({
                                   Frequency
                                 </label>
                                 <select
-                                  className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                                  className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-900 disabled:border-slate-200"
                                   value={point.frequency}
                                   onChange={(event) =>
                                     updatePainPoint(groupIndex, pointIndex, {
@@ -4255,11 +4325,11 @@ function ContextualFactorsEditor({
           {!approved && (
             <button
               type="button"
-              className="rounded border px-3 py-2 text-sm disabled:opacity-60"
+              className="rounded border bg-white px-3 py-2 text-sm font-normal text-gray-700 disabled:opacity-60"
               onClick={onClear}
               disabled={isClearing}
             >
-              {isClearing ? "Clearing..." : "Clear block"}
+              {isClearing ? "Clearing..." : "Clear Block"}
             </button>
           )}
         </div>
@@ -4295,7 +4365,7 @@ function ContextualFactorsEditor({
                   </div>
                   <div className="mt-1 flex items-center gap-2">
                     <input
-                      className="w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                      className="w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-900 disabled:border-slate-200"
                       value={group.factor_group}
                       onChange={(event) =>
                         updateGroup(groupIndex, {
@@ -4331,7 +4401,7 @@ function ContextualFactorsEditor({
                       <label className="block text-xs text-gray-600">Factor Name</label>
                       <div className="mt-1 flex items-center gap-2">
                         <input
-                          className="w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                          className="w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-900 disabled:border-slate-200"
                           value={factor.name}
                           onChange={(event) =>
                             updateFactor(groupIndex, factorIndex, {
@@ -4359,7 +4429,7 @@ function ContextualFactorsEditor({
                     <div className="mt-2">
                       <label className="block text-xs text-gray-600">Description</label>
                       <textarea
-                        className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                        className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-900 disabled:border-slate-200"
                         rows={2}
                         value={factor.description}
                         onChange={(event) =>
@@ -4530,11 +4600,11 @@ function ConstraintsEditor({
           {!approved && (
             <button
               type="button"
-              className="rounded border px-3 py-2 text-sm disabled:opacity-60"
+              className="rounded border bg-white px-3 py-2 text-sm font-normal text-gray-700 disabled:opacity-60"
               onClick={onClear}
               disabled={isClearing}
             >
-              {isClearing ? "Clearing..." : "Clear block"}
+              {isClearing ? "Clearing..." : "Clear Block"}
             </button>
           )}
         </div>
@@ -4570,7 +4640,7 @@ function ConstraintsEditor({
                   </div>
                   <div className="mt-1 flex items-center gap-2">
                     <input
-                      className="w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                      className="w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-900 disabled:border-slate-200"
                       value={group.constraint_group}
                       onChange={(event) =>
                         updateGroup(groupIndex, {
@@ -4606,7 +4676,7 @@ function ConstraintsEditor({
                       <label className="block text-xs text-gray-600">Constraint Name</label>
                       <div className="mt-1 flex items-center gap-2">
                         <input
-                          className="w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                          className="w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-900 disabled:border-slate-200"
                           value={constraint.name}
                           onChange={(event) =>
                             updateConstraint(groupIndex, constraintIndex, {
@@ -4634,7 +4704,7 @@ function ConstraintsEditor({
                     <div className="mt-2">
                       <label className="block text-xs text-gray-600">Description</label>
                       <textarea
-                        className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                        className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-900 disabled:border-slate-200"
                         rows={2}
                         value={constraint.description}
                         onChange={(event) =>
@@ -4771,11 +4841,11 @@ function MarketLandscapeEditor({
           {!approved && (
             <button
               type="button"
-              className="rounded border px-3 py-2 text-sm disabled:opacity-60"
+              className="rounded border bg-white px-3 py-2 text-sm font-normal text-gray-700 disabled:opacity-60"
               onClick={onClear}
               disabled={isClearing}
             >
-              {isClearing ? "Clearing..." : "Clear block"}
+              {isClearing ? "Clearing..." : "Clear Block"}
             </button>
           )}
         </div>
@@ -4784,7 +4854,7 @@ function MarketLandscapeEditor({
       <div className="mt-3">
         <label className="block text-xs text-gray-600">Market definition</label>
         <textarea
-          className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+          className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-900 disabled:border-slate-200"
           rows={2}
           value={safeValue.market_definition}
           onChange={(event) =>
@@ -4800,7 +4870,7 @@ function MarketLandscapeEditor({
             Direct competitor segments (one per line)
           </label>
           <textarea
-            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-900 disabled:border-slate-200"
             rows={3}
             value={toLineValue(safeValue.alternatives.direct_competitor_segments)}
             onChange={(event) =>
@@ -4814,7 +4884,7 @@ function MarketLandscapeEditor({
             Indirect competitor segments (one per line)
           </label>
           <textarea
-            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-900 disabled:border-slate-200"
             rows={3}
             value={toLineValue(safeValue.alternatives.indirect_competitor_segments)}
             onChange={(event) =>
@@ -4828,7 +4898,7 @@ function MarketLandscapeEditor({
             Substitutes (one per line)
           </label>
           <textarea
-            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-900 disabled:border-slate-200"
             rows={3}
             value={toLineValue(safeValue.alternatives.substitute_segments)}
             onChange={(event) =>
@@ -4842,7 +4912,7 @@ function MarketLandscapeEditor({
       <div className="mt-3">
         <label className="block text-xs text-gray-600">Market norms (one per line)</label>
         <textarea
-          className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+          className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-900 disabled:border-slate-200"
           rows={3}
           value={toLineValue(safeValue.market_norms)}
           onChange={(event) =>
@@ -4858,7 +4928,7 @@ function MarketLandscapeEditor({
             Adoption drivers (one per line)
           </label>
           <textarea
-            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-900 disabled:border-slate-200"
             rows={3}
             value={toLineValue(safeValue.adoption_drivers)}
             onChange={(event) =>
@@ -4875,7 +4945,7 @@ function MarketLandscapeEditor({
             Adoption barriers (one per line)
           </label>
           <textarea
-            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+            className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-900 disabled:border-slate-200"
             rows={3}
             value={toLineValue(safeValue.adoption_barriers)}
             onChange={(event) =>
@@ -5059,11 +5129,11 @@ function CompetitorInventoryEditor({
           {!approved && (
             <button
               type="button"
-              className="rounded border px-3 py-2 text-sm disabled:opacity-60"
+              className="rounded border bg-white px-3 py-2 text-sm font-normal text-gray-700 disabled:opacity-60"
               onClick={onClear}
               disabled={isClearing}
             >
-              {isClearing ? "Clearing..." : "Clear block"}
+              {isClearing ? "Clearing..." : "Clear Block"}
             </button>
           )}
         </div>
@@ -5120,7 +5190,7 @@ function CompetitorInventoryEditor({
                         </div>
                         <div className="mt-1 flex items-center gap-2">
                           <input
-                            className="w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                            className="w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-900 disabled:border-slate-200"
                             value={item.product_name}
                             onChange={(event) =>
                               updateCompetitor(group.key, index, {
@@ -5150,7 +5220,7 @@ function CompetitorInventoryEditor({
                           <div>
                             <label className="block text-xs text-gray-600">URL</label>
                             <input
-                              className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                              className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-900 disabled:border-slate-200"
                               value={item.url}
                               onChange={(event) =>
                                 updateCompetitor(group.key, index, {
@@ -5166,7 +5236,7 @@ function CompetitorInventoryEditor({
                               Description
                             </label>
                             <textarea
-                              className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                              className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-900 disabled:border-slate-200"
                               rows={2}
                               value={item.description}
                               onChange={(event) =>
@@ -5183,7 +5253,7 @@ function CompetitorInventoryEditor({
                               Target audience
                             </label>
                             <textarea
-                              className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                              className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-900 disabled:border-slate-200"
                               rows={2}
                               value={item.target_audience}
                               onChange={(event) =>
@@ -5200,7 +5270,7 @@ function CompetitorInventoryEditor({
                               Positioning
                             </label>
                             <textarea
-                              className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                              className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-900 disabled:border-slate-200"
                               rows={2}
                               value={item.positioning}
                               onChange={(event) =>
@@ -5394,11 +5464,11 @@ function CompetitorCapabilitiesEditor({
           {!approved && (
             <button
               type="button"
-              className="rounded border px-3 py-2 text-sm disabled:opacity-60"
+              className="rounded border bg-white px-3 py-2 text-sm font-normal text-gray-700 disabled:opacity-60"
               onClick={onClear}
               disabled={isClearing}
             >
-              {isClearing ? "Clearing..." : "Clear block"}
+              {isClearing ? "Clearing..." : "Clear Block"}
             </button>
           )}
         </div>
@@ -5442,7 +5512,7 @@ function CompetitorCapabilitiesEditor({
                           </div>
                           <div className="mt-1 flex items-center gap-2">
                             <input
-                              className="w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                              className="w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-900 disabled:border-slate-200"
                               value={item.capability}
                               onChange={(event) =>
                                 updateCapability(groupKey, index, {
@@ -5473,7 +5543,7 @@ function CompetitorCapabilitiesEditor({
                               Alignment with User Needs
                             </label>
                             <textarea
-                              className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                              className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-900 disabled:border-slate-200"
                               rows={2}
                               value={item.alignment_with_user_needs}
                               onChange={(event) =>
@@ -5490,7 +5560,7 @@ function CompetitorCapabilitiesEditor({
                               Owning Competitors (one per line)
                             </label>
                             <textarea
-                              className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                              className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-900 disabled:border-slate-200"
                               rows={2}
                               value={toLineValue(item.owning_competitors)}
                               onChange={(event) =>
@@ -5507,7 +5577,7 @@ function CompetitorCapabilitiesEditor({
                               Gaps and Limitations (one per line)
                             </label>
                             <textarea
-                              className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                              className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-900 disabled:border-slate-200"
                               rows={2}
                               value={toLineValue(item.gaps_and_limitations)}
                               onChange={(event) =>
@@ -5656,11 +5726,11 @@ function OpportunitiesEditor({
           {!approved && (
             <button
               type="button"
-              className="rounded border px-3 py-2 text-sm disabled:opacity-60"
+              className="rounded border bg-white px-3 py-2 text-sm font-normal text-gray-700 disabled:opacity-60"
               onClick={onClear}
               disabled={isClearing}
             >
-              {isClearing ? "Clearing..." : "Clear block"}
+              {isClearing ? "Clearing..." : "Clear Block"}
             </button>
           )}
         </div>
@@ -5693,7 +5763,7 @@ function OpportunitiesEditor({
                 </div>
                 <div className="mt-1 flex items-center gap-2">
                   <textarea
-                    className="w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                    className="w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-900 disabled:border-slate-200"
                     rows={2}
                     value={item.opportunity}
                     onChange={(event) =>
@@ -5727,7 +5797,7 @@ function OpportunitiesEditor({
                       Why it remains unaddressed
                     </label>
                     <textarea
-                      className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                      className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-900 disabled:border-slate-200"
                       rows={2}
                       value={item.why_it_remains_unaddressed}
                       onChange={(event) =>
@@ -5744,7 +5814,7 @@ function OpportunitiesEditor({
                       User value potential
                     </label>
                     <textarea
-                      className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                      className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-900 disabled:border-slate-200"
                       rows={2}
                       value={item.user_value_potential}
                       onChange={(event) =>
@@ -5865,11 +5935,11 @@ function ValueDriversEditor({
           {!approved && (
             <button
               type="button"
-              className="rounded border px-3 py-2 text-sm disabled:opacity-60"
+              className="rounded border bg-white px-3 py-2 text-sm font-normal text-gray-700 disabled:opacity-60"
               onClick={onClear}
               disabled={isClearing}
             >
-              {isClearing ? "Clearing..." : "Clear block"}
+              {isClearing ? "Clearing..." : "Clear Block"}
             </button>
           )}
         </div>
@@ -5887,7 +5957,7 @@ function ValueDriversEditor({
             <label className="block text-xs text-gray-600">Value driver</label>
             <div className="mt-1 flex items-center gap-2">
               <input
-                className="w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
+                className="w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-900 disabled:border-slate-200"
                 value={driver}
                 onChange={(event) => updateDriver(index, event.target.value)}
                 disabled={disabled || approved}
@@ -5965,7 +6035,7 @@ type FeasibilityRisksEditorProps = {
   hideApprove?: boolean;
 };
 
-const FEASIBILITY_RISK_TYPES: FeasibilityRisk["feasibility_risk_type"][] = [
+const FEASIBILITY_RISK_TYPES: FeasibilityRiskGroup["feasibility_risk_type"][] = [
   "business",
   "user",
   "technical"
@@ -5989,30 +6059,87 @@ function FeasibilityRisksEditor({
   hideApprove = false
 }: FeasibilityRisksEditorProps) {
   const safeValue = normalizeFeasibilityRisksValue(value);
-  const hasItems = safeValue.feasibility_risks.length > 0;
+  const safeGroups = safeValue.feasibility_risks;
+  const hasItems = safeGroups.some((group) => group.risks.length > 0);
+  const [openGroups, setOpenGroups] = useState<string[]>(
+    FEASIBILITY_RISK_TYPES.map((riskType) => `risk-group-${riskType}`)
+  );
+  const [openRisksByGroup, setOpenRisksByGroup] = useState<Record<string, string[]>>({});
+  const riskCountsRef = useRef<Record<string, number>>({});
+  const riskCountsKey = safeGroups
+    .map((group) => `${group.feasibility_risk_type}:${group.risks.length}`)
+    .join("|");
 
-  const updateRisk = (index: number, nextRisk: FeasibilityRisk) => {
-    const next = safeValue.feasibility_risks.slice();
-    next[index] = nextRisk;
-    onChange({ feasibility_risks: next });
-  };
-
-  const addRisk = () => {
-    onChange({
-      feasibility_risks: safeValue.feasibility_risks.concat([
-        {
-          feasibility_risk_type: "business",
-          feasibility_risk: "",
-          why_it_matters: ""
+  useEffect(() => {
+    setOpenRisksByGroup((prev) => {
+      const next: Record<string, string[]> = { ...prev };
+      safeGroups.forEach((group) => {
+        const groupKey = `risk-group-${group.feasibility_risk_type}`;
+        const keys = group.risks.map(
+          (_risk, index) => `risk-${group.feasibility_risk_type}-${index}`
+        );
+        const current = next[groupKey] || [];
+        const filtered = current.filter((key) => keys.includes(key));
+        const prevCount = riskCountsRef.current[groupKey];
+        if (typeof prevCount === "number" && keys.length > prevCount) {
+          const addedKeys = keys.slice(prevCount);
+          next[groupKey] = filtered.concat(addedKeys);
+        } else {
+          next[groupKey] = filtered;
         }
-      ])
+        riskCountsRef.current[groupKey] = keys.length;
+      });
+      Object.keys(next).forEach((key) => {
+        if (!safeGroups.some((group) => `risk-group-${group.feasibility_risk_type}` === key)) {
+          delete next[key];
+        }
+      });
+      return next;
     });
+  }, [riskCountsKey]);
+
+  const updateGroupRisks = (
+    riskType: FeasibilityRiskGroup["feasibility_risk_type"],
+    nextRisks: FeasibilityRiskItem[]
+  ) => {
+    const nextGroups = safeGroups.map((group) =>
+      group.feasibility_risk_type === riskType
+        ? { ...group, risks: nextRisks }
+        : group
+    );
+    onChange({ feasibility_risks: nextGroups });
   };
 
-  const removeRisk = (index: number) => {
-    const next = safeValue.feasibility_risks.slice();
+  const addRisk = (riskType: FeasibilityRiskGroup["feasibility_risk_type"]) => {
+    const group = safeGroups.find((item) => item.feasibility_risk_type === riskType);
+    const nextRisks = (group?.risks || []).concat([
+      {
+        feasibility_risk: "",
+        why_it_matters: ""
+      }
+    ]);
+    updateGroupRisks(riskType, nextRisks);
+  };
+
+  const updateRisk = (
+    riskType: FeasibilityRiskGroup["feasibility_risk_type"],
+    index: number,
+    nextRisk: FeasibilityRiskItem
+  ) => {
+    const group = safeGroups.find((item) => item.feasibility_risk_type === riskType);
+    const next = (group?.risks || []).slice();
+    next[index] = nextRisk;
+    updateGroupRisks(riskType, next);
+  };
+
+  const removeRisk = (
+    riskType: FeasibilityRiskGroup["feasibility_risk_type"],
+    index: number
+  ) => {
+    const group = safeGroups.find((item) => item.feasibility_risk_type === riskType);
+    const next = (group?.risks || []).slice();
     next.splice(index, 1);
-    onChange({ feasibility_risks: next });
+    updateGroupRisks(riskType, next);
   };
 
   return (
@@ -6026,106 +6153,140 @@ function FeasibilityRisksEditor({
           {!approved && (
             <button
               type="button"
-              className="rounded border px-3 py-2 text-sm disabled:opacity-60"
+              className="rounded border bg-white px-3 py-2 text-sm font-normal text-gray-700 disabled:opacity-60"
               onClick={onClear}
               disabled={isClearing}
             >
-              {isClearing ? "Clearing..." : "Clear block"}
+              {isClearing ? "Clearing..." : "Clear Block"}
             </button>
           )}
         </div>
       )}
 
-      {safeValue.feasibility_risks.length === 0 && (
+      {safeGroups.every((group) => group.risks.length === 0) && (
         <p className="mt-3 text-xs text-gray-500">
           No feasibility risks yet. Add one to begin.
         </p>
       )}
 
-      <div className="mt-3 space-y-3">
-        {safeValue.feasibility_risks.map((risk, index) => (
-          <div key={`risk-${index}`} className="rounded border border-slate-100 p-3">
-            <div className="grid gap-3 md:grid-cols-[160px_1fr_auto]">
-              <div>
-                <label className="block text-xs text-gray-600">Risk type</label>
-                <select
-                  className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                  value={risk.feasibility_risk_type}
-                  onChange={(event) =>
-                    updateRisk(index, {
-                      ...risk,
-                      feasibility_risk_type:
-                        event.target.value as FeasibilityRisk["feasibility_risk_type"]
-                    })
+      <Accordion
+        type="multiple"
+        value={openGroups}
+        onValueChange={setOpenGroups}
+        className="mt-3 space-y-3"
+      >
+        {safeGroups.map((group) => {
+          const groupKey = `risk-group-${group.feasibility_risk_type}`;
+          return (
+            <AccordionItem
+              key={groupKey}
+              value={groupKey}
+              className="rounded border border-slate-100 p-2"
+            >
+              <AccordionTrigger className="py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 hover:no-underline">
+                {group.feasibility_risk_type} risks
+              </AccordionTrigger>
+              <AccordionContent className="pt-2">
+                {group.risks.length === 0 && (
+                  <p className="text-xs text-gray-500">
+                    No risks yet in this group.
+                  </p>
+                )}
+                <Accordion
+                  type="multiple"
+                  value={openRisksByGroup[groupKey] || []}
+                  onValueChange={(nextItems) =>
+                    setOpenRisksByGroup((prev) => ({
+                      ...prev,
+                      [groupKey]: nextItems
+                    }))
                   }
-                  disabled={disabled || approved}
+                  className="space-y-3"
                 >
-                  {FEASIBILITY_RISK_TYPES.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs text-gray-600">Feasibility risk</label>
-                <div className="mt-1 flex items-center gap-2">
-                  <input
-                    className="w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                    value={risk.feasibility_risk}
-                    onChange={(event) =>
-                      updateRisk(index, {
-                        ...risk,
-                        feasibility_risk: event.target.value
-                      })
-                    }
-                    disabled={disabled || approved}
-                  />
-                  {!approved && !disabled && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-slate-600 hover:text-slate-700"
-                      onClick={() => removeRisk(index)}
-                      disabled={disabled}
-                      aria-label="Remove risk"
-                    >
-                      <Trash2 />
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </div>
-            <div className="mt-2">
-              <label className="block text-xs text-gray-600">Why it matters</label>
-              <textarea
-                className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100"
-                rows={2}
-                value={risk.why_it_matters}
-                onChange={(event) =>
-                  updateRisk(index, {
-                    ...risk,
-                    why_it_matters: event.target.value
-                  })
-                }
-                disabled={disabled || approved}
-              />
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {!approved && (
-        <button
-          type="button"
-          className="mt-3 text-xs text-blue-600 disabled:opacity-60"
-          onClick={addRisk}
-          disabled={disabled}
-        >
-          + Feasibility Risk
-        </button>
-      )}
+                  {group.risks.map((risk, index) => {
+                    const itemKey = `risk-${group.feasibility_risk_type}-${index}`;
+                    return (
+                      <AccordionItem
+                        key={itemKey}
+                        value={itemKey}
+                        className="rounded border border-slate-100 p-2"
+                      >
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <AccordionTrigger className="flex-none justify-center gap-0 py-0 text-slate-600 hover:no-underline [&>svg]:h-3 [&>svg]:w-3">
+                              <span className="sr-only">Toggle risk details</span>
+                            </AccordionTrigger>
+                            <label className="block text-xs text-gray-600">
+                              Risk
+                            </label>
+                          </div>
+                          <div className="mt-1 flex items-center gap-2">
+                            <input
+                              className="w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-900 disabled:border-slate-200"
+                              value={risk.feasibility_risk}
+                              onChange={(event) =>
+                                updateRisk(group.feasibility_risk_type, index, {
+                                  ...risk,
+                                  feasibility_risk: event.target.value
+                                })
+                              }
+                              disabled={disabled || approved}
+                            />
+                            {!approved && !disabled && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-slate-600 hover:text-slate-700"
+                                onClick={() =>
+                                  removeRisk(group.feasibility_risk_type, index)
+                                }
+                                disabled={disabled}
+                                aria-label="Remove risk"
+                              >
+                                <Trash2 />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                        <AccordionContent className="pt-2">
+                          <div>
+                            <label className="block text-xs text-gray-600">
+                              Why it matters
+                            </label>
+                            <textarea
+                              className="mt-1 w-full rounded border px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-900 disabled:border-slate-200"
+                              rows={2}
+                              value={risk.why_it_matters}
+                              onChange={(event) =>
+                                updateRisk(group.feasibility_risk_type, index, {
+                                  ...risk,
+                                  why_it_matters: event.target.value
+                                })
+                              }
+                              disabled={disabled || approved}
+                            />
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    );
+                  })}
+                </Accordion>
+                {!approved && (
+                  <button
+                    type="button"
+                    className="mt-3 text-xs text-blue-600 disabled:opacity-60"
+                    onClick={() => addRisk(group.feasibility_risk_type)}
+                    disabled={disabled}
+                  >
+                    + Risk
+                  </button>
+                )}
+              </AccordionContent>
+            </AccordionItem>
+          );
+        })}
+      </Accordion>
 
       <div className="mt-3 flex items-center gap-2">
         {!approved && !hideApprove && (

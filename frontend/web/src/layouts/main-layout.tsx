@@ -1,23 +1,24 @@
 import { Link, Outlet, useLocation } from "react-router-dom";
-import appIcon from "../assets/ai-product-wizard-app.png";
+import appIcon from "../assets/alchemia-small-text-logo.png";
 
 export function MainLayout() {
   const location = useLocation();
-  const isHome = location.pathname === "/";
+  const showLogo = location.pathname.startsWith("/wizard");
 
   return (
     <div className="min-h-screen bg-white text-gray-900">
-      {!isHome && (
-        <header className="w-full px-4 py-3 border-b bg-white">
+      <header className="mx-6 mt-4 px-4 py-3">
+        <div className="flex items-center justify-between gap-6">
           <div className="flex items-center gap-8">
-            <Link
-              to="/"
-              className="flex items-center gap-3 text-2xl font-semibold"
-              data-testid="nav-home"
-            >
-              <img src={appIcon} alt="AI Product Wizard" className="h-12 w-12" />
-              AI Product Wizard
-            </Link>
+            {showLogo && (
+              <Link
+                to="/"
+                className="flex items-center gap-3 text-2xl font-semibold"
+                data-testid="nav-home"
+              >
+                <img src={appIcon} alt="AlchemIA" className="h-5" />
+              </Link>
+            )}
 
             <Link
               to="/wizard"
@@ -43,8 +44,22 @@ export function MainLayout() {
               Glossary
             </Link>
           </div>
-        </header>
-      )}
+          <div className="flex items-center gap-2">
+            <Link
+              to="/wizard?auth=sign-in"
+              className="rounded border px-3 py-1.5 text-sm font-medium text-gray-700"
+            >
+              Sign In
+            </Link>
+            <Link
+              to="/wizard?auth=sign-up"
+              className="rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-white"
+            >
+              Register
+            </Link>
+          </div>
+        </div>
+      </header>
 
       <main className="p-6">
         <Outlet />

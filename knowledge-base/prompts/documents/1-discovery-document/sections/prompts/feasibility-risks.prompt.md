@@ -2,7 +2,11 @@
 
 ## Task
 
-Produce **Feasibility Risks** that surface **potential blockers or uncertainties** which could prevent an opportunity from being pursued or validated.
+Produce **Feasibility Risks** grouped by **risk type**, with each risk type containing a list of risks.
+
+Each risk item must include:
+- feasibility_risk
+- why_it_matters
 
 The goal is to flag **where progress could break down**, not to assess effort, design solutions, or make go / no-go decisions.
 
@@ -31,6 +35,7 @@ The goal is to flag **where progress could break down**, not to assess effort, d
 ## Generation Rules
 
 - Frame all items as **risks or uncertainties**, not assessments or conclusions.
+- Keep **feasibility_risk** concise; move important detail into **why_it_matters**.
 - Do NOT introduce solutions, architectures, tools, or mitigation plans.
 - Do NOT estimate effort, cost, or timelines.
 - Do NOT assume internal capabilities beyond what is explicitly stated.

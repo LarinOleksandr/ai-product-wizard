@@ -25,7 +25,10 @@ export function createDiscoveryRouter({
       const parsedUrl = new URL(req.url, "http://127.0.0.1");
       const versionParam = parsedUrl.searchParams.get("version");
       const record = await getExportRecord(versionParam);
-      const markdown = renderDiscoveryMarkdown(record.discoveryDocument || {});
+      const markdown = renderDiscoveryMarkdown(
+        record.discoveryDocument || {},
+        record.productIdea || ""
+      );
       const filename = `discovery-document-v${record.version}.md`;
       res.setHeader("Content-Type", "text/markdown; charset=utf-8");
       res.setHeader("Content-Disposition", `attachment; filename=\"${filename}\"`);
@@ -39,7 +42,10 @@ export function createDiscoveryRouter({
       const parsedUrl = new URL(req.url, "http://127.0.0.1");
       const versionParam = parsedUrl.searchParams.get("version");
       const record = await getExportRecord(versionParam);
-      const markdown = renderDiscoveryMarkdown(record.discoveryDocument || {});
+      const markdown = renderDiscoveryMarkdown(
+        record.discoveryDocument || {},
+        record.productIdea || ""
+      );
       const html = renderDiscoveryHtml(markdown);
       const pdfBuffer = await renderPdfFromHtml(html);
       const filename = `discovery-document-v${record.version}.pdf`;

@@ -618,11 +618,26 @@ export function createValidationService({ getNestedValue }) {
       }
     }
     if (field.key === "opportunityDefinition.feasibilityRisks") {
-      if (parsed.feasibility_risks) {
-        return { feasibility_risks: parsed.feasibility_risks };
-      }
-      if (parsed.feasibilityRisks && parsed.feasibilityRisks.feasibility_risks) {
-        return { feasibility_risks: parsed.feasibilityRisks.feasibility_risks };
+      const raw =
+        parsed.feasibility_risks ||
+        parsed.feasibilityRisks?.feasibility_risks;
+      if (Array.isArray(raw)) {
+        const hasGroups = raw.some((item) => Array.isArray(item?.risks));
+        if (hasGroups) {
+          return { feasibility_risks: raw };
+        }
+        const riskTypes = ["business", "user", "technical"];
+        return {
+          feasibility_risks: riskTypes.map((riskType) => ({
+            feasibility_risk_type: riskType,
+            risks: raw
+              .filter((item) => item?.feasibility_risk_type === riskType)
+              .map((item) => ({
+                feasibility_risk: item?.feasibility_risk || "",
+                why_it_matters: item?.why_it_matters || ""
+              }))
+          }))
+        };
       }
     }
     return parsed;
@@ -646,25 +661,12 @@ export function createValidationService({ getNestedValue }) {
         return false;
       }
       const blockedHosts = [
-        "wikipedia.org",
         "play.google.com",
         "apps.apple.com",
         "itunes.apple.com",
         "g2.com",
         "capterra.com",
-        "trustpilot.com",
-        "reddit.com",
-        "youtube.com",
-        "tiktok.com",
-        "facebook.com",
-        "linkedin.com",
-        "twitter.com",
-        "x.com",
-        "instagram.com",
-        "medium.com",
-        "blogspot.com",
-        "wordpress.com",
-        "docs.google.com"
+        "trustpilot.com"
       ];
       if (blockedHosts.some((blocked) => host === blocked || host.endsWith(`.${blocked}`))) {
         return false;

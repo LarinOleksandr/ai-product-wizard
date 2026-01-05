@@ -34,3 +34,4 @@ Produce **Competitors** using external research and verifiable public informatio
 - Do not use in the product_name generic terms like "solution", "tool", "platform", "system", "application".
 - Do not use in the product_name segments from marketLandscape.
 - Use real product or company names only; never use category labels from alternatives.
+- Do not use broad, general-purpose platforms (e.g., Google, Facebook, Instagram, X/Twitter, YouTube) unless they are a direct, dedicated competitor in this niche.

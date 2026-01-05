@@ -65,4 +65,14 @@
   body {
     @apply bg-background text-foreground;
   }
+  input:disabled,
+  textarea:disabled,
+  select:disabled {
+    color: #111827;
+    -webkit-text-fill-color: #111827;
+    opacity: 1;
+  }
+  textarea {
+    line-height: 1.6;
+  }
 }

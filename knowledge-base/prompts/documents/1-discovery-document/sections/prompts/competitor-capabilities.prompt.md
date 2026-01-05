@@ -20,8 +20,10 @@ Each capability entry must include:
 ## Workflow
 
 1. Analyze Functional group capabilities.
+   - Provide at least 5 Functional capabilities.
 2. Analyze Technical group capabilities.
 3. Analyze Business group capabilities.
+
 4. For each group, list distinct capabilities competitors provide.
    - Expressed as an ability, not a feature
    - Described in neutral, functional terms

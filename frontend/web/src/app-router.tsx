@@ -22,9 +22,20 @@ export function AppRouter() {
         resizeTextarea(event.target);
       }
     };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target;
+      if (
+        (target instanceof HTMLInputElement ||
+          target instanceof HTMLTextAreaElement) &&
+        (event.key === " " || event.code === "Space")
+      ) {
+        event.stopPropagation();
+      }
+    };
 
     document.addEventListener("input", handleInput);
     document.addEventListener("change", handleInput);
+    document.addEventListener("keydown", handleKeyDown, true);
     document.querySelectorAll("textarea").forEach((textarea) => {
       resizeTextarea(textarea as HTMLTextAreaElement);
     });
@@ -47,6 +58,7 @@ export function AppRouter() {
     return () => {
       document.removeEventListener("input", handleInput);
       document.removeEventListener("change", handleInput);
+      document.removeEventListener("keydown", handleKeyDown, true);
       observer.disconnect();
     };
   }, []);
