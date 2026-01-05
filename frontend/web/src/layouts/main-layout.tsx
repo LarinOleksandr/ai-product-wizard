@@ -62,8 +62,8 @@ export function MainLayout() {
 
   return (
     <div className="min-h-screen bg-white text-gray-900">
-      <header className="mx-6 mt-4 px-4 py-3">
-        <div className="flex items-center justify-between gap-6">
+      <header className="mt-4 px-4 py-3">
+        <div className="mx-auto flex w-[60%] items-center justify-between gap-6">
           <div className="flex items-center gap-8">
             <Link to="/" className="flex items-center" data-testid="nav-home">
               <img src={appIcon} alt="AlchemIA" className="h-5" />
@@ -155,7 +155,7 @@ export function MainLayout() {
         </div>
       </header>
 
-      <main className="p-6">
+      <main className="w-full px-6 pb-6">
         <Outlet />
       </main>
     </div>
