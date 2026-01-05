@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { FileDown, FileText, Trash2 } from "lucide-react";
+import { Eye, EyeOff, FileDown, FileText, Trash2, Wand2 } from "lucide-react";
 import type { Session } from "@supabase/supabase-js";
 
 import { Button } from "../components/ui/button";
@@ -13,6 +13,7 @@ import {
   DialogTitle
 } from "../components/ui/dialog";
 import discoveryDocumentIcon from "../assets/discovery-document.png";
+import modalLogo from "../assets/alchemia-logo.png";
 import {
   Accordion,
   AccordionContent,
@@ -22,7 +23,10 @@ import {
 import { supabase } from "../lib/supabase";
 import {
   getSession,
+  resetPassword,
+  updatePassword,
   signInWithEmail,
+  signInWithGoogle,
   signUpWithEmail,
   signOut,
   listProjects,
@@ -777,6 +781,8 @@ export function WizardPage() {
   const [form, setForm] = useState({
     productIdea: ""
   });
+  const [pendingIdeaOverride, setPendingIdeaOverride] = useState<string | null>(null);
+  const pendingIdeaRef = useRef<string | null>(null);
   const textareaContainerRef = useRef<HTMLDivElement | null>(null);
   const [status, setStatus] = useState<ApiStatus>("idle");
   const [message, setMessage] = useState("Provide inputs and run the agent.");
@@ -784,11 +790,18 @@ export function WizardPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [authMode, setAuthMode] = useState<"sign-in" | "sign-up">("sign-in");
+  const [authMode, setAuthMode] = useState<"sign-in" | "sign-up" | "forgot" | "reset">(
+    "sign-in"
+  );
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
+  const [authPasswordConfirm, setAuthPasswordConfirm] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [authSuccess, setAuthSuccess] = useState<string | null>(null);
   const [isAuthWorking, setIsAuthWorking] = useState(false);
+  const [isGoogleAuthWorking, setIsGoogleAuthWorking] = useState(false);
   const [isProjectsLoading, setIsProjectsLoading] = useState(false);
   const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
@@ -860,13 +873,44 @@ export function WizardPage() {
     resizeTextarea(llmPromptRef.current);
     resizeTextarea(llmOutputRef.current);
   }, [errorPromptText, errorOutputText, debugPrompt, debugOutput, latestRecord]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+    if (!code) {
+      return;
+    }
+    supabase.auth
+      .exchangeCodeForSession(window.location.href)
+      .then(({ data, error }) => {
+        if (error) {
+          setAuthError(error.message);
+          return;
+        }
+        if (data.session?.user?.email) {
+          setAuthEmail(data.session.user.email);
+        }
+        setAuthMode("reset");
+        setIsAuthModalOpen(true);
+        const url = new URL(window.location.href);
+        url.search = "";
+        url.hash = "";
+        window.history.replaceState({}, "", url.toString());
+      })
+      .catch(() => undefined);
+  }, []);
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const authParam = params.get("auth");
-    if (authParam === "sign-in" || authParam === "sign-up") {
+    const emailParam = params.get("email");
+    if (authParam === "sign-in" || authParam === "sign-up" || authParam === "reset") {
       setAuthMode(authParam);
       setIsAuthModalOpen(true);
+      if (emailParam) {
+        setAuthEmail(emailParam);
+      }
       params.delete("auth");
+      params.delete("email");
       const nextSearch = params.toString();
       navigate(
         {
@@ -877,6 +921,34 @@ export function WizardPage() {
       );
     }
   }, [location.pathname, location.search, navigate]);
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (!hash) {
+      return;
+    }
+    const params = new URLSearchParams(hash.replace(/^#/, ""));
+    const accessToken = params.get("access_token");
+    const refreshToken = params.get("refresh_token");
+    const isRecovery = params.get("type") === "recovery";
+    if (!isRecovery) {
+      return;
+    }
+    if (accessToken && refreshToken) {
+      supabase.auth
+        .setSession({ access_token: accessToken, refresh_token: refreshToken })
+        .then(({ data, error }) => {
+          if (!error && data.session?.user?.email) {
+            setAuthEmail(data.session.user.email);
+          }
+        })
+        .catch(() => undefined);
+    }
+    setAuthMode("reset");
+    setIsAuthModalOpen(true);
+    const url = new URL(window.location.href);
+    url.hash = "";
+    window.history.replaceState({}, "", url.toString());
+  }, []);
   const [draftFields, setDraftFields] = useState<
     Record<
       string,
@@ -1003,36 +1075,91 @@ export function WizardPage() {
     event.preventDefault();
     const email = authEmail.trim();
     const password = authPassword;
-    if (!email || !password) {
+    if (authMode === "forgot") {
+      if (!email) {
+        setAuthError("Enter your email to reset the password.");
+        return;
+      }
+      setIsAuthWorking(true);
+      setAuthError(null);
+      setAuthSuccess(null);
+      try {
+        await resetPassword(email, window.location.origin);
+        setAuthSuccess("Password reset email sent. Check your inbox.");
+      } catch (err) {
+        setAuthError(err instanceof Error ? err.message : "Password reset failed.");
+      } finally {
+        setIsAuthWorking(false);
+      }
+      return;
+    }
+    if (authMode !== "reset" && (!email || !password)) {
       setAuthError("Email and password are required.");
+      return;
+    }
+    if (authMode === "reset" && !password) {
+      setAuthError("Enter your new password.");
+      return;
+    }
+    if (authMode === "reset" && password !== authPasswordConfirm) {
+      setAuthError("Passwords do not match.");
       return;
     }
     setIsAuthWorking(true);
     setAuthError(null);
+    setAuthSuccess(null);
     try {
-      const nextSession =
-        authMode === "sign-in"
-          ? await signInWithEmail(email, password)
-          : await signUpWithEmail(email, password);
-      if (!nextSession) {
-        setAuthError(
-          "Check your email to confirm the account before signing in."
-        );
-        return;
-      }
-      setSession(nextSession);
-      await loadProjects();
-      setIsAuthModalOpen(false);
-      setAuthPassword("");
-      if (pendingSaveDocument) {
-        setPendingSaveDocument(false);
-        await saveDocumentWithProject();
+      if (authMode === "reset") {
+        await updatePassword(password);
+        setAuthSuccess("Password updated. You can sign in.");
+        setAuthMode("sign-in");
+        setAuthPassword("");
+        setAuthPasswordConfirm("");
+      } else {
+        const nextSession =
+          authMode === "sign-in"
+            ? await signInWithEmail(email, password)
+            : await signUpWithEmail(email, password);
+        if (!nextSession) {
+          setAuthError(
+            "Check your email to confirm the account before signing in."
+          );
+          return;
+        }
+        setSession(nextSession);
+        await loadProjects();
+        setAuthSuccess("Signed in successfully.");
+        setIsAuthModalOpen(false);
+        setAuthPassword("");
+        if (pendingSaveDocument) {
+          setPendingSaveDocument(false);
+          await saveDocumentWithProject();
+        }
       }
     } catch (err) {
       setAuthError(err instanceof Error ? err.message : "Authentication failed.");
     } finally {
       setIsAuthWorking(false);
     }
+  };
+
+  const handleGoogleAuth = async () => {
+    setAuthError(null);
+    setIsGoogleAuthWorking(true);
+    try {
+      await signInWithGoogle(window.location.origin + window.location.pathname);
+    } catch (err) {
+      setAuthError(err instanceof Error ? err.message : "Google sign-in failed.");
+      setIsGoogleAuthWorking(false);
+    }
+  };
+
+  const handlePasswordReset = () => {
+    setAuthMode("forgot");
+    setAuthError(null);
+    setAuthSuccess(null);
+    setAuthPassword("");
+    setAuthPasswordConfirm("");
   };
 
   useEffect(() => {
@@ -1050,7 +1177,14 @@ export function WizardPage() {
           setSession(null);
         }
       });
-    const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    const { data } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (event === "PASSWORD_RECOVERY") {
+        setAuthMode("reset");
+        setIsAuthModalOpen(true);
+        if (nextSession?.user?.email) {
+          setAuthEmail(nextSession.user.email);
+        }
+      }
       setSession(nextSession);
       if (nextSession) {
         void loadProjects();
@@ -1064,6 +1198,18 @@ export function WizardPage() {
       data.subscription.unsubscribe();
     };
   }, []);
+  useEffect(() => {
+    if (authMode !== "reset") {
+      return;
+    }
+    getSession()
+      .then((currentSession) => {
+        if (currentSession?.user?.email) {
+          setAuthEmail(currentSession.user.email);
+        }
+      })
+      .catch(() => undefined);
+  }, [authMode]);
   const currentField = latestRecord?.currentFieldKey
     ? fieldDefinitions.find((field) => field.key === latestRecord.currentFieldKey)
     : undefined;
@@ -1177,8 +1323,25 @@ export function WizardPage() {
   }, [draftFields, fieldDefinitions, form.productIdea, latestRecord]);
 
   useEffect(() => {
+    const locationState = location.state as { pendingIdea?: string } | null;
+    const pendingIdea =
+      locationState?.pendingIdea || localStorage.getItem("discoveryWizard.pendingIdea");
+    if (pendingIdea && pendingIdea.trim()) {
+      const formattedIdea = formatProductIdea(pendingIdea);
+      pendingIdeaRef.current = formattedIdea;
+      setPendingIdeaOverride(formattedIdea);
+      localStorage.removeItem("discoveryWizard.pendingIdea");
+      localStorage.setItem("discoveryWizard.productIdea", formattedIdea);
+      setForm((prev) => ({
+        ...prev,
+        productIdea: formattedIdea
+      }));
+    }
+    if (locationState?.pendingIdea) {
+      navigate(location.pathname, { replace: true, state: null });
+    }
     void refreshLatest(true);
-  }, []);
+  }, [location.pathname, location.state, navigate]);
 
   useEffect(() => {
     const container = textareaContainerRef.current;
@@ -1376,9 +1539,10 @@ export function WizardPage() {
   function loadSavedInputs() {
     const pendingIdea = localStorage.getItem("discoveryWizard.pendingIdea") || "";
     const savedIdea = localStorage.getItem("discoveryWizard.productIdea") || "";
-    const rawIdea = pendingIdea || savedIdea;
+    const rawIdea =
+      pendingIdeaRef.current || pendingIdeaOverride || pendingIdea || savedIdea;
     const formattedIdea = rawIdea ? formatProductIdea(rawIdea) : "";
-    if (pendingIdea) {
+    if (!pendingIdeaOverride && pendingIdea) {
       localStorage.removeItem("discoveryWizard.pendingIdea");
       localStorage.setItem("discoveryWizard.productIdea", formattedIdea);
     }
@@ -1652,19 +1816,26 @@ export function WizardPage() {
         setLatestVersion(payload.record.version);
         setDebugPrompt(payload.record.lastPrompt ?? null);
         setDebugOutput(payload.record.lastOutput ?? null);
-        const pendingIdea = localStorage.getItem("discoveryWizard.pendingIdea") || "";
+        const pendingIdea =
+          pendingIdeaRef.current ||
+          pendingIdeaOverride ||
+          localStorage.getItem("discoveryWizard.pendingIdea") ||
+          "";
         const formattedIdea = pendingIdea
           ? formatProductIdea(pendingIdea)
           : payload.record.productIdea
             ? formatProductIdea(payload.record.productIdea)
             : "";
-        if (pendingIdea) {
+        if (pendingIdeaRef.current) {
+          pendingIdeaRef.current = null;
+        }
+        if (!pendingIdeaOverride && pendingIdea) {
           localStorage.removeItem("discoveryWizard.pendingIdea");
         }
         setForm({
           productIdea: formattedIdea
         });
-        if (formattedIdea) {
+        if (!pendingIdeaOverride && formattedIdea) {
           localStorage.setItem("discoveryWizard.productIdea", formattedIdea);
         }
         const nextStatus = isDocumentCleared(payload.record)
@@ -2270,6 +2441,7 @@ export function WizardPage() {
               </button>
             </div>
           </div>
+          )
         </div>
       )}
 
@@ -2297,6 +2469,7 @@ export function WizardPage() {
               </button>
             </div>
           </div>
+          )
         </div>
       )}
       {confirmClearFieldKey && (
@@ -2329,6 +2502,7 @@ export function WizardPage() {
               </button>
             </div>
           </div>
+          )
         </div>
       )}
       {confirmClearDocument && (
@@ -2358,6 +2532,7 @@ export function WizardPage() {
               </button>
             </div>
           </div>
+          )
         </div>
       )}
       <div className="flex items-center justify-between gap-4">
@@ -2371,33 +2546,39 @@ export function WizardPage() {
         </div>
       </div>
 
-      <section className="grid gap-6 lg:grid-cols-[1.6fr_0.9fr]">
-        <div className="space-y-6">
-          <form
-            className="space-y-4 rounded-lg border bg-white p-5 shadow-sm"
-            onSubmit={handleStartFirstSection}
-          >
-          <div>
-            <div className="flex items-center gap-2">
-              <label className="block text-sm font-medium text-gray-700">
-                Product idea
-              </label>
-              <button
-                type="button"
-                className="rounded border px-2 py-1 text-xs font-medium text-blue-700 disabled:opacity-60"
-                onClick={handleGenerateRandomInputs}
-                disabled={isBlockingInputs || isGeneratingRandom}
-              >
-                {isGeneratingRandom ? "Generating..." : "Generate random"}
-              </button>
-            </div>
+      <form
+        className="mx-auto w-full max-w-5xl space-y-4 rounded-lg bg-white p-5 shadow-sm"
+        onSubmit={handleStartFirstSection}
+      >
+        <div>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <label className="text-sm text-gray-500">Product idea</label>
+            <button
+              type="button"
+              className="inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium text-blue-700 disabled:opacity-60"
+              onClick={handleGenerateRandomInputs}
+              disabled={isBlockingInputs || isGeneratingRandom}
+            >
+              <Wand2 className="h-4 w-4" />
+                <span className="ml-2">
+                  {isGeneratingRandom ? "Generating..." : "Another Great Idea"}
+                </span>
+            </button>
+          </div>
+          <div className="mt-3 rounded-lg bg-gradient-to-br from-blue-600 to-violet-600 p-[3px]">
             <textarea
-              className="mt-1 block w-full rounded border px-3 py-2 text-sm"
+              className="min-h-[160px] w-full resize-none overflow-hidden rounded-lg bg-white px-4 py-3 text-base leading-tight shadow-sm focus:outline-none"
               rows={3}
               value={form.productIdea}
               onChange={(event) =>
                 setForm((prev) => {
                   const nextValue = event.target.value;
+                  if (pendingIdeaOverride) {
+                    setPendingIdeaOverride(null);
+                  }
+                  if (pendingIdeaRef.current) {
+                    pendingIdeaRef.current = null;
+                  }
                   localStorage.setItem("discoveryWizard.productIdea", nextValue);
                   return { ...prev, productIdea: nextValue };
                 })
@@ -2411,54 +2592,56 @@ By doing so, users experience a sense of control and empowerment over their well
               disabled={isBlockingInputs}
             />
           </div>
+        </div>
 
-          
+        <div className="flex items-center justify-center gap-3">
+          <button
+            type="submit"
+            className="min-w-[230px] rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+            disabled={
+              status === "running" ||
+              isGeneratingAll ||
+              (!isStaleGeneration &&
+                !canRestartAfterCancel &&
+                Boolean(latestRecord) &&
+                !latestRecord.approved &&
+                !isDocumentCleared(latestRecord))
+            }
+          >
+            Generate First Section
+          </button>
 
-  <div className="flex items-center gap-3">
-    <button
-      type="submit"
-      className="min-w-[230px] rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
-      disabled={
-        status === "running" ||
-        isGeneratingAll ||
-        (!isStaleGeneration &&
-          !canRestartAfterCancel &&
-          Boolean(latestRecord) &&
-          !latestRecord.approved &&
-          !isDocumentCleared(latestRecord))
-      }
-    >
-      Generate First Section
-    </button>
+          <button
+            type="button"
+            className="rounded border px-4 py-2 text-sm font-medium text-gray-700 disabled:opacity-60"
+            onClick={handleGenerateEntireDocument}
+            disabled={
+              status === "running" ||
+              isFullGenerationActive ||
+              (!isStaleGeneration &&
+                !canRestartAfterCancel &&
+                Boolean(latestRecord) &&
+                !latestRecord.approved &&
+                !isDocumentCleared(latestRecord))
+            }
+          >
+            {isGeneratingAll ? "Generating..." : "Generate Entire Document"}
+          </button>
 
-    <button
-      type="button"
-      className="rounded border px-4 py-2 text-sm font-medium text-gray-700 disabled:opacity-60"
-      onClick={handleGenerateEntireDocument}
-      disabled={
-        status === "running" ||
-        isFullGenerationActive ||
-        (!isStaleGeneration &&
-          !canRestartAfterCancel &&
-          Boolean(latestRecord) &&
-          !latestRecord.approved &&
-          !isDocumentCleared(latestRecord))
-      }
-    >
-      {isGeneratingAll ? "Generating..." : "Generate Entire Document"}
-    </button>
+          {isFullGenerationActive && (
+            <button
+              type="button"
+              className="rounded border px-4 py-2 text-sm font-medium text-gray-700 disabled:opacity-60"
+              onClick={cancelGenerateAll}
+            >
+              Cancel
+            </button>
+          )}
+        </div>
+      </form>
 
-    {isFullGenerationActive && (
-      <button
-        type="button"
-        className="rounded border px-4 py-2 text-sm font-medium text-gray-700 disabled:opacity-60"
-        onClick={cancelGenerateAll}
-      >
-        Cancel
-      </button>
-    )}
-  </div>
-          </form>
+      <section className="grid gap-6 lg:grid-cols-[1.6fr_0.9fr]">
+        <div className="space-y-6">
 
           <section className="rounded-lg border bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between">
@@ -3287,78 +3470,239 @@ By doing so, users experience a sense of control and empowerment over their well
           if (!open) {
             setAuthError(null);
             setAuthPassword("");
+            setAuthPasswordConfirm("");
             setPendingSaveDocument(false);
+            setIsGoogleAuthWorking(false);
+            setAuthSuccess(null);
+            setShowPassword(false);
+            setShowPasswordConfirm(false);
           }
         }}
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>
-              {authMode === "sign-in" ? "Sign in" : "Create an account"}
-            </DialogTitle>
-            <DialogDescription>
-              {pendingSaveDocument
-                ? "Sign in to save this document and manage projects."
-                : "Sign in to save documents and manage projects."}
-            </DialogDescription>
+            <div className="flex flex-col items-center gap-3">
+              <img src={modalLogo} alt="AlchemIA" className="h-24 w-24" />
+              {authMode === "sign-up" && (
+                <DialogTitle>Create your account</DialogTitle>
+              )}
+              {authMode === "reset" && (
+                <DialogTitle>Reset your password</DialogTitle>
+              )}
+              <DialogDescription className="text-center">
+                {authMode === "reset"
+                  ? "Enter your new password to finish recovery."
+                  : authMode === "forgot"
+                    ? "We will email you a link to reset your password."
+                    : pendingSaveDocument
+                      ? "Sign in to save this document and manage projects."
+                      : "Sign in to save documents and manage projects."}
+              </DialogDescription>
+            </div>
           </DialogHeader>
-          <form className="space-y-3" onSubmit={handleAuthSubmit}>
-            <div>
-              <label className="text-xs font-medium text-slate-600">Email</label>
-              <input
-                type="email"
-                className="mt-1 w-full rounded border border-slate-200 px-3 py-2 text-sm"
-                value={authEmail}
-                onChange={(event) => setAuthEmail(event.target.value)}
-                placeholder="you@example.com"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-slate-600">Password</label>
-              <input
-                type="password"
-                className="mt-1 w-full rounded border border-slate-200 px-3 py-2 text-sm"
-                value={authPassword}
-                onChange={(event) => setAuthPassword(event.target.value)}
-                placeholder="********"
-              />
-            </div>
-            {authError && <p className="text-xs text-red-600">{authError}</p>}
-            <DialogFooter className="gap-2 sm:gap-0">
+          {authMode !== "reset" && authMode !== "forgot" && (
+            <div className="space-y-3">
               <button
                 type="button"
-                className="rounded border px-3 py-2 text-sm"
-                onClick={() => setIsAuthModalOpen(false)}
+                className="w-full rounded border px-3 py-2 text-sm font-medium text-gray-700 disabled:opacity-60"
+                onClick={handleGoogleAuth}
+                disabled={isGoogleAuthWorking}
               >
-                Cancel
+                <span className="flex items-center justify-center gap-2">
+                  <svg
+                    aria-hidden="true"
+                    className="h-4 w-4"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.4h6.5c-.3 1.5-1.1 2.8-2.4 3.6v3h3.9c2.3-2.1 3.5-5.2 3.5-8.7z"
+                      fill="#4285F4"
+                    />
+                    <path
+                      d="M12 24c3.2 0 5.9-1.1 7.8-2.9l-3.9-3c-1.1.8-2.5 1.3-3.9 1.3-3 0-5.5-2-6.4-4.7H1.6v3.1C3.5 21.4 7.4 24 12 24z"
+                      fill="#34A853"
+                    />
+                    <path
+                      d="M5.6 14.7c-.2-.6-.4-1.2-.4-1.9s.1-1.3.3-1.9V7.8H1.6C.6 9.7 0 11.8 0 12.8c0 1 .6 3.1 1.6 4.9l4-3z"
+                      fill="#FBBC05"
+                    />
+                    <path
+                      d="M12 4.8c1.7 0 3.2.6 4.3 1.7l3.2-3.2C17.8 1.2 15.1 0 12 0 7.4 0 3.5 2.6 1.6 7.8l4 3.1c.9-2.7 3.4-4.7 6.4-4.7z"
+                      fill="#EA4335"
+                    />
+                  </svg>
+                  {isGoogleAuthWorking ? "Connecting..." : "Continue with Google"}
+                </span>
               </button>
-              <button
-                type="submit"
-                className="rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
-                disabled={isAuthWorking}
-              >
-                {isAuthWorking
-                  ? authMode === "sign-in"
-                    ? "Signing in..."
-                    : "Creating account..."
-                  : authMode === "sign-in"
-                    ? "Sign in"
-                    : "Create account"}
-              </button>
-            </DialogFooter>
+              <div className="flex items-center gap-3 text-xs text-gray-400">
+                <span className="h-px flex-1 bg-gray-200" />
+                or
+                <span className="h-px flex-1 bg-gray-200" />
+              </div>
+            </div>
+          )}
+          <form className="space-y-3" onSubmit={handleAuthSubmit}>
+            {authMode !== "reset" && authMode !== "forgot" && (
+              <div>
+                <label className="text-xs font-medium text-slate-600">Email</label>
+                <input
+                  type="email"
+                  className="mt-1 w-full rounded border border-slate-200 px-3 py-2 text-sm"
+                  value={authEmail}
+                  onChange={(event) => setAuthEmail(event.target.value)}
+                  placeholder="you@example.com"
+                />
+              </div>
+            )}
+            {authMode === "reset" && (
+              <div>
+                <label className="text-xs font-medium text-slate-600">Email</label>
+                <input
+                  type="email"
+                  className="mt-1 w-full rounded border border-slate-200 px-3 py-2 text-sm"
+                  value={authEmail}
+                  onChange={(event) => setAuthEmail(event.target.value)}
+                  placeholder="you@example.com"
+                  disabled
+                />
+              </div>
+            )}
+            {authMode === "forgot" && (
+              <div>
+                <label className="text-xs font-medium text-slate-600">Email</label>
+                <input
+                  type="email"
+                  className="mt-1 w-full rounded border border-slate-200 px-3 py-2 text-sm"
+                  value={authEmail}
+                  onChange={(event) => setAuthEmail(event.target.value)}
+                  placeholder="you@example.com"
+                />
+              </div>
+            )}
+            {authMode !== "reset" && authMode !== "forgot" && (
+              <div>
+                <label className="text-xs font-medium text-slate-600">Password</label>
+                <div className="relative mt-1">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    className="w-full rounded border border-slate-200 px-3 py-2 pr-10 text-sm"
+                    value={authPassword}
+                    onChange={(event) => setAuthPassword(event.target.value)}
+                    placeholder="********"
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                {authMode === "sign-in" && (
+                  <button
+                    type="button"
+                    className="mt-2 text-xs font-medium text-blue-600 hover:underline"
+                    onClick={handlePasswordReset}
+                  >
+                    Forgot password?
+                  </button>
+                )}
+              </div>
+            )}
+            {authMode === "reset" && (
+              <>
+                <div>
+                  <label className="text-xs font-medium text-slate-600">New password</label>
+                  <div className="relative mt-1">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      className="w-full rounded border border-slate-200 px-3 py-2 pr-10 text-sm"
+                      value={authPassword}
+                      onChange={(event) => setAuthPassword(event.target.value)}
+                      placeholder="********"
+                    />
+                    <button
+                      type="button"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-600">Confirm password</label>
+                  <div className="relative mt-1">
+                    <input
+                      type={showPasswordConfirm ? "text" : "password"}
+                      className="w-full rounded border border-slate-200 px-3 py-2 pr-10 text-sm"
+                      value={authPasswordConfirm}
+                      onChange={(event) => setAuthPasswordConfirm(event.target.value)}
+                      placeholder="********"
+                    />
+                    <button
+                      type="button"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500"
+                      onClick={() => setShowPasswordConfirm((prev) => !prev)}
+                      aria-label={showPasswordConfirm ? "Hide password" : "Show password"}
+                    >
+                      {showPasswordConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+            {authError && <p className="text-xs text-red-600">{authError}</p>}
+            {authSuccess && (
+              <p className="text-xs text-emerald-600">{authSuccess}</p>
+            )}
+            {authMode === "sign-up" && authSuccess ? (
+              <DialogFooter className="flex justify-center gap-2">
+                <button
+                  type="button"
+                  className="mx-auto min-w-[120px] rounded border px-3 py-2 text-sm"
+                  onClick={() => setIsAuthModalOpen(false)}
+                >
+                  Close
+                </button>
+              </DialogFooter>
+            ) : (
+              <DialogFooter className="gap-2 sm:gap-0">
+                <button
+                  type="button"
+                  className="rounded border px-3 py-2 text-sm"
+                  onClick={() => setIsAuthModalOpen(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
+                  disabled={isAuthWorking}
+                >
+                  {isAuthWorking
+                    ? authMode === "sign-in"
+                      ? "Signing in..."
+                      : authMode === "reset"
+                        ? "Updating password..."
+                        : authMode === "forgot"
+                          ? "Sending email..."
+                          : "Creating account..."
+                    : authMode === "sign-in"
+                      ? "Sign in"
+                      : authMode === "reset"
+                        ? "Update password"
+                        : authMode === "forgot"
+                          ? "Send reset link"
+                          : "Create account"}
+                </button>
+              </DialogFooter>
+            )}
           </form>
-          <div className="pt-2 text-xs text-slate-500">
-            {authMode === "sign-in" ? "No account yet?" : "Already have an account?"}{" "}
-            <button
-              type="button"
-              className="font-medium text-blue-600"
-              onClick={() =>
-                setAuthMode((prev) => (prev === "sign-in" ? "sign-up" : "sign-in"))
-              }
-            >
-              {authMode === "sign-in" ? "Create one" : "Sign in"}
-            </button>
-          </div>
+          {null}
+          {authMode === "forgot" && null}
         </DialogContent>
       </Dialog>
     </div>

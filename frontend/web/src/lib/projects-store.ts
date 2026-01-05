@@ -45,6 +45,37 @@ export async function signUpWithEmail(email: string, password: string) {
   return data.session;
 }
 
+export async function signInWithGoogle(redirectTo?: string) {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      ...(redirectTo ? { redirectTo } : {}),
+      queryParams: {
+        prompt: "select_account"
+      }
+    }
+  });
+  if (error) {
+    throw error;
+  }
+}
+
+export async function resetPassword(email: string, redirectTo?: string) {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo
+  });
+  if (error) {
+    throw error;
+  }
+}
+
+export async function updatePassword(password: string) {
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) {
+    throw error;
+  }
+}
+
 export async function signOut() {
   const { error } = await supabase.auth.signOut();
   if (error) {

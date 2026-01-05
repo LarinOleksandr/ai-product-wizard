@@ -1,9 +1,9 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Wand2 } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 
-import appIcon from "../assets/alchemia-big-logo.png";
-import textLogo from "../assets/alchemia-small-text-logo.png";
+import appIcon from "../assets/alchemia-logo.png";
 import {
   Dialog,
   DialogContent,
@@ -12,21 +12,29 @@ import {
   DialogHeader,
   DialogTitle
 } from "../components/ui/dialog";
-import { signInWithEmail, signUpWithEmail } from "../lib/projects-store";
+import {
+  getSession,
+  resetPassword,
+  signInWithEmail,
+  signInWithGoogle,
+  signUpWithEmail,
+  updatePassword
+} from "../lib/projects-store";
+import { supabase } from "../lib/supabase";
 
 const API_BASE =
   import.meta.env.VITE_ORCHESTRATOR_URL || "http://localhost:8002";
 
 const wizardCards = [
-  { title: "Discovery Wizard", active: true, href: "/wizard" },
-  { title: "Product Definition Wizard", active: false },
-  { title: "Product Requirements Wizard", active: false },
-  { title: "User Experience Wizard", active: false },
-  { title: "User Interface Wizard", active: false },
-  { title: "Technical Architecture Wizard", active: false },
-  { title: "Delivery Planning Wizard", active: false },
-  { title: "Testing Wizard", active: false },
-  { title: "Deployment and Launch Wizard", active: false }
+  { title: "Discovery", active: true, href: "/wizard" },
+  { title: "Product Definition", active: false },
+  { title: "Product Requirements", active: false },
+  { title: "User Experience", active: false },
+  { title: "User Interface", active: false },
+  { title: "Technical Architecture", active: false },
+  { title: "Delivery Planning", active: false },
+  { title: "Testing", active: false },
+  { title: "Deployment and Launch", active: false }
 ];
 
 const sampleIdea = `For students with dyslexia, our AI-powered 'Sensory Atlas' uses supportive graphics and personalized soundscapes to create an immersive learning environment.
@@ -36,16 +44,25 @@ The core mechanic is a system adaptation to their individual reading patterns, f
 By cultivating this multisensory awareness, students can develop a more intuitive understanding of complex concepts and retain information more effectively.`;
 
 export function HomePage() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [idea, setIdea] = useState(sampleIdea);
+  const [resetEmailFromLink, setResetEmailFromLink] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
-  const [authMode, setAuthMode] = useState<"sign-in" | "sign-up">("sign-up");
+  const [authMode, setAuthMode] = useState<
+    "sign-in" | "sign-up" | "forgot" | "reset"
+  >("sign-up");
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
+  const [authPasswordConfirm, setAuthPasswordConfirm] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [authSuccess, setAuthSuccess] = useState<string | null>(null);
   const [isAuthWorking, setIsAuthWorking] = useState(false);
+  const [isGoogleAuthWorking, setIsGoogleAuthWorking] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const resizeTextarea = () => {
@@ -87,27 +104,61 @@ export function HomePage() {
   const handleAuthSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const email = authEmail.trim();
-    if (!email || !authPassword) {
+    if (authMode === "forgot") {
+      if (!email) {
+        setAuthError("Enter your email to reset the password.");
+        return;
+      }
+      setIsAuthWorking(true);
+      setAuthError(null);
+      setAuthSuccess(null);
+      try {
+        await resetPassword(email, window.location.origin);
+        setAuthSuccess("Password reset email sent. Check your inbox.");
+      } catch (err) {
+        setAuthError(err instanceof Error ? err.message : "Password reset failed.");
+      } finally {
+        setIsAuthWorking(false);
+      }
+      return;
+    }
+    if (authMode !== "reset" && (!email || !authPassword)) {
       setAuthError("Email and password are required.");
+      return;
+    }
+    if (authMode === "reset" && !authPassword) {
+      setAuthError("Enter your new password.");
+      return;
+    }
+    if (authMode === "reset" && authPassword !== authPasswordConfirm) {
+      setAuthError("Passwords do not match.");
       return;
     }
     setIsAuthWorking(true);
     setAuthError(null);
     setAuthSuccess(null);
     try {
-      const session =
-        authMode === "sign-in"
-          ? await signInWithEmail(email, authPassword)
-          : await signUpWithEmail(email, authPassword);
-      if (!session && authMode === "sign-up") {
-        setAuthSuccess(
-          "Check your email to confirm the account, then sign in."
-        );
-        return;
+      if (authMode === "reset") {
+        await updatePassword(authPassword);
+        setAuthSuccess("Password updated. You can sign in.");
+        setAuthMode("sign-in");
+        setAuthPassword("");
+        setAuthPasswordConfirm("");
+      } else {
+        const session =
+          authMode === "sign-in"
+            ? await signInWithEmail(email, authPassword)
+            : await signUpWithEmail(email, authPassword);
+        if (!session && authMode === "sign-up") {
+          setAuthSuccess(
+            "Check your email to confirm the account, then sign in."
+          );
+          return;
+        }
+        setAuthSuccess("Signed in successfully.");
+        setIsAuthOpen(false);
+        setAuthPassword("");
       }
-      setAuthSuccess("Signed in successfully.");
-      setIsAuthOpen(false);
-      setAuthPassword("");
     } catch (err) {
       setAuthError(err instanceof Error ? err.message : "Authentication failed.");
     } finally {
@@ -115,9 +166,145 @@ export function HomePage() {
     }
   };
 
+  const handleGoogleAuth = async () => {
+    setAuthError(null);
+    setAuthSuccess(null);
+    setIsGoogleAuthWorking(true);
+    try {
+      await signInWithGoogle(window.location.origin + window.location.pathname);
+    } catch (err) {
+      setAuthError(err instanceof Error ? err.message : "Google sign-in failed.");
+      setIsGoogleAuthWorking(false);
+    }
+  };
+
+  const handlePasswordReset = () => {
+    setAuthMode("forgot");
+    setAuthError(null);
+    setAuthSuccess(null);
+    setAuthPassword("");
+    setAuthPasswordConfirm("");
+  };
+
   useEffect(() => {
     resizeTextarea();
   }, [idea]);
+  useEffect(() => {
+    if (authMode !== "reset") {
+      return;
+    }
+    getSession()
+      .then((currentSession) => {
+        if (currentSession?.user?.email) {
+          setAuthEmail(currentSession.user.email);
+        }
+      })
+      .catch(() => undefined);
+  }, [authMode]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+    if (!code) {
+      return;
+    }
+    supabase.auth
+      .exchangeCodeForSession(window.location.href)
+      .then(({ data, error }) => {
+        if (error) {
+          setAuthError(error.message);
+          return;
+        }
+        if (data.session?.user?.email) {
+          setAuthEmail(data.session.user.email);
+        }
+        setAuthMode("reset");
+        setIsAuthOpen(true);
+        const url = new URL(window.location.href);
+        url.search = "";
+        url.hash = "";
+        window.history.replaceState({}, "", url.toString());
+      })
+      .catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    getSession()
+      .then((currentSession) => {
+        if (!active) return;
+        if (currentSession?.user?.email) {
+          setAuthEmail(currentSession.user.email);
+        }
+      })
+      .catch(() => undefined);
+    const { data } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (event === "PASSWORD_RECOVERY" && nextSession?.user?.email) {
+        setAuthEmail(nextSession.user.email);
+      }
+    });
+    return () => {
+      active = false;
+      data.subscription.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const authParam = params.get("auth");
+    const emailParam = params.get("email");
+    if (authParam === "sign-in" || authParam === "sign-up" || authParam === "reset") {
+      setAuthMode(authParam);
+      setIsAuthOpen(true);
+      if (emailParam) {
+        setResetEmailFromLink(emailParam);
+        setAuthEmail(emailParam);
+      }
+      params.delete("auth");
+      params.delete("email");
+      const nextSearch = params.toString();
+      navigate(
+        {
+          pathname: location.pathname,
+          search: nextSearch ? `?${nextSearch}` : ""
+        },
+        { replace: true }
+      );
+    }
+  }, [location.pathname, location.search, navigate]);
+
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (!hash) {
+      return;
+    }
+    const params = new URLSearchParams(hash.replace(/^#/, ""));
+    const accessToken = params.get("access_token");
+    const refreshToken = params.get("refresh_token");
+    const isRecovery = params.get("type") === "recovery";
+    const emailFromLink = params.get("email");
+    if (!isRecovery) {
+      return;
+    }
+    if (accessToken && refreshToken) {
+      supabase.auth
+        .setSession({ access_token: accessToken, refresh_token: refreshToken })
+        .then(({ data, error }) => {
+          if (!error && data.session?.user?.email) {
+            setAuthEmail(data.session.user.email);
+          }
+        })
+        .catch(() => undefined);
+    }
+    if (emailFromLink) {
+      setResetEmailFromLink(emailFromLink);
+    }
+    setAuthMode("reset");
+    setIsAuthOpen(true);
+    const url = new URL(window.location.href);
+    url.hash = "";
+    window.history.replaceState({}, "", url.toString());
+  }, []);
 
   return (
     <div className="mx-auto max-w-5xl space-y-10">
@@ -174,6 +361,7 @@ export function HomePage() {
           <div className="mt-6 flex justify-center">
             <Link
               to="/wizard"
+              state={{ pendingIdea: idea }}
               className="w-full max-w-xs rounded-lg bg-gradient-to-br from-blue-600 to-violet-600 px-6 py-3 text-center text-base font-semibold text-white hover:from-blue-700 hover:to-violet-700"
               onClick={() => {
                 if (idea.trim()) {
@@ -250,81 +438,246 @@ export function HomePage() {
         </div>
       </section>
 
-      <Dialog open={isAuthOpen} onOpenChange={setIsAuthOpen}>
+      <Dialog
+        open={isAuthOpen}
+        onOpenChange={(open) => {
+          setIsAuthOpen(open);
+          if (!open) {
+            setAuthError(null);
+            setAuthPassword("");
+            setAuthPasswordConfirm("");
+            setIsGoogleAuthWorking(false);
+            setShowPassword(false);
+            setShowPasswordConfirm(false);
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <div className="flex flex-col items-center gap-3">
-              <img src={textLogo} alt="AlchemIA" className="h-6" />
-              <DialogTitle>
-                {authMode === "sign-in" ? "Sign in" : "Create your account"}
-              </DialogTitle>
+              <img src={appIcon} alt="AlchemIA" className="h-24 w-24" />
+              {authMode === "sign-up" && (
+                <DialogTitle>Create your account</DialogTitle>
+              )}
+              {authMode === "reset" && (
+                <DialogTitle>Reset your password</DialogTitle>
+              )}
               <DialogDescription className="text-center">
-                {authMode === "sign-in"
-                  ? "Welcome back! Please sign in to continue."
-                  : "Welcome! Please fill in the details to get started."}
+                {authMode === "reset"
+                  ? "Enter your new password to finish recovery."
+                  : authMode === "forgot"
+                    ? "We will email you a link to reset your password."
+                  : authMode === "sign-in"
+                    ? "Welcome back! Please sign in to continue."
+                    : "Welcome! Please fill in the details to get started."}
               </DialogDescription>
             </div>
           </DialogHeader>
+          {authMode !== "reset" && authMode !== "forgot" && (
+            <div className="space-y-3">
+              <button
+                type="button"
+                className="w-full rounded border px-3 py-2 text-sm font-medium text-gray-700 disabled:opacity-60"
+                onClick={handleGoogleAuth}
+                disabled={isGoogleAuthWorking}
+              >
+                <span className="flex items-center justify-center gap-2">
+                  <svg
+                    aria-hidden="true"
+                    className="h-4 w-4"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.4h6.5c-.3 1.5-1.1 2.8-2.4 3.6v3h3.9c2.3-2.1 3.5-5.2 3.5-8.7z"
+                      fill="#4285F4"
+                    />
+                    <path
+                      d="M12 24c3.2 0 5.9-1.1 7.8-2.9l-3.9-3c-1.1.8-2.5 1.3-3.9 1.3-3 0-5.5-2-6.4-4.7H1.6v3.1C3.5 21.4 7.4 24 12 24z"
+                      fill="#34A853"
+                    />
+                    <path
+                      d="M5.6 14.7c-.2-.6-.4-1.2-.4-1.9s.1-1.3.3-1.9V7.8H1.6C.6 9.7 0 11.8 0 12.8c0 1 .6 3.1 1.6 4.9l4-3z"
+                      fill="#FBBC05"
+                    />
+                    <path
+                      d="M12 4.8c1.7 0 3.2.6 4.3 1.7l3.2-3.2C17.8 1.2 15.1 0 12 0 7.4 0 3.5 2.6 1.6 7.8l4 3.1c.9-2.7 3.4-4.7 6.4-4.7z"
+                      fill="#EA4335"
+                    />
+                  </svg>
+                  {isGoogleAuthWorking ? "Connecting..." : "Continue with Google"}
+                </span>
+              </button>
+              <div className="flex items-center gap-3 text-xs text-gray-400">
+                <span className="h-px flex-1 bg-gray-200" />
+                or
+                <span className="h-px flex-1 bg-gray-200" />
+              </div>
+            </div>
+          )}
           <form className="space-y-3" onSubmit={handleAuthSubmit}>
-            <div>
-              <label className="text-xs font-medium text-slate-600">Email</label>
-              <input
-                type="email"
-                className="mt-1 w-full rounded border border-slate-200 px-3 py-2 text-sm"
-                value={authEmail}
-                onChange={(event) => setAuthEmail(event.target.value)}
-                placeholder="you@example.com"
-              />
+            {authMode !== "reset" && authMode !== "forgot" && (
+              <div>
+                <label className="text-xs font-medium text-slate-600">Email</label>
+                <input
+                  type="email"
+                  className="mt-1 w-full rounded border border-slate-200 px-3 py-2 text-sm"
+                  value={authEmail}
+                  onChange={(event) => setAuthEmail(event.target.value)}
+                  placeholder="you@example.com"
+                />
+              </div>
+            )}
+            {authMode === "reset" && (
+              <div>
+                <label className="text-xs font-medium text-slate-600">Email</label>
+                <input
+                  type="email"
+                  className="mt-1 w-full rounded border border-slate-200 px-3 py-2 text-sm"
+                  value={resetEmailFromLink || authEmail}
+                  onChange={(event) => setAuthEmail(event.target.value)}
+                  placeholder="you@example.com"
+                  disabled={Boolean(resetEmailFromLink || authEmail)}
+                />
+              </div>
+            )}
+            {authMode === "forgot" && (
+              <div>
+                <label className="text-xs font-medium text-slate-600">Email</label>
+                <input
+                  type="email"
+                  className="mt-1 w-full rounded border border-slate-200 px-3 py-2 text-sm"
+                  value={authEmail}
+                  onChange={(event) => setAuthEmail(event.target.value)}
+                  placeholder="you@example.com"
+                />
+              </div>
+            )}
+            {authMode !== "reset" && authMode !== "forgot" && (
+              <div>
+                <label className="text-xs font-medium text-slate-600">
+                  Password
+                </label>
+                <div className="relative mt-1">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    className="w-full rounded border border-slate-200 px-3 py-2 pr-10 text-sm"
+                    value={authPassword}
+                    onChange={(event) => setAuthPassword(event.target.value)}
+                    placeholder="********"
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              {authMode === "sign-in" && (
+                <button
+                  type="button"
+                  className="mt-2 text-xs font-medium text-blue-600 hover:underline"
+                  onClick={handlePasswordReset}
+                >
+                  Forgot password?
+                </button>
+              )}
             </div>
-            <div>
-              <label className="text-xs font-medium text-slate-600">Password</label>
-              <input
-                type="password"
-                className="mt-1 w-full rounded border border-slate-200 px-3 py-2 text-sm"
-                value={authPassword}
-                onChange={(event) => setAuthPassword(event.target.value)}
-                placeholder="********"
-              />
-            </div>
+            )}
+            {authMode === "reset" && (
+              <>
+                <div>
+                  <label className="text-xs font-medium text-slate-600">New password</label>
+                  <div className="relative mt-1">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      className="w-full rounded border border-slate-200 px-3 py-2 pr-10 text-sm"
+                      value={authPassword}
+                      onChange={(event) => setAuthPassword(event.target.value)}
+                      placeholder="********"
+                    />
+                    <button
+                      type="button"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-600">Confirm password</label>
+                  <div className="relative mt-1">
+                    <input
+                      type={showPasswordConfirm ? "text" : "password"}
+                      className="w-full rounded border border-slate-200 px-3 py-2 pr-10 text-sm"
+                      value={authPasswordConfirm}
+                      onChange={(event) => setAuthPasswordConfirm(event.target.value)}
+                      placeholder="********"
+                    />
+                    <button
+                      type="button"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500"
+                      onClick={() => setShowPasswordConfirm((prev) => !prev)}
+                      aria-label={showPasswordConfirm ? "Hide password" : "Show password"}
+                    >
+                      {showPasswordConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
             {authError && <p className="text-xs text-red-600">{authError}</p>}
             {authSuccess && (
               <p className="text-xs text-emerald-600">{authSuccess}</p>
             )}
-            <DialogFooter className="gap-2 sm:gap-0">
-              <button
-                type="button"
-                className="rounded border px-3 py-2 text-sm"
-                onClick={() => setIsAuthOpen(false)}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
-                disabled={isAuthWorking}
-              >
-                {isAuthWorking
-                  ? authMode === "sign-in"
-                    ? "Signing in..."
-                    : "Creating account..."
-                  : authMode === "sign-in"
-                    ? "Sign in"
-                    : "Create account"}
-              </button>
-            </DialogFooter>
+            {authMode === "sign-up" && authSuccess ? (
+              <DialogFooter className="flex justify-center gap-2">
+                <button
+                  type="button"
+                  className="mx-auto min-w-[120px] rounded border px-3 py-2 text-sm"
+                  onClick={() => setIsAuthOpen(false)}
+                >
+                  Close
+                </button>
+              </DialogFooter>
+            ) : (
+              <DialogFooter className="gap-2 sm:gap-0">
+                <button
+                  type="button"
+                  className="rounded border px-3 py-2 text-sm"
+                  onClick={() => setIsAuthOpen(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
+                  disabled={isAuthWorking}
+                >
+                  {isAuthWorking
+                    ? authMode === "sign-in"
+                      ? "Signing in..."
+                      : authMode === "reset"
+                        ? "Updating password..."
+                        : authMode === "forgot"
+                          ? "Sending email..."
+                          : "Creating account..."
+                    : authMode === "sign-in"
+                      ? "Sign in"
+                      : authMode === "reset"
+                        ? "Update password"
+                        : authMode === "forgot"
+                          ? "Send reset link"
+                          : "Create account"}
+                </button>
+              </DialogFooter>
+            )}
           </form>
-          <div className="pt-2 text-xs text-slate-500">
-            {authMode === "sign-in" ? "Don't have an account?" : "Already have an account?"}{" "}
-            <button
-              type="button"
-              className="font-medium text-blue-600"
-              onClick={() =>
-                setAuthMode((prev) => (prev === "sign-in" ? "sign-up" : "sign-in"))
-              }
-            >
-              {authMode === "sign-in" ? "Register" : "Sign in"}
-            </button>
-          </div>
+          {null}
+          {authMode === "forgot" && null}
         </DialogContent>
       </Dialog>
     </div>
