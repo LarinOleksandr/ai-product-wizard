@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   ChevronLeft,
@@ -784,7 +785,12 @@ function hasFieldValue(field: FieldDefinition, value: unknown): boolean {
   });
 }
 
-export function WizardPage() {
+type WizardPageProps = {
+  embedded?: boolean;
+  debugTargetId?: string;
+};
+
+export function WizardPage({ embedded = false, debugTargetId }: WizardPageProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const [form, setForm] = useState({
@@ -2418,6 +2424,926 @@ export function WizardPage() {
   }
 
   const statusClass = statusColors[status] || statusColors.idle;
+  const blockedFields: string[] = [];
+  const getFieldStatus = (fieldKey: string) => {
+    if (blockedFields.includes(fieldKey)) {
+      return "blocked";
+    }
+    const approved = latestRecord?.fieldStatus?.[fieldKey]?.approved ?? false;
+    return approved ? "approved" : "ready";
+  };
+
+  const getFieldGenerationStatusMessage = (
+    fields: FieldDefinition[],
+    record: DiscoveryRecord | null | undefined,
+    blocked: string[]
+  ) => {
+    if (!fields.length) return "";
+    let approvedCount = 0;
+    fields.forEach((field) => {
+      if (record?.fieldStatus?.[field.key]?.approved) {
+        approvedCount += 1;
+      }
+    });
+    if (approvedCount === fields.length) {
+      return "Ready";
+    }
+    const blockedCount = fields.filter(
+      (field) => blocked.includes(field.key) && !record?.fieldStatus?.[field.key]?.approved
+    ).length;
+    const statusText = `${approvedCount}/${fields.length} ready`;
+    return blockedCount ? `${statusText}` : statusText;
+  };
+
+  const debugPanel = (
+    <div className="space-y-4">
+
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-gray-700">Status</p>
+          <div className={`mt-2 inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${statusClass}`}>
+            {statusCopy[status]}
+          </div>
+        </div>
+        {latestVersion && (
+          <div className="text-right text-sm text-gray-600">
+            <p>Version v{latestVersion}</p>
+            <p>{latestRecord?.timestamp}</p>
+          </div>
+        )}
+      </div>
+
+      <p className="text-sm text-gray-700">{message}</p>
+      {progressText && <p className="text-sm text-gray-500">{progressText}</p>}
+
+      {questions.length > 0 && (
+        <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 text-sm">
+          <p className="font-medium">Missing info</p>
+          <ul className="mt-2 list-disc pl-5">
+            {questions.map((question) => (
+              <li key={question}>{question}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {error && (
+        <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+      <div className="rounded-md border border-slate-200 bg-white p-3 text-xs text-slate-700">
+        <div className="flex items-center justify-between">
+          <p className="font-semibold">Last LLM error</p>
+          {lastLlmError && (
+            <button
+              type="button"
+              className="text-xs text-slate-500 hover:text-slate-700"
+              onClick={() => setLastLlmError(null)}
+            >
+              Clear
+            </button>
+          )}
+        </div>
+        {!lastLlmError && (
+          <p className="mt-2 text-xs text-slate-500">No errors captured yet.</p>
+        )}
+        {lastLlmError?.message && (
+          <p className="mt-2 text-xs text-slate-600">{lastLlmError.message}</p>
+        )}
+        {lastLlmError?.lastOutputFieldKey && (
+          <p className="mt-2 text-xs text-slate-500">
+            Field: {lastLlmError.lastOutputFieldKey}
+          </p>
+        )}
+        {status === "error" && (
+          <div className="mt-2">
+            <p className="text-xs font-semibold text-slate-600">Last prompt</p>
+            <textarea
+              readOnly
+              className="mt-1 w-full resize-none overflow-hidden rounded bg-slate-50 p-2 text-xs text-slate-700"
+              rows={6}
+              ref={errorPromptRef}
+              value={formatDebugValue(errorPromptText)}
+            />
+          </div>
+        )}
+        {status === "error" && (
+          <div className="mt-2">
+            <p className="text-xs font-semibold text-slate-600">Last output</p>
+            <textarea
+              readOnly
+              className="mt-1 w-full resize-none overflow-hidden rounded bg-slate-50 p-2 text-xs text-slate-700"
+              rows={6}
+              ref={errorOutputRef}
+              value={formatDebugValue(errorOutputText)}
+            />
+          </div>
+        )}
+      </div>
+
+      <Accordion type="multiple" className="space-y-2">
+        <AccordionItem value="llm-prompt" className="border rounded">
+          <AccordionTrigger className="px-3 py-2 text-sm font-medium hover:no-underline">
+            LLM Prompt
+          </AccordionTrigger>
+          <AccordionContent className="px-3 pb-3">
+            <textarea
+              readOnly
+              className="w-full resize-none overflow-hidden rounded border bg-gray-50 p-3 text-xs text-gray-700"
+              rows={8}
+              ref={llmPromptRef}
+              value={formatDebugValue(
+                status === "error"
+                  ? debugPrompt || latestRecord?.lastPrompt || null
+                  : latestRecord?.lastPrompt || debugPrompt || null
+              )}
+            />
+          </AccordionContent>
+        </AccordionItem>
+
+        <AccordionItem value="llm-output" className="border rounded">
+          <AccordionTrigger className="px-3 py-2 text-sm font-medium hover:no-underline">
+            LLM output
+          </AccordionTrigger>
+          <AccordionContent className="px-3 pb-3">
+            <textarea
+              readOnly
+              className="w-full resize-none overflow-hidden rounded border bg-gray-50 p-3 text-xs text-gray-700"
+              rows={8}
+              ref={llmOutputRef}
+              value={formatDebugValue(
+                status === "error"
+                  ? debugOutput || latestRecord?.lastOutput || null
+                  : latestRecord?.lastOutput || debugOutput || null
+              )}
+            />
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+    </div>
+  );
+
+  const [debugTarget, setDebugTarget] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    if (!debugTargetId || typeof document === "undefined") {
+      setDebugTarget(null);
+      return;
+    }
+    setDebugTarget(document.getElementById(debugTargetId));
+  }, [debugTargetId]);
+
+  const debugPortal = debugTarget ? createPortal(debugPanel, debugTarget) : null;
+
+  if (embedded) {
+    return (
+      <>
+        <div ref={textareaContainerRef} className="space-y-3 px-4">
+        {confirmRegenerateFieldKey && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
+            <div className="w-full max-w-md rounded-lg border bg-white p-5 shadow-lg">
+              <p className="text-sm font-semibold text-gray-900">Regenerate field?</p>
+              <p className="mt-2 text-sm text-gray-600">
+                Regenerating this field will delete all later blocks. Continue?
+              </p>
+              <div className="mt-4 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  className="rounded border px-3 py-2 text-sm"
+                  onClick={() => setConfirmRegenerateFieldKey(null)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="rounded border bg-white px-3 py-2 text-sm font-normal text-gray-700"
+                  onClick={() => {
+                    const fieldKey = confirmRegenerateFieldKey;
+                    const options = confirmRegenerateOptions;
+                    setConfirmRegenerateFieldKey(null);
+                    setConfirmRegenerateOptions(null);
+                    if (fieldKey) {
+                      void confirmRegenerateField(fieldKey, options);
+                    }
+                  }}
+                >
+                  Regenerate
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {confirmClearFieldKey && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
+            <div className="w-full max-w-md rounded-lg border bg-white p-5 shadow-lg">
+              <p className="text-sm font-semibold text-gray-900">Clear block?</p>
+              <p className="mt-2 text-sm text-gray-600">
+                Clearing this block will delete all its content. Continue?
+              </p>
+              <div className="mt-4 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  className="rounded border px-3 py-2 text-sm"
+                  onClick={() => setConfirmClearFieldKey(null)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="rounded border bg-white px-3 py-2 text-sm font-medium text-gray-700"
+                  onClick={() => {
+                    const fieldKey = confirmClearFieldKey;
+                    setConfirmClearFieldKey(null);
+                    if (fieldKey) {
+                      void confirmClearField(fieldKey);
+                    }
+                  }}
+                >
+                  Clear Block
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {confirmClearDocument && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
+            <div className="w-full max-w-md rounded-lg border bg-white p-5 shadow-lg">
+              <p className="text-sm font-semibold text-gray-900">Clear document?</p>
+              <p className="mt-2 text-sm text-gray-600">
+                All document data will be lost. Are you sure?
+              </p>
+              <div className="mt-4 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  className="rounded border px-3 py-2 text-sm"
+                  onClick={() => setConfirmClearDocument(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="rounded border bg-white px-3 py-2 text-sm font-normal text-gray-700"
+                  onClick={() => {
+                    setConfirmClearDocument(false);
+                    void confirmClearDocumentAction();
+                  }}
+                >
+                  Clear Document
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="space-y-6">
+          <form className="w-full space-y-4" onSubmit={handleStartFirstSection}>
+            <p className="text-center text-sm text-gray-500">
+              Create a Document Section by Section (recommended) or in One Go
+            </p>
+            <div className="flex items-center justify-center gap-3 pb-2">
+              <button
+                type="submit"
+                className="min-w-[230px] rounded bg-gradient-to-br from-blue-600 to-violet-600 px-4 py-2 text-sm font-medium text-white hover:from-blue-700 hover:to-violet-700 disabled:opacity-60"
+                disabled={
+                  status === "running" ||
+                  isGeneratingAll ||
+                  (!isStaleGeneration &&
+                    !canRestartAfterCancel &&
+                    Boolean(latestRecord) &&
+                    !latestRecord.approved &&
+                    !isDocumentCleared(latestRecord))
+                }
+              >
+                Generate First Section
+              </button>
+
+              <button
+                type="button"
+                className="rounded border px-4 py-2 text-sm font-medium text-gray-700 disabled:opacity-60"
+                onClick={handleGenerateEntireDocument}
+                disabled={
+                  status === "running" ||
+                  isFullGenerationActive ||
+                  (!isStaleGeneration &&
+                    !canRestartAfterCancel &&
+                    Boolean(latestRecord) &&
+                    !latestRecord.approved &&
+                    !isDocumentCleared(latestRecord))
+                }
+              >
+                {isGeneratingAll ? "Generating..." : "Generate Entire Document"}
+              </button>
+
+            {isFullGenerationActive && (
+              <button
+                type="button"
+                className="rounded border px-4 py-2 text-sm font-medium text-gray-700 disabled:opacity-60"
+                onClick={cancelGenerateAll}
+              >
+                Cancel
+                </button>
+              )}
+            </div>
+          </form>
+
+          <section className="rounded-lg border bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-center">
+              <div className="flex items-center gap-3 whitespace-nowrap flex-nowrap">
+                <img
+                  src={discoveryDocumentIcon}
+                  alt=""
+                  className="h-7 w-7"
+                />
+                <h2 className="text-xl font-semibold">Discovery Document</h2>
+                <span
+                  className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${statusClass}`}
+                >
+                  {statusCopy[status]}
+                </span>
+                {message && (
+                  <span className="text-xs text-gray-600">{message}</span>
+                )}
+              </div>
+              <div className="flex flex-col items-end gap-2 text-right text-sm text-gray-600">
+                {!isEmptyDocumentView && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      className="inline-flex items-center rounded border px-3 py-2 text-sm disabled:opacity-60"
+                      onClick={exportMarkdown}
+                      disabled={!latestVersion || isGeneratingAll || isExportingMarkdown}
+                    >
+                      <span className="inline-flex items-center gap-2">
+                        <FileText className="h-4 w-4" />
+                        {isExportingMarkdown ? "Preparing MD..." : "Export MD"}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      className="inline-flex items-center rounded border px-3 py-2 text-sm disabled:opacity-60"
+                      onClick={exportPdf}
+                      disabled={!latestVersion || isGeneratingAll || isExportingPdf}
+                    >
+                      <span className="inline-flex items-center gap-2">
+                        <FileDown className="h-4 w-4" />
+                        {isExportingPdf ? "Preparing PDF..." : "Export PDF"}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      className="inline-flex items-center rounded border bg-white px-3 py-2 text-sm font-normal text-gray-700 disabled:opacity-60"
+                      onClick={clearDocument}
+                      disabled={!latestVersion || isClearing || isGeneratingAll}
+                    >
+                      {isClearing ? "Clearing..." : "Clear Document"}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {isEmptyDocumentView ? (
+              <div className="mt-6 space-y-4">
+                {Object.entries(groupedFields).map(([groupName, fields]) => (
+                  <Accordion
+                    key={groupName}
+                    type="multiple"
+                    value={openGroups.includes(groupName) ? [groupName] : []}
+                    onValueChange={(nextValue) =>
+                      setOpenGroups((prev) => {
+                        const isOpen = nextValue.includes(groupName);
+                        if (isOpen && !prev.includes(groupName)) {
+                          return prev.concat(groupName);
+                        }
+                        if (!isOpen && prev.includes(groupName)) {
+                          return prev.filter((name) => name !== groupName);
+                        }
+                        return prev;
+                      })
+                    }
+                    className="rounded-lg border border-slate-200 bg-slate-50"
+                  >
+                    <AccordionItem value={groupName} className="border-0">
+                      <AccordionTrigger
+                        className="px-4 py-3 text-sm font-semibold uppercase tracking-wide text-gray-400 hover:no-underline [&>svg]:invisible"
+                        disabled
+                      >
+                        {groupName}
+                      </AccordionTrigger>
+                      <AccordionContent className="px-4 pb-4">
+                        <Accordion
+                          type="multiple"
+                          value={openFieldsByGroup[groupName] || []}
+                          onValueChange={(nextValue) =>
+                            setOpenFieldsByGroup((prev) => ({
+                              ...prev,
+                              [groupName]: nextValue
+                            }))
+                          }
+                          className="space-y-3"
+                        >
+                          {fields.map((field) => (
+                            <AccordionItem key={field.key} value={field.key} className="border-0">
+                              <AccordionTrigger
+                                className="py-2 text-sm font-semibold text-gray-400 hover:no-underline [&>svg]:invisible"
+                                disabled
+                              >
+                                {field.label}
+                              </AccordionTrigger>
+                            </AccordionItem>
+                          ))}
+                        </Accordion>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-6 space-y-4">
+                {Object.entries(groupedFields).map(([groupName, fields]) => (
+                  <Accordion
+                    key={groupName}
+                    type="multiple"
+                    value={openGroups.includes(groupName) ? [groupName] : []}
+                    onValueChange={(nextValue) =>
+                      setOpenGroups((prev) => {
+                        const isOpen = nextValue.includes(groupName);
+                        if (isOpen && !prev.includes(groupName)) {
+                          return prev.concat(groupName);
+                        }
+                        if (!isOpen && prev.includes(groupName)) {
+                          return prev.filter((name) => name !== groupName);
+                        }
+                        return prev;
+                      })
+                    }
+                    className="rounded-lg border border-slate-200 bg-slate-50"
+                  >
+                    <AccordionItem value={groupName} className="border-0">
+                      <AccordionTrigger className="px-4 py-3 text-sm font-semibold hover:no-underline">
+                        <div className="flex w-full items-center justify-between">
+                          <span>{groupName}</span>
+                          <span className="text-xs text-gray-500">
+                            {getFieldGenerationStatusMessage(
+                              fields,
+                              latestRecord,
+                              blockedFields
+                            )}
+                          </span>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="px-4 pb-4">
+                        <Accordion
+                          type="multiple"
+                          value={openFieldsByGroup[groupName] || []}
+                          onValueChange={(nextValue) =>
+                            setOpenFieldsByGroup((prev) => ({
+                              ...prev,
+                              [groupName]: nextValue
+                            }))
+                          }
+                          className="space-y-3"
+                        >
+                          {fields.map((field) => {
+                            const fieldStatus = getFieldStatus(field.key);
+                            const isApproved = fieldStatus === "approved";
+                            const isBlocked = fieldStatus === "blocked";
+                            const isGeneratingCurrent = regeneratingFieldKey === field.key;
+                            const isGeneratingLabel =
+                              isGeneratingCurrent && message.startsWith("Generating ");
+                            const showRegenerate = isFullGenerationActive ? !isGeneratingCurrent : true;
+                            return (
+                              <AccordionItem
+                                key={field.key}
+                                value={field.key}
+                                className={`rounded-md border ${
+                                  isBlocked
+                                    ? "border-slate-200 bg-slate-100"
+                                    : "border-slate-200 bg-white"
+                                }`}
+                              >
+                                <AccordionTrigger className="px-3 py-2 text-sm font-medium hover:no-underline">
+                                  <div className="flex w-full items-center justify-between gap-2">
+                                    <span className="text-left">{field.title}</span>
+                                    <span
+                                      className={`text-xs ${
+                                        isApproved ? "text-emerald-600" : "text-gray-400"
+                                      }`}
+                                    >
+                                      {isApproved ? "Ready" : "Not ready"}
+                                    </span>
+                                  </div>
+                                </AccordionTrigger>
+                                <AccordionContent className="px-3 pb-3">
+                                  {field.type === "custom" ? (
+                                    <CustomFieldEditor
+                                      value={
+                                        draftFields[field.key] ??
+                                        form[field.key as keyof DiscoveryDocumentForm] ??
+                                        ""
+                                      }
+                                      onChange={(nextValue) =>
+                                        setDraftFields((prev) => ({
+                                          ...prev,
+                                          [field.key]: nextValue
+                                        }))
+                                      }
+                                      onApprove={() => approveField(field.key, field.type)}
+                                      onRegenerate={() => regenerateField(field.key)}
+                                      onClear={() => clearField(field.key)}
+                                      approved={isApproved}
+                                      disabled={isBlocked}
+                                      isApproving={approvingFieldKey === field.key}
+                                      isRegenerating={regeneratingFieldKey === field.key}
+                                      regenerateLabel={isGeneratingLabel ? "Generating..." : "Regenerating..."}
+                                      isClearing={clearingFieldKey === field.key}
+                                      showRegenerate={showRegenerate}
+                                      hideApprove={isFullGenerationActive}
+                                    />
+                                  ) : field.type === "object" ? (
+                                    field.key === "problemUnderstanding.targetUsersSegments" ? (
+                                      <TargetSegmentsEditor
+                                        title={field.label}
+                                        showTitle={false}
+                                        segments={
+                                          typeof draftFields[field.key] === "object" &&
+                                          draftFields[field.key] !== null
+                                            ? (draftFields[field.key] as {
+                                                user_segments?: TargetSegment[];
+                                              }).user_segments || []
+                                            : []
+                                        }
+                                        onChange={(nextValue) =>
+                                          setDraftFields((prev) => ({
+                                            ...prev,
+                                            [field.key]: { user_segments: nextValue }
+                                          }))
+                                        }
+                                        onApprove={() => approveField(field.key, field.type)}
+                                        onRegenerate={() => regenerateField(field.key)}
+                                        onClear={() => clearField(field.key)}
+                                        approved={isApproved}
+                                        disabled={isBlocked}
+                                        isApproving={approvingFieldKey === field.key}
+                                        isRegenerating={regeneratingFieldKey === field.key}
+                                        regenerateLabel={
+                                          isGeneratingLabel ? "Generating..." : "Regenerating..."
+                                        }
+                                        isClearing={clearingFieldKey === field.key}
+                                        showRegenerate={showRegenerate}
+                                        hideApprove={isFullGenerationActive}
+                                      />
+                                    ) : field.key === "problemUnderstanding.userPainPoints" ? (
+                                      <PainPointsEditor
+                                        title={field.label}
+                                        showTitle={false}
+                                        value={
+                                          typeof draftFields[field.key] === "object" &&
+                                          draftFields[field.key] !== null
+                                            ? (draftFields[field.key] as {
+                                                user_segments?: PainPointGroup[];
+                                              }).user_segments || []
+                                            : []
+                                        }
+                                        segmentOptions={
+                                          typeof draftFields[
+                                            "problemUnderstanding.targetUsersSegments"
+                                          ] === "object" &&
+                                          draftFields[
+                                            "problemUnderstanding.targetUsersSegments"
+                                          ] !== null
+                                            ? (draftFields[
+                                                "problemUnderstanding.targetUsersSegments"
+                                              ] as {
+                                                user_segments?: TargetSegment[];
+                                              }).user_segments || []
+                                            : []
+                                        }
+                                        onChange={(nextValue) =>
+                                          setDraftFields((prev) => ({
+                                            ...prev,
+                                            [field.key]: { user_segments: nextValue }
+                                          }))
+                                        }
+                                        onApprove={() => approveField(field.key, field.type)}
+                                        onRegenerate={() => regenerateField(field.key)}
+                                        onClear={() => clearField(field.key)}
+                                        approved={isApproved}
+                                        disabled={isBlocked}
+                                        isApproving={approvingFieldKey === field.key}
+                                        isRegenerating={regeneratingFieldKey === field.key}
+                                        regenerateLabel={
+                                          isGeneratingLabel ? "Generating..." : "Regenerating..."
+                                        }
+                                        isClearing={clearingFieldKey === field.key}
+                                        showRegenerate={showRegenerate}
+                                        hideApprove={isFullGenerationActive}
+                                      />
+                                    ) : field.key === "problemUnderstanding.contextualFactors" ? (
+                                      <ContextualFactorsEditor
+                                        title={field.label}
+                                        showTitle={false}
+                                        value={
+                                          typeof draftFields[field.key] === "object" &&
+                                          draftFields[field.key] !== null
+                                            ? (draftFields[field.key] as ContextualFactors)
+                                            : { contextual_factors: [] }
+                                        }
+                                        onChange={(nextValue) =>
+                                          setDraftFields((prev) => ({
+                                            ...prev,
+                                            [field.key]: nextValue
+                                          }))
+                                        }
+                                        onApprove={() => approveField(field.key, field.type)}
+                                        onRegenerate={() => regenerateField(field.key)}
+                                        onClear={() => clearField(field.key)}
+                                        approved={isApproved}
+                                        disabled={isBlocked}
+                                        isApproving={approvingFieldKey === field.key}
+                                        isRegenerating={regeneratingFieldKey === field.key}
+                                        regenerateLabel={
+                                          isGeneratingLabel ? "Generating..." : "Regenerating..."
+                                        }
+                                        isClearing={clearingFieldKey === field.key}
+                                        showRegenerate={showRegenerate}
+                                        hideApprove={isFullGenerationActive}
+                                      />
+                                    ) : field.key === "problemUnderstanding.constraints" ? (
+                                      <ConstraintsEditor
+                                        title={field.label}
+                                        showTitle={false}
+                                        value={
+                                          typeof draftFields[field.key] === "object" &&
+                                          draftFields[field.key] !== null
+                                            ? (draftFields[field.key] as Constraints)
+                                            : { constraints: [] }
+                                        }
+                                        onChange={(nextValue) =>
+                                          setDraftFields((prev) => ({
+                                            ...prev,
+                                            [field.key]: nextValue
+                                          }))
+                                        }
+                                        onApprove={() => approveField(field.key, field.type)}
+                                        onRegenerate={() => regenerateField(field.key)}
+                                        onClear={() => clearField(field.key)}
+                                        approved={isApproved}
+                                        disabled={isBlocked}
+                                        isApproving={approvingFieldKey === field.key}
+                                        isRegenerating={regeneratingFieldKey === field.key}
+                                        regenerateLabel={
+                                          isGeneratingLabel ? "Generating..." : "Regenerating..."
+                                        }
+                                        isClearing={clearingFieldKey === field.key}
+                                        showRegenerate={showRegenerate}
+                                        hideApprove={isFullGenerationActive}
+                                      />
+                                    ) : field.key === "marketAndCompetitorAnalysis.marketLandscape" ? (
+                                      <MarketLandscapeEditor
+                                        title={field.label}
+                                        showTitle={false}
+                                        value={
+                                          typeof draftFields[field.key] === "object" &&
+                                          draftFields[field.key] !== null
+                                            ? (draftFields[field.key] as MarketLandscape)
+                                            : emptyMarketLandscape
+                                        }
+                                        onChange={(nextValue) =>
+                                          setDraftFields((prev) => ({
+                                            ...prev,
+                                            [field.key]: nextValue
+                                          }))
+                                        }
+                                        onApprove={() => approveField(field.key, field.type)}
+                                        onRegenerate={() => regenerateField(field.key)}
+                                        onClear={() => clearField(field.key)}
+                                        approved={isApproved}
+                                        disabled={isBlocked}
+                                        isApproving={approvingFieldKey === field.key}
+                                        isRegenerating={regeneratingFieldKey === field.key}
+                                        regenerateLabel={
+                                          isGeneratingLabel ? "Generating..." : "Regenerating..."
+                                        }
+                                        isClearing={clearingFieldKey === field.key}
+                                        showRegenerate={showRegenerate}
+                                        hideApprove={isFullGenerationActive}
+                                      />
+                                    ) : field.key === "marketAndCompetitorAnalysis.competitorInventory" ? (
+                                      <CompetitorInventoryEditor
+                                        title={field.label}
+                                        showTitle={false}
+                                        value={
+                                          typeof draftFields[field.key] === "object" &&
+                                          draftFields[field.key] !== null
+                                            ? (draftFields[field.key] as CompetitorInventory)
+                                            : emptyCompetitorInventory
+                                        }
+                                        onChange={(nextValue) =>
+                                          setDraftFields((prev) => ({
+                                            ...prev,
+                                            [field.key]: nextValue
+                                          }))
+                                        }
+                                        onApprove={() => approveField(field.key, field.type)}
+                                        onRegenerate={() => regenerateField(field.key)}
+                                        onClear={() => clearField(field.key)}
+                                        approved={isApproved}
+                                        disabled={isBlocked}
+                                        isApproving={approvingFieldKey === field.key}
+                                        isRegenerating={regeneratingFieldKey === field.key}
+                                        regenerateLabel={
+                                          isGeneratingLabel ? "Generating..." : "Regenerating..."
+                                        }
+                                        isClearing={clearingFieldKey === field.key}
+                                        showRegenerate={showRegenerate}
+                                        hideApprove={isFullGenerationActive}
+                                      />
+                                    ) : field.key === "marketAndCompetitorAnalysis.competitorCapabilities" ? (
+                                      <CompetitorCapabilitiesEditor
+                                        title={field.label}
+                                        showTitle={false}
+                                        value={
+                                          typeof draftFields[field.key] === "object" &&
+                                          draftFields[field.key] !== null
+                                            ? (draftFields[field.key] as CompetitorCapabilities)
+                                            : emptyCompetitorCapabilities
+                                        }
+                                        onChange={(nextValue) =>
+                                          setDraftFields((prev) => ({
+                                            ...prev,
+                                            [field.key]: nextValue
+                                          }))
+                                        }
+                                        onApprove={() => approveField(field.key, field.type)}
+                                        onRegenerate={() => regenerateField(field.key)}
+                                        onClear={() => clearField(field.key)}
+                                        approved={isApproved}
+                                        disabled={isBlocked}
+                                        isApproving={approvingFieldKey === field.key}
+                                        isRegenerating={regeneratingFieldKey === field.key}
+                                        regenerateLabel={
+                                          isGeneratingLabel ? "Generating..." : "Regenerating..."
+                                        }
+                                        isClearing={clearingFieldKey === field.key}
+                                        showRegenerate={showRegenerate}
+                                        hideApprove={isFullGenerationActive}
+                                      />
+                                    ) : field.key === "marketAndCompetitorAnalysis.gapsOpportunities" ? (
+                                      <OpportunitiesEditor
+                                        title={field.label}
+                                        showTitle={false}
+                                        value={
+                                          typeof draftFields[field.key] === "object" &&
+                                          draftFields[field.key] !== null
+                                            ? (draftFields[field.key] as Opportunities)
+                                            : emptyGapsOpportunities
+                                        }
+                                        onChange={(nextValue) =>
+                                          setDraftFields((prev) => ({
+                                            ...prev,
+                                            [field.key]: nextValue
+                                          }))
+                                        }
+                                        onApprove={() => approveField(field.key, field.type)}
+                                        onRegenerate={() => regenerateField(field.key)}
+                                        onClear={() => clearField(field.key)}
+                                        approved={isApproved}
+                                        disabled={isBlocked}
+                                        isApproving={approvingFieldKey === field.key}
+                                        isRegenerating={regeneratingFieldKey === field.key}
+                                        regenerateLabel={
+                                          isGeneratingLabel ? "Generating..." : "Regenerating..."
+                                        }
+                                        isClearing={clearingFieldKey === field.key}
+                                        showRegenerate={showRegenerate}
+                                        hideApprove={isFullGenerationActive}
+                                      />
+                                    ) : field.key === "opportunityDefinition.valueDrivers" ? (
+                                      <ValueDriversEditor
+                                        title={field.label}
+                                        showTitle={false}
+                                        value={
+                                          typeof draftFields[field.key] === "object" &&
+                                          draftFields[field.key] !== null
+                                            ? (draftFields[field.key] as ValueDrivers)
+                                            : { value_drivers: [] }
+                                        }
+                                        onChange={(nextValue) =>
+                                          setDraftFields((prev) => ({
+                                            ...prev,
+                                            [field.key]: nextValue
+                                          }))
+                                        }
+                                        onApprove={() => approveField(field.key, field.type)}
+                                        onRegenerate={() => regenerateField(field.key)}
+                                        onClear={() => clearField(field.key)}
+                                        approved={isApproved}
+                                        disabled={isBlocked}
+                                        isApproving={approvingFieldKey === field.key}
+                                        isRegenerating={regeneratingFieldKey === field.key}
+                                        regenerateLabel={
+                                          isGeneratingLabel ? "Generating..." : "Regenerating..."
+                                        }
+                                        isClearing={clearingFieldKey === field.key}
+                                        showRegenerate={showRegenerate}
+                                        hideApprove={isFullGenerationActive}
+                                      />
+                                    ) : field.key === "opportunityDefinition.feasibilityRisks" ? (
+                                      <FeasibilityRisksEditor
+                                        title={field.label}
+                                        showTitle={false}
+                                        value={
+                                          typeof draftFields[field.key] === "object" &&
+                                          draftFields[field.key] !== null
+                                            ? (draftFields[field.key] as FeasibilityRisks)
+                                            : { feasibility_risks: [] }
+                                        }
+                                        onChange={(nextValue) =>
+                                          setDraftFields((prev) => ({
+                                            ...prev,
+                                            [field.key]: nextValue
+                                          }))
+                                        }
+                                        onApprove={() => approveField(field.key, field.type)}
+                                        onRegenerate={() => regenerateField(field.key)}
+                                        onClear={() => clearField(field.key)}
+                                        approved={isApproved}
+                                        disabled={isBlocked}
+                                        isApproving={approvingFieldKey === field.key}
+                                        isRegenerating={regeneratingFieldKey === field.key}
+                                        regenerateLabel={
+                                          isGeneratingLabel ? "Generating..." : "Regenerating..."
+                                        }
+                                        isClearing={clearingFieldKey === field.key}
+                                        showRegenerate={showRegenerate}
+                                        hideApprove={isFullGenerationActive}
+                                      />
+                                    ) : null
+                                  ) : (
+                                    <FieldEditor
+                                      title={field.label}
+                                      showTitle={false}
+                                      type={field.type}
+                                      value={
+                                        typeof draftFields[field.key] === "string"
+                                          ? (draftFields[field.key] as string)
+                                          : ""
+                                      }
+                                      onChange={(nextValue) =>
+                                        setDraftFields((prev) => ({
+                                          ...prev,
+                                          [field.key]: nextValue
+                                        }))
+                                      }
+                                      onApprove={() => approveField(field.key, field.type)}
+                                      onRegenerate={() => regenerateField(field.key)}
+                                      onClear={() => clearField(field.key)}
+                                      approved={isApproved}
+                                      disabled={isBlocked}
+                                      isApproving={approvingFieldKey === field.key}
+                                      isRegenerating={regeneratingFieldKey === field.key}
+                                      regenerateLabel={isGeneratingLabel ? "Generating..." : "Regenerating..."}
+                                      isClearing={clearingFieldKey === field.key}
+                                      showRegenerate={showRegenerate}
+                                      hideApprove={isFullGenerationActive}
+                                    />
+                                  )}
+                                </AccordionContent>
+                              </AccordionItem>
+                            );
+                          })}
+                        </Accordion>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                ))}
+              </div>
+            )}
+            {!isEmptyDocumentView && (
+              <div className="mt-6 flex justify-end">
+                <button
+                  type="button"
+                  className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+                  onClick={saveDocument}
+                  disabled={
+                    !latestVersion ||
+                    isSavingDocument ||
+                    isGeneratingAll ||
+                    status === "running"
+                  }
+                >
+                  {isSavingDocument ? "Saving..." : "Save Document"}
+                </button>
+              </div>
+            )}
+          </section>
+        </div>
+      </div>
+      {debugPortal}
+      </>
+    );
+  }
 
   return (
     <div ref={textareaContainerRef} className="space-y-3 px-4">
@@ -2442,16 +3368,15 @@ export function WizardPage() {
                 onClick={() => {
                   const fieldKey = confirmRegenerateFieldKey;
                   setConfirmRegenerateFieldKey(null);
-                    if (fieldKey) {
-                      void executeRegenerate(fieldKey, { mode: "regenerated" });
-                    }
-                  }}
-                >
+                  if (fieldKey) {
+                    void executeRegenerate(fieldKey, { mode: "regenerated" });
+                  }
+                }}
+              >
                 Regenerate
               </button>
             </div>
           </div>
-          )
         </div>
       )}
 
@@ -2479,7 +3404,6 @@ export function WizardPage() {
               </button>
             </div>
           </div>
-          )
         </div>
       )}
       {confirmClearFieldKey && (
@@ -2512,7 +3436,6 @@ export function WizardPage() {
               </button>
             </div>
           </div>
-          )
         </div>
       )}
       {confirmClearDocument && (
@@ -2542,7 +3465,6 @@ export function WizardPage() {
               </button>
             </div>
           </div>
-          )
         </div>
       )}
       <div className="flex items-center justify-between gap-4">
@@ -3269,226 +4191,11 @@ By doing so, users experience a sense of control and empowerment over their well
             )}
           </button>
           <div
-            className={`space-y-4 transition-all duration-200 ${
+            className={`transition-all duration-200 ${
               isDebugOpen ? "opacity-100" : "pointer-events-none opacity-0 lg:h-0 lg:overflow-hidden"
             }`}
           >
-          {session ? (
-            <div className="rounded-md border border-slate-200 bg-white p-3 text-sm">
-              <div className="flex items-center justify-between">
-                <p className="font-semibold">Projects</p>
-                <button
-                  type="button"
-                  className="text-xs text-slate-500 hover:text-slate-700"
-                  onClick={async () => {
-                    try {
-                      await signOut();
-                    } catch (err) {
-                      setError(err instanceof Error ? err.message : "Sign out failed.");
-                    }
-                  }}
-                >
-                  Sign out
-                </button>
-              </div>
-              {isProjectsLoading ? (
-                <p className="mt-2 text-xs text-slate-500">Loading projects...</p>
-              ) : (
-                <>
-                  {projects.length === 0 ? (
-                    <p className="mt-2 text-xs text-slate-500">No projects yet.</p>
-                  ) : (
-                    <div className="mt-2 space-y-2">
-                      {projects.map((project) => {
-                        const isActive = activeProjectId === project.id;
-                        return (
-                          <button
-                            key={project.id}
-                            type="button"
-                            onClick={() => setActiveProjectId(project.id)}
-                            className={`w-full rounded border px-2 py-2 text-left text-xs ${
-                              isActive
-                                ? "border-blue-500 bg-blue-50"
-                                : "border-slate-200 bg-white"
-                            }`}
-                          >
-                            <div className="text-sm font-medium">
-                              {project.name || "Untitled project"}
-                            </div>
-                            <div className="text-xs text-slate-500">
-                              {project.created_at}
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                  <form
-                    className="mt-3 flex gap-2"
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      if (isCreatingProject) return;
-                      void handleCreateProject();
-                    }}
-                  >
-                    <input
-                      className="flex-1 rounded border border-slate-200 px-2 py-1 text-xs"
-                      placeholder="New project name"
-                      value={newProjectName}
-                      onChange={(event) => setNewProjectName(event.target.value)}
-                    />
-                    <button
-                      type="submit"
-                      className="rounded border border-blue-600 px-2 py-1 text-xs font-medium text-blue-700 disabled:opacity-60"
-                      disabled={isCreatingProject}
-                    >
-                      {isCreatingProject ? "Creating..." : "Add"}
-                    </button>
-                  </form>
-                </>
-              )}
-            </div>
-          ) : (
-            <div className="rounded-md border border-slate-200 bg-white p-3 text-sm">
-              <p className="font-semibold">Projects</p>
-              <p className="mt-2 text-xs text-slate-500">
-                Sign in to save documents and manage projects.
-              </p>
-              <button
-                type="button"
-                className="mt-3 rounded border border-blue-600 px-3 py-1 text-xs font-medium text-blue-700"
-                onClick={() => {
-                  setAuthMode("sign-in");
-                  setIsAuthModalOpen(true);
-                }}
-              >
-                Sign in
-              </button>
-            </div>
-          )}
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-700">Status</p>
-              <div className={`mt-2 inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${statusClass}`}>
-                {statusCopy[status]}
-              </div>
-            </div>
-            {latestVersion && (
-              <div className="text-right text-sm text-gray-600">
-                <p>Version v{latestVersion}</p>
-                <p>{latestRecord?.timestamp}</p>
-              </div>
-            )}
-          </div>
-
-          <p className="text-sm text-gray-700">{message}</p>
-          {progressText && <p className="text-sm text-gray-500">{progressText}</p>}
-
-          {questions.length > 0 && (
-            <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 text-sm">
-              <p className="font-medium">Missing info</p>
-              <ul className="mt-2 list-disc pl-5">
-                {questions.map((question) => (
-                  <li key={question}>{question}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {error && (
-            <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-              {error}
-            </div>
-          )}
-          <div className="rounded-md border border-slate-200 bg-white p-3 text-xs text-slate-700">
-            <div className="flex items-center justify-between">
-              <p className="font-semibold">Last LLM error</p>
-              {lastLlmError && (
-                <button
-                  type="button"
-                  className="text-xs text-slate-500 hover:text-slate-700"
-                  onClick={() => setLastLlmError(null)}
-                >
-                  Clear
-                </button>
-              )}
-            </div>
-            {!lastLlmError && (
-              <p className="mt-2 text-xs text-slate-500">No errors captured yet.</p>
-            )}
-            {lastLlmError?.message && (
-              <p className="mt-2 text-xs text-slate-600">{lastLlmError.message}</p>
-            )}
-            {lastLlmError?.lastOutputFieldKey && (
-              <p className="mt-2 text-xs text-slate-500">
-                Field: {lastLlmError.lastOutputFieldKey}
-              </p>
-            )}
-            {status === "error" && (
-              <div className="mt-2">
-                <p className="text-xs font-semibold text-slate-600">Last prompt</p>
-                <textarea
-                  readOnly
-                  className="mt-1 w-full resize-none overflow-hidden rounded bg-slate-50 p-2 text-xs text-slate-700"
-                  rows={6}
-                  ref={errorPromptRef}
-                  value={formatDebugValue(errorPromptText)}
-                />
-              </div>
-            )}
-            {status === "error" && (
-              <div className="mt-2">
-                <p className="text-xs font-semibold text-slate-600">Last output</p>
-                <textarea
-                  readOnly
-                  className="mt-1 w-full resize-none overflow-hidden rounded bg-slate-50 p-2 text-xs text-slate-700"
-                  rows={6}
-                  ref={errorOutputRef}
-                  value={formatDebugValue(errorOutputText)}
-                />
-              </div>
-            )}
-          </div>
-
-          <Accordion type="multiple" className="space-y-2">
-            <AccordionItem value="llm-prompt" className="border rounded">
-              <AccordionTrigger className="px-3 py-2 text-sm font-medium hover:no-underline">
-                LLM Prompt
-              </AccordionTrigger>
-              <AccordionContent className="px-3 pb-3">
-                <textarea
-                  readOnly
-                  className="w-full resize-none overflow-hidden rounded border bg-gray-50 p-3 text-xs text-gray-700"
-                  rows={8}
-                  ref={llmPromptRef}
-                  value={formatDebugValue(
-                    status === "error"
-                      ? debugPrompt || latestRecord?.lastPrompt || null
-                      : latestRecord?.lastPrompt || debugPrompt || null
-                  )}
-                />
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="llm-output" className="border rounded">
-              <AccordionTrigger className="px-3 py-2 text-sm font-medium hover:no-underline">
-                LLM output
-              </AccordionTrigger>
-              <AccordionContent className="px-3 pb-3">
-                <textarea
-                  readOnly
-                  className="w-full resize-none overflow-hidden rounded border bg-gray-50 p-3 text-xs text-gray-700"
-                  rows={8}
-                  ref={llmOutputRef}
-                  value={formatDebugValue(
-                    status === "error"
-                      ? debugOutput || latestRecord?.lastOutput || null
-                      : latestRecord?.lastOutput || debugOutput || null
-                  )}
-                />
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
+            {debugPanel}
           </div>
         </aside>
       </div>

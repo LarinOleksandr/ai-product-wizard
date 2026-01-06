@@ -1,7 +1,8 @@
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Wand2 } from "lucide-react";
+import { FileText, Wand2 } from "lucide-react";
 import { Eye, EyeOff } from "lucide-react";
+import type { Session } from "@supabase/supabase-js";
 
 import appIcon from "../assets/alchemia-logo.png";
 import {
@@ -14,11 +15,13 @@ import {
 } from "../components/ui/dialog";
 import {
   getSession,
+  listProjects,
   resetPassword,
   signInWithEmail,
   signInWithGoogle,
   signUpWithEmail,
-  updatePassword
+  updatePassword,
+  type Project
 } from "../lib/projects-store";
 import { supabase } from "../lib/supabase";
 
@@ -63,7 +66,25 @@ export function HomePage() {
   const [authSuccess, setAuthSuccess] = useState<string | null>(null);
   const [isAuthWorking, setIsAuthWorking] = useState(false);
   const [isGoogleAuthWorking, setIsGoogleAuthWorking] = useState(false);
+  const [session, setSession] = useState<Session | null>(null);
+  const [recentProjects, setRecentProjects] = useState<Project[]>([]);
+  const [recentProjectIdeas, setRecentProjectIdeas] = useState<Record<string, string>>({});
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const orderedRecentProjects = useMemo(() => {
+    if (recentProjects.length === 0) return [];
+    const stored = localStorage.getItem("projects.order");
+    if (!stored) return recentProjects;
+    try {
+      const parsed = JSON.parse(stored);
+      if (!Array.isArray(parsed)) return recentProjects;
+      const order = parsed.filter((id) => typeof id === "string") as string[];
+      const lookup = new Map(recentProjects.map((project) => [project.id, project]));
+      const ordered = order.map((id) => lookup.get(id)).filter(Boolean) as Project[];
+      return ordered.length > 0 ? ordered : recentProjects;
+    } catch {
+      return recentProjects;
+    }
+  }, [recentProjects]);
 
   const resizeTextarea = () => {
     const textarea = textareaRef.current;
@@ -250,6 +271,87 @@ export function HomePage() {
   }, []);
 
   useEffect(() => {
+    let active = true;
+    getSession()
+      .then((nextSession) => {
+        if (active) {
+          setSession(nextSession);
+        }
+      })
+      .catch(() => undefined);
+    const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      if (active) {
+        setSession(nextSession);
+      }
+    });
+    return () => {
+      active = false;
+      data.subscription.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!session) {
+      setRecentProjects([]);
+      setRecentProjectIdeas({});
+      return;
+    }
+    let active = true;
+    listProjects()
+      .then((projects) => {
+        if (active) {
+          setRecentProjects(projects.slice(0, 3));
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setRecentProjects([]);
+          setRecentProjectIdeas({});
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [session]);
+
+  useEffect(() => {
+    if (!recentProjects.length) {
+      setRecentProjectIdeas({});
+      return;
+    }
+    let active = true;
+    const projectIds = recentProjects.map((project) => project.id);
+    const storedIdeas: Record<string, string> = {};
+    const ideaPromises = projectIds.map((projectId) =>
+      fetch(`${API_BASE}/discovery/latest?projectId=${projectId}`)
+        .then((response) => (response.ok ? response.json() : null))
+        .then((payload) => {
+          const idea = payload?.record?.productIdea;
+          if (typeof idea === "string" && idea.trim()) {
+            storedIdeas[projectId] = idea.trim();
+          }
+        })
+        .catch(() => undefined)
+    );
+    Promise.all(ideaPromises).then(() => {
+      if (active) {
+        setRecentProjectIdeas(storedIdeas);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [recentProjects]);
+
+  const truncateIdea = (idea: string) => {
+    const normalized = idea.replace(/\s+/g, " ").trim();
+    if (!normalized) return "No project idea yet...";
+    const words = normalized.split(" ");
+    const short = words.slice(0, 24).join(" ");
+    return words.length > 24 ? `${short}...` : `${short}...`;
+  };
+
+  useEffect(() => {
     const params = new URLSearchParams(location.search);
     const authParam = params.get("auth");
     const emailParam = params.get("email");
@@ -307,7 +409,63 @@ export function HomePage() {
   }, []);
 
   return (
-    <div className="mx-auto max-w-5xl space-y-10">
+    <div className="mx-auto max-w-5xl space-y-6">
+      {session && (
+        <section className="mt-4 space-y-2">
+          <div className="h-3" />
+          <div className="grid gap-4 md:grid-cols-3">
+            {(() => {
+              const topProjects = orderedRecentProjects.slice(0, 3);
+              const showPlaceholder = topProjects.length < 3;
+              const cards =
+                topProjects.length >= 3
+                  ? topProjects.map((project) => ({
+                      type: "project" as const,
+                      project
+                    }))
+                  : [
+                      ...topProjects.map((project) => ({
+                        type: "project" as const,
+                        project
+                      })),
+                      ...(showPlaceholder
+                        ? [{ type: "placeholder" as const }]
+                        : [])
+                    ];
+
+              return cards.map((card, index) =>
+                card.type === "project" ? (
+                  <Link
+                    key={card.project.id}
+                    to="/projects"
+                    className="w-full rounded-xl bg-gradient-to-br from-blue-200/80 to-violet-200/80 p-4 text-sm text-gray-800 shadow-sm transition hover:from-blue-200/90 hover:to-violet-200/90"
+                  >
+                    <p className="font-semibold">
+                      {card.project.name || "Untitled project"}
+                    </p>
+                    <p className="mt-2 text-xs text-gray-600 line-clamp-2">
+                      {truncateIdea(recentProjectIdeas[card.project.id] || "")}
+                    </p>
+                  </Link>
+                ) : (
+                  <Link
+                    key={`project-placeholder-${index}`}
+                    to="/projects"
+                    state={{ createProject: true }}
+                    className="flex w-full flex-col rounded-xl border-2 border-dashed border-blue-200 bg-white p-4 text-sm text-gray-800 shadow-sm transition hover:border-blue-300 hover:bg-blue-50"
+                  >
+                    <p className="font-semibold">+ Project</p>
+                    <p className="mt-2 text-xs text-gray-600 opacity-0">
+                      Placeholder
+                    </p>
+                  </Link>
+                )
+              );
+            })()}
+          </div>
+        </section>
+      )}
+
       <section className="p-8 text-center">
         <img
           src={appIcon}
@@ -358,7 +516,7 @@ export function HomePage() {
             />
           </div>
           {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
-          <div className="mt-6 flex justify-center">
+          <div className="mt-8 flex justify-center">
             <Link
               to="/wizard"
               state={{ pendingIdea: idea }}
@@ -373,7 +531,7 @@ export function HomePage() {
               Let the magic begin
             </Link>
           </div>
-          <div className="mt-4 text-center text-sm text-gray-600">
+          <div className="mt-6 text-center text-sm text-gray-600">
             To save your work{" "}
             <button
               type="button"
@@ -399,20 +557,25 @@ export function HomePage() {
             .
           </div>
         </div>
+
       </section>
 
-      <section className="space-y-4">
+      <section className="space-y-4 mt-12">
+        <h2 className="text-center text-base font-semibold text-gray-800">
+          Start with Wizards
+        </h2>
         <div className="grid gap-4 md:grid-cols-3">
           {wizardCards.map((card) => {
             const cardClasses = `rounded-xl p-4 shadow-sm ${
               card.active
-                ? "bg-gradient-to-br from-blue-200/80 to-violet-200/80"
+                ? "bg-transparent border border-gray-300"
                 : "bg-gray-200 opacity-60"
             }`;
             const content = (
               <>
                 <div className="flex items-start justify-between">
-                  <h3 className="text-base font-semibold text-gray-800">
+                  <h3 className="flex items-center gap-2 text-base font-semibold text-gray-800">
+                    <FileText className="h-4 w-4" />
                     {card.title}
                   </h3>
                 </div>

@@ -15,10 +15,26 @@ export type ProjectDocument = {
   updated_at: string;
 };
 
+export type ProjectDocumentItem = {
+  id: string;
+  project_id: string;
+  name: string;
+  doc_type: string;
+  position: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ProjectDocumentState = {
+  project_id: string;
+  last_selected_document_id: string | null;
+  updated_at: string;
+};
+
 export async function getSession() {
   const { data, error } = await supabase.auth.getSession();
   if (error) {
-    throw error;
+    throw new Error(error.message);
   }
   return data.session;
 }
@@ -95,9 +111,16 @@ export async function listProjects() {
 }
 
 export async function createProject(name: string) {
+  const {
+    data: { user },
+    error: userError
+  } = await supabase.auth.getUser();
+  if (userError || !user) {
+    throw userError || new Error("User is not authenticated.");
+  }
   const { data, error } = await supabase
     .from("projects")
-    .insert({ name })
+    .insert({ name, user_id: user.id, owner_user_id: user.id })
     .select("id,name,created_at")
     .single();
   if (error) {
@@ -124,6 +147,82 @@ export async function deleteProject(id: string) {
   if (error) {
     throw error;
   }
+}
+
+export async function listProjectDocumentItems(projectId: string) {
+  const { data, error } = await supabase
+    .from("project_document_items")
+    .select("id,project_id,name,doc_type,position,created_at,updated_at")
+    .eq("project_id", projectId)
+    .order("position", { ascending: true });
+  if (error) {
+    throw error;
+  }
+  return (data || []) as ProjectDocumentItem[];
+}
+
+export async function createProjectDocumentItems(
+  projectId: string,
+  names: string[]
+) {
+  const payload = names.map((name, index) => ({
+    project_id: projectId,
+    name,
+    position: index,
+    doc_type: "discovery"
+  }));
+  const { data, error } = await supabase
+    .from("project_document_items")
+    .insert(payload)
+    .select("id,project_id,name,doc_type,position,created_at,updated_at");
+  if (error) {
+    throw error;
+  }
+  return (data || []) as ProjectDocumentItem[];
+}
+
+export async function deleteProjectDocumentItem(documentId: string) {
+  const { error } = await supabase
+    .from("project_document_items")
+    .delete()
+    .eq("id", documentId);
+  if (error) {
+    throw error;
+  }
+}
+
+export async function getProjectDocumentState(projectId: string) {
+  const { data, error } = await supabase
+    .from("project_document_state")
+    .select("project_id,last_selected_document_id,updated_at")
+    .eq("project_id", projectId)
+    .maybeSingle();
+  if (error) {
+    throw error;
+  }
+  return (data || null) as ProjectDocumentState | null;
+}
+
+export async function setProjectDocumentState(
+  projectId: string,
+  documentId: string | null
+) {
+  const { data, error } = await supabase
+    .from("project_document_state")
+    .upsert(
+      {
+        project_id: projectId,
+        last_selected_document_id: documentId,
+        updated_at: new Date().toISOString()
+      },
+      { onConflict: "project_id" }
+    )
+    .select("project_id,last_selected_document_id,updated_at")
+    .maybeSingle();
+  if (error) {
+    throw error;
+  }
+  return (data || null) as ProjectDocumentState | null;
 }
 
 export async function saveProjectDocument(
