@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "description": "AI Product Wizard monorepo (frontend, backend, AI, infra).",
   "scripts": {
-    "dev": "pnpm --filter frontend/web dev",
+    "dev": "pnpm --filter web dev",
     "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
     "format": "prettier . --write",
     "typecheck": "tsc -p tsconfig.base.json"

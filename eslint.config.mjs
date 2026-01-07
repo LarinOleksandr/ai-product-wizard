@@ -13,6 +13,12 @@ export default tseslint.config(
       'build/**',
       'coverage/**',
       '**/vite.config.*', // avoid the vite.config.ts parse issue for now
+      '.tmp_wizard_head.tsx', // generated temporary file
+      'frontend/web/dist/**', // build output
+      'frontend/web/tailwind.config.js', // uses require(), excluded in frontend config
+      'frontend/web/src/**', // has its own eslint.config.js with different rules
+      'ai/orchestrator/**', // uses Node.js globals, separate lint config needed
+      'supabase/**', // Deno functions, separate lint config needed
     ],
   },
   eslint.configs.recommended,

@@ -1,4 +1,4 @@
-import { Link, Outlet, useLocation } from "react-router-dom";
+import { Link, Outlet } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import appIcon from "../assets/alchemia-small-text-logo.png";
@@ -6,8 +6,6 @@ import { supabase } from "../lib/supabase";
 import { getSession, signOut } from "../lib/projects-store";
 
 export function MainLayout() {
-  const location = useLocation();
-  const isHome = location.pathname === "/";
   const [session, setSession] = useState<Session | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);

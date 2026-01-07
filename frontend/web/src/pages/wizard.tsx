@@ -999,6 +999,7 @@ export function WizardPage({
   const [autoGeneratingFieldKey, setAutoGeneratingFieldKey] = useState<string | null>(null);
   const [isSavingDocument, setIsSavingDocument] = useState(false);
   const [confirmRegenerateFieldKey, setConfirmRegenerateFieldKey] = useState<string | null>(null);
+  const [confirmRegenerateOptions, setConfirmRegenerateOptions] = useState<{ mode?: "generated" | "regenerated" } | null>(null);
   const [isClearing, setIsClearing] = useState(false);
   const [clearingFieldKey, setClearingFieldKey] = useState<string | null>(null);
   const [confirmClearFieldKey, setConfirmClearFieldKey] = useState<string | null>(null);
@@ -2251,6 +2252,13 @@ export function WizardPage({
       await executeRegenerate(fieldKey, { mode: "regenerated" });
   }
 
+  async function confirmRegenerateField(
+    fieldKey: string,
+    options?: { mode?: "generated" | "regenerated" }
+  ) {
+    await executeRegenerate(fieldKey, options);
+  }
+
   async function clearField(fieldKey: string) {
     if (!latestVersion) {
       setError("No draft available to clear.");
@@ -3001,32 +3009,7 @@ export function WizardPage({
                                   </div>
                                 </AccordionTrigger>
                                 <AccordionContent className="px-3 pb-3">
-                                  {field.type === "custom" ? (
-                                    <CustomFieldEditor
-                                      value={
-                                        draftFields[field.key] ??
-                                        form[field.key as keyof DiscoveryDocumentForm] ??
-                                        ""
-                                      }
-                                      onChange={(nextValue) =>
-                                        setDraftFields((prev) => ({
-                                          ...prev,
-                                          [field.key]: nextValue
-                                        }))
-                                      }
-                                      onApprove={() => approveField(field.key, field.type)}
-                                      onRegenerate={() => regenerateField(field.key)}
-                                      onClear={() => clearField(field.key)}
-                                      approved={isApproved}
-                                      disabled={isBlocked}
-                                      isApproving={approvingFieldKey === field.key}
-                                      isRegenerating={regeneratingFieldKey === field.key}
-                                      regenerateLabel={isGeneratingLabel ? "Generating..." : "Regenerating..."}
-                                      isClearing={clearingFieldKey === field.key}
-                                      showRegenerate={showRegenerate}
-                                      hideApprove={isFullGenerationActive}
-                                    />
-                                  ) : field.type === "object" ? (
+                                  {field.type === "object" ? (
                                     field.key === "problemUnderstanding.targetUsersSegments" ? (
                                       <TargetSegmentsEditor
                                         title={field.label}
