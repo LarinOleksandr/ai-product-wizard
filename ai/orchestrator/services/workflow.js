@@ -96,8 +96,8 @@ export function createWorkflowService({
     );
   }
 
-  async function checkApprovalGate() {
-    const latestRecord = await storageService.getLatestRecord();
+  async function checkApprovalGate(projectId) {
+    const latestRecord = await storageService.getLatestRecord(projectId);
     if (!latestRecord) {
       return null;
     }
@@ -132,7 +132,7 @@ export function createWorkflowService({
       };
     }
 
-    const gate = await checkApprovalGate();
+    const gate = await checkApprovalGate(input.projectId);
     if (gate) {
       return gate;
     }
@@ -142,6 +142,7 @@ export function createWorkflowService({
     const record = {
       version: 0,
       timestamp: new Date().toISOString(),
+      projectId: input.projectId || null,
       productIdea: input.productIdea,
       discoveryDocument: draft,
       fieldStatus,
@@ -194,7 +195,7 @@ export function createWorkflowService({
       };
     }
 
-    const gate = await checkApprovalGate();
+    const gate = await checkApprovalGate(input.projectId);
     if (gate) {
       return gate;
     }
@@ -204,6 +205,7 @@ export function createWorkflowService({
     const record = {
       version: 0,
       timestamp: new Date().toISOString(),
+      projectId: input.projectId || null,
       productIdea: input.productIdea,
       discoveryDocument: draft,
       fieldStatus,

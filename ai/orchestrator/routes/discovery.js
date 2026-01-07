@@ -166,8 +166,10 @@ export function createDiscoveryRouter({
       return true;
     }
 
-    if (req.method === "GET" && req.url === "/discovery/latest") {
-      const latest = await getLatestRecord();
+    if (req.method === "GET" && req.url?.startsWith("/discovery/latest")) {
+      const parsedUrl = new URL(req.url, "http://127.0.0.1");
+      const projectId = parsedUrl.searchParams.get("projectId");
+      const latest = await getLatestRecord(projectId || null);
       if (!latest) {
         sendJson(res, 404, {
           status: "not_found",

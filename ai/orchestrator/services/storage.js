@@ -37,12 +37,13 @@ export function createStorageService({
     return response.json();
   }
 
-  async function fetchLatestRecord() {
+  async function fetchLatestRecord(projectId) {
     if (!supabaseEnabled) {
       return null;
     }
+    const projectFilter = projectId ? `&project_id=eq.${projectId}` : "";
     const rows = await supabaseRequest(
-      `${supabaseTable}?select=version,record&order=version.desc&limit=1`
+      `${supabaseTable}?select=version,record&order=version.desc&limit=1${projectFilter}`
     );
     if (!rows || !rows.length) {
       return null;
@@ -86,6 +87,7 @@ export function createStorageService({
       preferReturn: true,
       body: {
         version,
+        project_id: record.projectId || null,
         record,
         updated_at: new Date().toISOString()
       }
@@ -108,6 +110,7 @@ export function createStorageService({
       method: "PATCH",
       preferReturn: true,
       body: {
+        project_id: record.projectId || null,
         record,
         updated_at: new Date().toISOString()
       }
@@ -122,13 +125,13 @@ export function createStorageService({
     };
   }
 
-  async function getLatestRecord() {
+  async function getLatestRecord(projectId) {
     if (!supabaseEnabled) {
       throw new Error(
         "Supabase is required for persistence. Configure SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY."
       );
     }
-    return fetchLatestRecord();
+    return fetchLatestRecord(projectId);
   }
 
   async function loadDiscoveryRecord(version) {

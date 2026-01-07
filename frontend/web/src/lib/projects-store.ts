@@ -15,6 +15,12 @@ export type ProjectDocument = {
   updated_at: string;
 };
 
+export type ProjectInput = {
+  project_id: string;
+  product_idea: string;
+  updated_at: string;
+};
+
 export type ProjectDocumentItem = {
   id: string;
   project_id: string;
@@ -147,6 +153,37 @@ export async function deleteProject(id: string) {
   if (error) {
     throw error;
   }
+}
+
+export async function getProjectInput(projectId: string) {
+  const { data, error } = await supabase
+    .from("project_inputs")
+    .select("project_id,product_idea,updated_at")
+    .eq("project_id", projectId)
+    .maybeSingle();
+  if (error) {
+    throw error;
+  }
+  return (data || null) as ProjectInput | null;
+}
+
+export async function setProjectInput(projectId: string, productIdea: string) {
+  const { data, error } = await supabase
+    .from("project_inputs")
+    .upsert(
+      {
+        project_id: projectId,
+        product_idea: productIdea,
+        updated_at: new Date().toISOString()
+      },
+      { onConflict: "project_id" }
+    )
+    .select("project_id,product_idea,updated_at")
+    .maybeSingle();
+  if (error) {
+    throw error;
+  }
+  return (data || null) as ProjectInput | null;
 }
 
 export async function listProjectDocumentItems(projectId: string) {

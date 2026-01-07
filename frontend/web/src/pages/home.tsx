@@ -321,23 +321,29 @@ export function HomePage() {
     }
     let active = true;
     const projectIds = recentProjects.map((project) => project.id);
-    const storedIdeas: Record<string, string> = {};
-    const ideaPromises = projectIds.map((projectId) =>
-      fetch(`${API_BASE}/discovery/latest?projectId=${projectId}`)
-        .then((response) => (response.ok ? response.json() : null))
-        .then((payload) => {
-          const idea = payload?.record?.productIdea;
-          if (typeof idea === "string" && idea.trim()) {
-            storedIdeas[projectId] = idea.trim();
+    supabase
+      .from("project_inputs")
+      .select("project_id,product_idea")
+      .in("project_id", projectIds)
+      .then(({ data, error }) => {
+        if (!active) return;
+        if (error || !data) {
+          setRecentProjectIdeas({});
+          return;
+        }
+        const storedIdeas: Record<string, string> = {};
+        data.forEach((row) => {
+          if (row.product_idea && row.product_idea.trim()) {
+            storedIdeas[row.project_id] = row.product_idea.trim();
           }
-        })
-        .catch(() => undefined)
-    );
-    Promise.all(ideaPromises).then(() => {
-      if (active) {
+        });
         setRecentProjectIdeas(storedIdeas);
-      }
-    });
+      })
+      .catch(() => {
+        if (active) {
+          setRecentProjectIdeas({});
+        }
+      });
     return () => {
       active = false;
     };
@@ -345,7 +351,7 @@ export function HomePage() {
 
   const truncateIdea = (idea: string) => {
     const normalized = idea.replace(/\s+/g, " ").trim();
-    if (!normalized) return "No project idea yet...";
+    if (!normalized) return "No product idea yet...";
     const words = normalized.split(" ");
     const short = words.slice(0, 24).join(" ");
     return words.length > 24 ? `${short}...` : `${short}...`;
@@ -438,12 +444,23 @@ export function HomePage() {
                   <Link
                     key={card.project.id}
                     to="/projects"
+                    state={{ projectId: card.project.id }}
                     className="w-full rounded-xl bg-gradient-to-br from-blue-200/80 to-violet-200/80 p-4 text-sm text-gray-800 shadow-sm transition hover:from-blue-200/90 hover:to-violet-200/90"
                   >
                     <p className="font-semibold">
                       {card.project.name || "Untitled project"}
                     </p>
-                    <p className="mt-2 text-xs text-gray-600 line-clamp-2">
+                    <p
+                      className="mt-2 min-h-[2.5rem] text-xs text-gray-600"
+                      style={{
+                        display: "-webkit-box",
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                        lineHeight: "1.25rem",
+                        maxHeight: "2.5rem"
+                      }}
+                    >
                       {truncateIdea(recentProjectIdeas[card.project.id] || "")}
                     </p>
                   </Link>
@@ -518,8 +535,8 @@ export function HomePage() {
           {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
           <div className="mt-8 flex justify-center">
             <Link
-              to="/wizard"
-              state={{ pendingIdea: idea }}
+              to="/projects"
+              state={{ createProject: true, pendingIdea: idea }}
               className="w-full max-w-xs rounded-lg bg-gradient-to-br from-blue-600 to-violet-600 px-6 py-3 text-center text-base font-semibold text-white hover:from-blue-700 hover:to-violet-700"
               onClick={() => {
                 if (idea.trim()) {

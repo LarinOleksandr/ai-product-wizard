@@ -51,7 +51,8 @@ Use Task Scheduler (Create Task...):
 
 Run (only what you need):
 
-- Start frontend:
+- Start frontend with one of two commands:
+  pnpm dev
   pnpm --filter web dev
 
 - If Docker services are not running:
@@ -99,6 +100,23 @@ curl http://127.0.0.1:54321/functions/v1/infra-healthcheck
 
 Docker can reach Ollama (from orchestrator container):
 docker exec ai-orchestrator-dev node -e "fetch('http://host.docker.internal:11434/api/tags').then(r=>r.text()).then(t=>console.log(t.slice(0,200))).catch(e=>{console.error(e);process.exit(1);})"
+
+## Database access (cloud)
+
+Use Docker to run `psql` without installing it locally:
+
+- One-off:
+  docker run --rm -it postgres:16 psql "$DATABASE_URL"
+
+- Or via npm script:
+  pnpm db:psql
+
+`DATABASE_URL` should point at the Supabase project (Settings → Database → Connection string).
+PowerShell example:
+
+```
+$env:DATABASE_URL="postgresql://postgres:YOUR_PASSWORD@db.<project-ref>.supabase.co:5432/postgres"
+```
 
 ## Stop everything
 

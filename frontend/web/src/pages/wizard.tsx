@@ -788,9 +788,16 @@ function hasFieldValue(field: FieldDefinition, value: unknown): boolean {
 type WizardPageProps = {
   embedded?: boolean;
   debugTargetId?: string;
+  projectId?: string | null;
+  productIdea?: string;
 };
 
-export function WizardPage({ embedded = false, debugTargetId }: WizardPageProps) {
+export function WizardPage({
+  embedded = false,
+  debugTargetId,
+  projectId,
+  productIdea
+}: WizardPageProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const [form, setForm] = useState({
@@ -801,6 +808,12 @@ export function WizardPage({ embedded = false, debugTargetId }: WizardPageProps)
   const textareaContainerRef = useRef<HTMLDivElement | null>(null);
   const [status, setStatus] = useState<ApiStatus>("idle");
   const [message, setMessage] = useState("Provide inputs and run the agent.");
+  const projectIdValue = projectId || null;
+  const externalProductIdea =
+    embedded && typeof productIdea === "string" ? productIdea : null;
+
+  const withProjectId = (body: Record<string, unknown>) =>
+    projectIdValue ? { ...body, projectId: projectIdValue } : body;
   const [session, setSession] = useState<Session | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
@@ -1360,6 +1373,21 @@ export function WizardPage({ embedded = false, debugTargetId }: WizardPageProps)
   }, [location.pathname, location.state, navigate]);
 
   useEffect(() => {
+    if (!projectIdValue) {
+      return;
+    }
+    setLatestRecord(null);
+    setLatestVersion(null);
+    setDraftFields({});
+    setStatus("idle");
+    setMessage("No discovery document has been generated yet.");
+    setError(null);
+    setDebugPrompt(null);
+    setDebugOutput(null);
+    void refreshLatest(false);
+  }, [projectIdValue]);
+
+  useEffect(() => {
     const container = textareaContainerRef.current;
     if (!container) {
       return;
@@ -1472,10 +1500,10 @@ export function WizardPage({ embedded = false, debugTargetId }: WizardPageProps)
       void refreshLatest();
     }, 2000);
 
-    const payload = {
+    const payload = withProjectId({
       productIdea: form.productIdea.trim(),
       forceNew: true
-    };
+    });
 
     try {
       const response = await fetch(`${API_BASE}/discovery/generate-all`, {
@@ -1553,6 +1581,23 @@ export function WizardPage({ embedded = false, debugTargetId }: WizardPageProps)
   };
 
   function loadSavedInputs() {
+    if (embedded && externalProductIdea !== null) {
+      const formattedIdea = externalProductIdea
+        ? formatProductIdea(externalProductIdea)
+        : "";
+      setForm((prev) => ({
+        ...prev,
+        productIdea: formattedIdea
+      }));
+      setLatestRecord(null);
+      setLatestVersion(null);
+      setStatus("idle");
+      setMessage("Enter the required fields and generate the first draft.");
+      setDraftFields({});
+      setDebugPrompt(null);
+      setDebugOutput(null);
+      return;
+    }
     const pendingIdea = localStorage.getItem("discoveryWizard.pendingIdea") || "";
     const savedIdea = localStorage.getItem("discoveryWizard.productIdea") || "";
     const rawIdea =
@@ -1574,6 +1619,22 @@ export function WizardPage({ embedded = false, debugTargetId }: WizardPageProps)
     setDebugPrompt(null);
     setDebugOutput(null);
   }
+
+  useEffect(() => {
+    if (!embedded) {
+      return;
+    }
+    if (externalProductIdea === null) {
+      return;
+    }
+    const formattedIdea = externalProductIdea
+      ? formatProductIdea(externalProductIdea)
+      : "";
+    setForm((prev) => ({
+      ...prev,
+      productIdea: formattedIdea
+    }));
+  }, [embedded, externalProductIdea]);
 
   useEffect(() => {
     if (!latestRecord?.discoveryDocument) {
@@ -1808,7 +1869,10 @@ export function WizardPage({ embedded = false, debugTargetId }: WizardPageProps)
     setLoadingLatest(true);
     setError(null);
     try {
-      const response = await fetch(`${API_BASE}/discovery/latest`);
+      const latestUrl = projectIdValue
+        ? `${API_BASE}/discovery/latest?projectId=${projectIdValue}`
+        : `${API_BASE}/discovery/latest`;
+      const response = await fetch(latestUrl);
       if (response.status === 404) {
         if (useFallback) {
           loadSavedInputs();
@@ -1837,11 +1901,13 @@ export function WizardPage({ embedded = false, debugTargetId }: WizardPageProps)
           pendingIdeaOverride ||
           localStorage.getItem("discoveryWizard.pendingIdea") ||
           "";
-        const formattedIdea = pendingIdea
-          ? formatProductIdea(pendingIdea)
-          : payload.record.productIdea
-            ? formatProductIdea(payload.record.productIdea)
-            : "";
+        const formattedIdea = externalProductIdea !== null
+          ? (externalProductIdea ? formatProductIdea(externalProductIdea) : "")
+          : pendingIdea
+            ? formatProductIdea(pendingIdea)
+            : payload.record.productIdea
+              ? formatProductIdea(payload.record.productIdea)
+              : "";
         if (pendingIdeaRef.current) {
           pendingIdeaRef.current = null;
         }
@@ -1906,10 +1972,10 @@ export function WizardPage({ embedded = false, debugTargetId }: WizardPageProps)
     setQuestions([]);
     setError(null);
 
-    const payload = {
+    const payload = withProjectId({
       productIdea: form.productIdea.trim(),
       forceNew: true
-    };
+    });
 
     try {
       const data = await postWithRetry(
@@ -1992,7 +2058,7 @@ export function WizardPage({ embedded = false, debugTargetId }: WizardPageProps)
       }
       const data = await postWithRetry(
         `${API_BASE}/discovery/field/approve`,
-        { version: latestVersion, fieldKey, value },
+        withProjectId({ version: latestVersion, fieldKey, value }),
         () => {
           setMessage("Error LLM response. Requesting again...");
         }
@@ -2064,7 +2130,7 @@ export function WizardPage({ embedded = false, debugTargetId }: WizardPageProps)
         await saveProjectDocument(project.id, nextDocument, "discovery");
         const data = await postWithRetry(
           `${API_BASE}/discovery/save`,
-          { version: latestVersion, discoveryDocument: nextDocument },
+          withProjectId({ version: latestVersion, discoveryDocument: nextDocument }),
           () => {
             setMessage("Error saving document. Retrying...");
           }
@@ -2202,7 +2268,7 @@ export function WizardPage({ embedded = false, debugTargetId }: WizardPageProps)
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ version: latestVersion, fieldKey })
+        body: JSON.stringify(withProjectId({ version: latestVersion, fieldKey }))
       });
       const data = await response.json();
       if (!response.ok) {
@@ -2231,7 +2297,7 @@ export function WizardPage({ embedded = false, debugTargetId }: WizardPageProps)
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ version: latestVersion })
+        body: JSON.stringify(withProjectId({ version: latestVersion }))
       });
       const data = await response.json();
       if (!response.ok) {
@@ -2390,7 +2456,7 @@ export function WizardPage({ embedded = false, debugTargetId }: WizardPageProps)
     try {
       const data = await postWithRetry(
         `${API_BASE}/discovery/field/regenerate`,
-        { version: latestVersion, fieldKey, productIdea: form.productIdea.trim() },
+        withProjectId({ version: latestVersion, fieldKey, productIdea: form.productIdea.trim() }),
         () => {
           setMessage("Error LLM response. Requesting again...");
         }

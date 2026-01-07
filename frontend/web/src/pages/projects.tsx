@@ -10,7 +10,9 @@ import {
   listProjectDocumentItems,
   createProjectDocumentItems,
   deleteProjectDocumentItem,
+  getProjectInput,
   getProjectDocumentState,
+  setProjectInput,
   setProjectDocumentState,
   type Project,
   type ProjectDocumentItem
@@ -77,6 +79,10 @@ export function ProjectsPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [ideaError, setIdeaError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const [projectInputs, setProjectInputs] = useState<Record<string, string>>({});
+  const pendingIdeaRef = useRef<string | null>(null);
+  const pendingSelectProjectIdRef = useRef<string | null>(null);
+  const saveIdeaTimeout = useRef<number | null>(null);
   const [projectOrder, setProjectOrder] = useState<string[]>(() => {
     const stored = localStorage.getItem("projects.order");
     if (!stored) return [];
@@ -99,6 +105,7 @@ export function ProjectsPage() {
   >({});
   const loadedDocumentProjects = useRef<Set<string>>(new Set());
   const documentLoadToken = useRef(0);
+  const deletingProjectId = useRef<string | null>(null);
   const [documentMenuId, setDocumentMenuId] = useState<string | null>(null);
   const documentItems = activeProjectId
     ? projectDocuments[activeProjectId] || []
@@ -115,13 +122,49 @@ export function ProjectsPage() {
       setIsCreatingProject(true);
       setProjectActionError(null);
     },
-    onSuccess: (created) => {
+    onSuccess: async (created) => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
       setActiveProjectId(created.id);
       setEditingId(created.id);
       setEditingName(created.name || "New Project");
       setName("");
       setProjectActionError(null);
+      try {
+        const docs = await createProjectDocumentItems(
+          created.id,
+          initialDocumentItems
+        );
+        setProjectDocuments((prev) => ({
+          ...prev,
+          [created.id]: docs
+        }));
+        const discovery = docs.find((doc) => doc.name === "Discovery") || docs[0];
+        if (discovery) {
+          setActiveDocument(discovery.name);
+          setActiveDocumentId(discovery.id);
+          await setProjectDocumentState(created.id, discovery.id);
+        }
+        if (pendingIdeaRef.current) {
+          const ideaValue = pendingIdeaRef.current.trim();
+          if (ideaValue) {
+            await setProjectInput(created.id, ideaValue);
+            setProjectInputs((prev) => ({
+              ...prev,
+              [created.id]: ideaValue
+            }));
+            setIdea(formatProductIdea(ideaValue));
+          }
+          pendingIdeaRef.current = null;
+        }
+      } catch (err) {
+        if (err instanceof Error) {
+          setProjectActionError(err.message);
+        } else {
+          setProjectActionError(
+            typeof err === "string" ? err : JSON.stringify(err)
+          );
+        }
+      }
     },
     onError: (err: unknown) => {
       if (err instanceof Error) {
@@ -139,10 +182,24 @@ export function ProjectsPage() {
 
   const hasAutoCreated = useRef(false);
   useEffect(() => {
+    if (!location.state || typeof location.state !== "object") return;
+    const state = location.state as { projectId?: string };
+    if (!state.projectId) return;
+    pendingSelectProjectIdRef.current = state.projectId;
+    navigate(window.location.pathname + window.location.search, {
+      replace: true,
+      state: null
+    });
+  }, [location.state, navigate]);
+
+  useEffect(() => {
     if (hasAutoCreated.current) return;
     if (!location.state || typeof location.state !== "object") return;
-    const state = location.state as { createProject?: boolean };
+    const state = location.state as { createProject?: boolean; pendingIdea?: string };
     if (!state.createProject) return;
+    if (state.pendingIdea) {
+      pendingIdeaRef.current = state.pendingIdea;
+    }
     hasAutoCreated.current = true;
     createMutation.mutate("New Project");
     navigate(window.location.pathname + window.location.search, {
@@ -163,13 +220,56 @@ export function ProjectsPage() {
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteProject(id),
+    onMutate: (id: string) => {
+      deletingProjectId.current = id;
+      if (activeProjectId === id) {
+        setActiveProjectId(null);
+        setActiveDocument(null);
+        setActiveDocumentId(null);
+      }
+    },
     onSuccess: () => {
+      const deletedId = deletingProjectId.current;
       queryClient.invalidateQueries({ queryKey: ["projects"] });
+      setProjectDocuments((prev) => {
+        if (!deletedId) return prev;
+        const next = { ...prev };
+        delete next[deletedId];
+        return next;
+      });
+      setProjectInputs((prev) => {
+        if (!deletedId) return prev;
+        const next = { ...prev };
+        delete next[deletedId];
+        return next;
+      });
+      if (deletedId) {
+        loadedDocumentProjects.current.delete(deletedId);
+      }
+      if (activeProjectId === deletedId) {
+        setActiveProjectId(null);
+        setActiveDocument(null);
+        setActiveDocumentId(null);
+      }
+      deletingProjectId.current = null;
     },
   });
 
   useEffect(() => {
-    if (!activeProjectId && data.length > 0) {
+    const pendingId = pendingSelectProjectIdRef.current;
+    if (pendingId && data.length > 0) {
+      const exists = data.find((project) => project.id === pendingId);
+      if (exists) {
+        if (activeProjectId !== pendingId) {
+          setActiveProjectId(pendingId);
+        }
+      } else if (!activeProjectId) {
+        setActiveProjectId(data[0].id);
+      }
+      pendingSelectProjectIdRef.current = null;
+      return;
+    }
+    if (!activeProjectId && data.length > 0 && !pendingSelectProjectIdRef.current) {
       setActiveProjectId(data[0].id);
     }
   }, [activeProjectId, data]);
@@ -178,17 +278,18 @@ export function ProjectsPage() {
     let isMounted = true;
     const loadDocuments = async () => {
       if (!activeProjectId) return;
+      if (deletingProjectId.current === activeProjectId) {
+        return;
+      }
+      if (!data.some((project) => project.id === activeProjectId)) {
+        return;
+      }
       const currentToken = ++documentLoadToken.current;
       try {
+        const state = await getProjectDocumentState(activeProjectId);
         let docs = projectDocuments[activeProjectId];
         if (!docs || docs.length === 0) {
           docs = await listProjectDocumentItems(activeProjectId);
-          if (docs.length === 0) {
-            docs = await createProjectDocumentItems(
-              activeProjectId,
-              initialDocumentItems
-            );
-          }
           if (!isMounted || documentLoadToken.current !== currentToken) return;
           loadedDocumentProjects.current.add(activeProjectId);
           setProjectDocuments((prev) => ({
@@ -196,8 +297,12 @@ export function ProjectsPage() {
             [activeProjectId]: docs
           }));
         }
-        const state = await getProjectDocumentState(activeProjectId);
         if (!isMounted || documentLoadToken.current !== currentToken) return;
+        if (docs.length === 0) {
+          setActiveDocument(null);
+          setActiveDocumentId(null);
+          return;
+        }
         const selected =
           (state?.last_selected_document_id &&
             docs.find((doc) => doc.id === state.last_selected_document_id)) ||
@@ -223,15 +328,61 @@ export function ProjectsPage() {
     return () => {
       isMounted = false;
     };
-  }, [activeProjectId, projectDocuments]);
+  }, [activeProjectId, projectDocuments, data]);
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadInput = async () => {
+      if (!activeProjectId) return;
+      if (projectInputs[activeProjectId] !== undefined) return;
+      try {
+        const input = await getProjectInput(activeProjectId);
+        if (!isMounted) return;
+        const value = input?.product_idea ?? "";
+        setProjectInputs((prev) => ({
+          ...prev,
+          [activeProjectId]: value
+        }));
+        if (value) {
+          setIdea(formatProductIdea(value));
+        } else {
+          setIdea("");
+        }
+      } catch (err) {
+        if (err instanceof Error) {
+          setProjectActionError(err.message);
+        } else {
+          setProjectActionError(
+            typeof err === "string" ? err : JSON.stringify(err)
+          );
+        }
+      }
+    };
+    loadInput();
+    return () => {
+      isMounted = false;
+    };
+  }, [activeProjectId, projectInputs]);
+
+  useEffect(() => {
+    if (!activeProjectId) return;
+    const cached = projectInputs[activeProjectId];
+    if (cached === undefined) return;
+    setIdea(cached ? formatProductIdea(cached) : "");
+  }, [activeProjectId, projectInputs]);
 
   useEffect(() => {
     let isMounted = true;
     const fetchLatest = async () => {
+      if (!activeProjectId) {
+        setLatestDiscovery(null);
+        setIsDiscoveryLoading(false);
+        return;
+      }
       setIsDiscoveryLoading(true);
       try {
         const response = await fetch(
-          `${import.meta.env.VITE_ORCHESTRATOR_URL || "http://localhost:8002"}/discovery/latest`
+          `${import.meta.env.VITE_ORCHESTRATOR_URL || "http://localhost:8002"}/discovery/latest?projectId=${activeProjectId}`
         );
         if (!response.ok) {
           throw new Error("Failed to load latest discovery.");
@@ -254,18 +405,26 @@ export function ProjectsPage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [activeProjectId]);
 
-  const projectIdea = useMemo(() => {
-    const rawIdea = latestDiscovery?.record?.productIdea
-      || localStorage.getItem("discoveryWizard.productIdea")
-      || "";
-    return rawIdea ? formatProductIdea(rawIdea) : "";
-  }, [latestDiscovery]);
+  const pendingIdea =
+    location.state && typeof location.state === "object"
+      ? (location.state as { pendingIdea?: string }).pendingIdea
+      : undefined;
 
   useEffect(() => {
-    setIdea(projectIdea);
-  }, [projectIdea]);
+    if (pendingIdea) {
+      pendingIdeaRef.current = pendingIdea;
+    }
+  }, [pendingIdea]);
+
+  useEffect(() => {
+    if (!pendingIdea) return;
+    navigate(window.location.pathname + window.location.search, {
+      replace: true,
+      state: null
+    });
+  }, [pendingIdea, navigate]);
 
   const resizeTextarea = () => {
     const textarea = textareaRef.current;
@@ -300,7 +459,13 @@ export function ProjectsPage() {
         .replace(/\r?\n+/g, " ")
         .replace(/([.!?])\s+/g, "$1\n\n");
       setIdea(formattedIdea);
-      localStorage.setItem("discoveryWizard.productIdea", formattedIdea);
+      if (activeProjectId) {
+        setProjectInputs((prev) => ({
+          ...prev,
+          [activeProjectId]: formattedIdea
+        }));
+        await setProjectInput(activeProjectId, formattedIdea);
+      }
     } catch (err) {
       setIdeaError(err instanceof Error ? err.message : "Failed to generate an idea.");
     } finally {
@@ -440,11 +605,11 @@ export function ProjectsPage() {
                 }}
               >
                 <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-medium">
-                      {project.name || "Untitled project"}
-                    </p>
-                  </div>
+                <div>
+                  <p className="font-medium">
+                    {project.name || "Untitled project"}
+                  </p>
+                </div>
                 </div>
               </button>
               <div className="relative group/menu" data-project-menu={project.id}>
@@ -502,7 +667,7 @@ export function ProjectsPage() {
     const handleClick = (event: MouseEvent) => {
       const target = event.target as HTMLElement | null;
       const wrapper = document.querySelector(
-        `[data-project-menu=\"${projectMenuId}\"]`
+        `[data-project-menu="${projectMenuId}"]`
       );
       if (wrapper && target && wrapper.contains(target)) {
         return;
@@ -520,7 +685,7 @@ export function ProjectsPage() {
     const handleClick = (event: MouseEvent) => {
       const target = event.target as HTMLElement | null;
       const wrapper = document.querySelector(
-        `[data-document-menu=\"${documentMenuId}\"]`
+        `[data-document-menu="${documentMenuId}"]`
       );
       if (wrapper && target && wrapper.contains(target)) {
         return;
@@ -603,88 +768,112 @@ export function ProjectsPage() {
             <div className="space-y-2">
               {documentItems.map((item) => {
                 const isActive = activeDocumentId === item.id;
+                const isDiscovery = item.name === "Discovery";
+                const isLocked = !isDiscovery;
                 return (
-                <div
-                  key={item.id}
-                  className={`group flex cursor-pointer items-center justify-between rounded-lg px-3 py-2 text-sm transition ${
-                    isActive
-                      ? "bg-blue-50 text-gray-800"
-                      : "text-gray-800 hover:bg-gray-100"
-                  }`}
-                  onClick={() => {
-                    setActiveDocument(item.name);
-                    setActiveDocumentId(item.id);
-                    if (activeProjectId) {
-                      setProjectDocumentState(activeProjectId, item.id).catch(
-                        () => undefined
-                      );
-                    }
-                  }}
-                >
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-gray-400" />
-                    <p className="font-medium">{item.name}</p>
-                  </div>
-                  <div className="relative" data-document-menu={item.id}>
-                    <button
-                      type="button"
-                      className="inline-flex h-7 w-7 items-center justify-center rounded text-gray-500 opacity-0 transition group-hover:opacity-100 hover:bg-gray-100 hover:text-gray-700"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setDocumentMenuId((prev) =>
-                          prev === item.id ? null : item.id
+                <>
+                  <div
+                    key={item.id}
+                    className={`group flex min-h-[44px] items-center justify-between rounded-lg px-3 py-2 text-sm transition ${
+                      isActive ? "bg-blue-50" : "hover:bg-gray-100"
+                    } ${
+                      isLocked
+                        ? "cursor-not-allowed hover:bg-transparent"
+                        : "cursor-pointer"
+                    }`}
+                    onClick={() => {
+                      if (isLocked) return;
+                      setActiveDocument(item.name);
+                      setActiveDocumentId(item.id);
+                      if (activeProjectId) {
+                        setProjectDocumentState(activeProjectId, item.id).catch(
+                          () => undefined
                         );
-                      }}
-                      aria-label="Document options"
-                    >
-                      <MoreVertical className="h-4 w-4" />
-                    </button>
-                    {documentMenuId === item.id && (
-                      <div className="absolute right-0 top-full z-10 mt-2 w-28 rounded border bg-white shadow-md">
+                      }
+                    }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <FileText
+                        className={`h-4 w-4 ${
+                          isLocked ? "text-gray-400" : "text-gray-500"
+                        }`}
+                      />
+                      <p
+                        className={`font-normal ${
+                          isLocked ? "text-gray-400" : "text-gray-800"
+                        }`}
+                      >
+                        {item.name}
+                      </p>
+                    </div>
+                    {!isLocked && (
+                      <div className="relative" data-document-menu={item.id}>
                         <button
                           type="button"
-                          className="w-full px-3 py-2 text-left text-xs text-red-600 hover:bg-red-50"
+                          className="inline-flex h-7 w-7 items-center justify-center rounded text-gray-500 opacity-0 transition group-hover:opacity-100 hover:bg-gray-100 hover:text-gray-700"
                           onClick={(event) => {
                             event.stopPropagation();
-                            if (!activeProjectId) return;
-                            deleteProjectDocumentItem(item.id)
-                              .then(() => {
-                                setProjectDocuments((prev) => ({
-                                  ...prev,
-                                  [activeProjectId]: (prev[activeProjectId] || []).filter(
-                                    (entry) => entry.id !== item.id
-                                  )
-                                }));
-                                if (activeDocumentId === item.id) {
-                                  setActiveDocument(null);
-                                  setActiveDocumentId(null);
-                                  setProjectDocumentState(activeProjectId, null).catch(
-                                    () => undefined
-                                  );
-                                }
-                                setDocumentMenuId(null);
-                              })
-                              .catch((err) => {
-                                if (err instanceof Error) {
-                                  setProjectActionError(err.message);
-                                } else {
-                                  setProjectActionError(
-                                    typeof err === "string" ? err : JSON.stringify(err)
-                                  );
-                                }
-                                setDocumentMenuId(null);
-                              });
+                            setDocumentMenuId((prev) =>
+                              prev === item.id ? null : item.id
+                            );
                           }}
+                          aria-label="Document options"
                         >
-                          Delete
+                          <MoreVertical className="h-4 w-4" />
                         </button>
+                        {documentMenuId === item.id && (
+                          <div className="absolute right-0 top-full z-10 mt-2 w-28 rounded border bg-white shadow-md">
+                            <button
+                              type="button"
+                              className="w-full px-3 py-2 text-left text-xs text-red-600 hover:bg-red-50"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                if (!activeProjectId) return;
+                                deleteProjectDocumentItem(item.id)
+                                  .then(() => {
+                                    setProjectDocuments((prev) => ({
+                                      ...prev,
+                                      [activeProjectId]: (prev[activeProjectId] || []).filter(
+                                        (entry) => entry.id !== item.id
+                                      )
+                                    }));
+                                    if (activeDocumentId === item.id) {
+                                      setActiveDocument(null);
+                                      setActiveDocumentId(null);
+                                      setProjectDocumentState(activeProjectId, null).catch(
+                                        () => undefined
+                                      );
+                                    }
+                                    setDocumentMenuId(null);
+                                  })
+                                  .catch((err) => {
+                                    if (err instanceof Error) {
+                                      setProjectActionError(err.message);
+                                    } else {
+                                      setProjectActionError(
+                                        typeof err === "string" ? err : JSON.stringify(err)
+                                      );
+                                    }
+                                    setDocumentMenuId(null);
+                                  });
+                              }}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
-                </div>
+                  {isDiscovery && (
+                    <div className="flex min-h-[44px] items-center rounded-lg px-3 py-2 text-xs text-gray-400">
+                      Coming soon...
+                    </div>
+                  )}
+                </>
               );
-              })}
-            </div>
+                })}
+              </div>
           </div>
         </div>
       </aside>
@@ -715,7 +904,26 @@ export function ProjectsPage() {
                 onChange={(event) => {
                   const nextValue = event.target.value;
                   setIdea(nextValue);
-                  localStorage.setItem("discoveryWizard.productIdea", nextValue);
+                  if (activeProjectId) {
+                    setProjectInputs((prev) => ({
+                      ...prev,
+                      [activeProjectId]: nextValue
+                    }));
+                    if (saveIdeaTimeout.current) {
+                      window.clearTimeout(saveIdeaTimeout.current);
+                    }
+                    saveIdeaTimeout.current = window.setTimeout(() => {
+                      setProjectInput(activeProjectId, nextValue).catch((err) => {
+                        if (err instanceof Error) {
+                          setProjectActionError(err.message);
+                        } else {
+                          setProjectActionError(
+                            typeof err === "string" ? err : JSON.stringify(err)
+                          );
+                        }
+                      });
+                    }, 600);
+                  }
                   resizeTextarea();
                 }}
                 onInput={resizeTextarea}
@@ -728,11 +936,16 @@ export function ProjectsPage() {
         </section>
 
         <section className="space-y-6">
-          <WizardPage embedded debugTargetId="wizard-debug-panel" />
+          <WizardPage
+            embedded
+            debugTargetId="wizard-debug-panel"
+            projectId={activeProjectId}
+            productIdea={idea}
+          />
         </section>
       </div>
 
-      <div id="wizard-debug-panel" className="space-y-4" />
+      <div id="wizard-debug-panel" className="hidden" />
     </div>
   );
 }
